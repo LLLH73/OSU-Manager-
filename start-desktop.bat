@@ -1,0 +1,22 @@
+@echo off
+chcp 65001 >nul
+cd /d "%~dp0"
+
+if exist "release\win-unpacked\osu-4k-downloader.exe" (
+  start "" "%~dp0release\win-unpacked\osu-4k-downloader.exe"
+  exit /b 0
+)
+
+if not exist "node_modules\electron\dist\electron.exe" (
+  echo [osu! 4K Desktop] Installing dependencies / Electron binary...
+  call npm install
+  if not exist "node_modules\electron\dist\electron.exe" (
+    node node_modules\electron\install.js
+  )
+)
+
+if not exist "dist\index.html" call npm run build
+if not exist "dist-server\index.js" call npm run build
+if not exist "dist-electron\main.js" call npm run build
+
+start "" "%~dp0node_modules\.bin\electron.cmd" "%~dp0"

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#171928" />
+      <stop offset="100%" stop-color="#090A10" />
+    </linearGradient>
+    <linearGradient id="lane1" x1="0" y1="48" x2="0" y2="208" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#38BDF8" />
+      <stop offset="100%" stop-color="#0284C7" />
+    </linearGradient>
+    <linearGradient id="lane2" x1="0" y1="48" x2="0" y2="208" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FF66AA" />
+      <stop offset="100%" stop-color="#DB2777" />
+    </linearGradient>
+    <linearGradient id="lane3" x1="0" y1="48" x2="0" y2="208" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#C084FC" />
+      <stop offset="100%" stop-color="#7C3AED" />
+    </linearGradient>
+  </defs>
+  <rect x="12" y="12" width="232" height="232" rx="54" fill="url(#bg)" stroke="#FFFFFF" stroke-opacity="0.14" stroke-width="4" />
+  <rect x="46" y="70" width="32" height="116" rx="10" fill="url(#lane1)" />
+  <rect x="90" y="48" width="32" height="160" rx="10" fill="url(#lane2)" />
+  <rect x="134" y="48" width="32" height="160" rx="10" fill="url(#lane3)" />
+  <rect x="178" y="92" width="32" height="94" rx="10" fill="url(#lane1)" />
+  <rect x="38" y="182" width="180" height="10" rx="5" fill="#FFFFFF" fill-opacity="0.88" />
+</svg>
