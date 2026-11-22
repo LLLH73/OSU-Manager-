@@ -4,6 +4,20 @@ All notable changes to **osu! 4K 谱面工坊 (`osu-4k-dual-downloader`)** will 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.2.0] - 2026-11-22
+
+### Added
+- **全视图滚底自动加载更多**：在 `卡片 (grid)`、`列表 (list)` 与 `Lazer (lazer)` 三种呈现形式下均接入基于对应滚动容器的 `IntersectionObserver` 自动加载（含并发锁、搜索纪元竞态过滤、错误熔断重试与 Lazer 键盘翻页预取）。
+- **Ranked 谱面大致 PP 展示与多情景计算器**：
+  - 新增 [src/utils/pp.ts](src/utils/pp.ts)：实现 `ppy/osu` Mania 准度制 PP 引擎（含物件长度加成、Miss 扣减、`EZ`/`NF`/`Classic` Mod 倍率、Mania `320:300 (MA 比)` 折算及 `HT`/`DT` 自定义倍速等效星数与 BPM 估算）。
+  - 新增 [src/components/PpCalculatorPanel.tsx](src/components/PpCalculatorPanel.tsx)：内嵌于 [BeatmapDetailModal.tsx](src/components/BeatmapDetailModal.tsx)，提供实时 PP 与 4 档（95%/98%/99%/100% SS）情景对比矩阵、准度/倍速滑块、Mod 与 MA 比切换，以及未上架谱面「模拟上架计算」模式。
+  - 在 `卡片`、`列表`、`Lazer` 轮盘与展开难度行对 `ranked`/`approved` 谱面展示可点击的 `~XXXpp`（`.chip-pp`）徽章；在 `Lazer` 左侧楔形面板内置 `HT / NM / DT` 快速切换 `PP 速览` 条；详情弹窗难度表新增 `大致 PP (98%/SS)` 列。
+
+### Changed
+- **Lazer 选歌界面动效性能优化**：
+  - 解耦 `.lazer-slot`（纯 rAF 弧线位移 + `contain: layout style`）与 `.lazer-slot-inner`（点击/悬停水平滑移），消除滚动与切换动画冲突。
+  - 改用批量先读后写、视口裁剪与增量写入的 `updateArcPositions()`；使用 `React.memo` 封装 `LazerCarouselSlot` 并仅对当前激活项挂载交错入场（`.lazer-diff-enter`）的难度列表；采用双缓冲背景交叉淡入（`blur-lg`）并移除轮盘卡片内 `backdrop-blur` 堆栈开销。
+
 ## [1.1.0] - 2026-11-22
 
 ### Added

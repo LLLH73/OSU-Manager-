@@ -4,6 +4,44 @@
 
 ---
 
+## Session 3 — 全视图滚底自动加载、Lazer 动效丝滑优化与 Ranked PP 情景计算器 (`v1.2.0`)
+
+- **日期**：2026-11-22
+- **对话 ID**：`48daf769-ce1d-4a38-983b-ef1945e9fd0c`（第二轮迭代）
+- **版本**：`v1.1.0` → `v1.2.0`
+- **关联提交**：
+  - 核心功能：`3b0a44b` (`feat(ui): add infinite auto-load, silky lazer carousel optimization, and ranked PP calculator (v1.2.0)`)
+  - 文档更新：本次提交（紧随 `3b0a44b` 之后）
+
+### 本次目标
+1. 无论当前使用哪种呈现形式（`卡片` / `列表` / `Lazer`），翻到列表底部自动加载更多谱面。
+2. 解决 Lazer 模式下点击/切换卡片时的卡顿，使动效更丝滑。
+3. 为 Ranked（及 Approved）谱面对应星数难度展示大致 PP，并提供可模拟不同情景的 PP 计算器。
+
+### 关键实现与性能优化分析
+1. **全视图滚底自动加载更多**（`src/App.tsx`, `src/components/LazerSongSelect.tsx`）：
+   - 在 `卡片`/`列表` 模式中以 `<main>` 作为 `IntersectionObserver` 的 `root`（`rootMargin: '300px 0px'`），在 `Lazer` 模式中以右侧轮盘滚动容器 `carouselRef` 作为 `root`（`rootMargin: '260px 0px'`），并在键盘 `ArrowDown`/`KeyS` 翻到距末尾 3 项内时主动预取。
+   - 新增 `loadingMoreRef` 并发锁、`searchEpochRef` 竞态丢弃令牌与 `!searchError` 熔断保护，防止重复请求与错误死循环；底部保留加载状态提示、失败手动重试及「已加载全部」提示。
+2. **Lazer 动效卡顿根因与丝滑优化**（`src/index.css`, `src/components/LazerSongSelect.tsx`）：
+   - **根因**：此前切换卡片时触发全量槽位重渲染、每张卡片叠加 `backdrop-blur` 合成开销、背景大图 `blur-2xl` 反复重建 DOM，且隐藏的 CSS Grid 手风琴在每次重排时参与布局与弧线测量，加之 `.lazer-slot` 同时混用 rAF 弧线位移与 CSS `transition`。
+   - **修复**：
+     - 解耦 `.lazer-slot`（纯 rAF 弧线 `--arc-x` / `--arc-opacity`，`contain: layout style`，无 transition）与 `.lazer-slot-inner`（负责 `-20px` 选中弹出 / `-8px` 悬停滑移）；
+     - 批量先读（`offsetTop`/`offsetHeight`）后写、仅更新视口上下 `260px` 缓冲内且数值有变化的槽位；
+     - 改为仅对当前激活项挂载交错入场（`.lazer-diff-enter`）的难度扇出列表，配合 `React.memo` 封装 `LazerCarouselSlot` 与 `useMemo` 预排序 `sortedDiffsMap`，切换曲目仅重绘新旧两张卡；
+     - 改用双缓冲 `<img>`（`blur-lg` + `loadedBgUrlsRef` 缓存秒切）并移除轮盘卡片内嵌套 `backdrop-blur`。
+3. **Ranked 谱面大致 PP 展示与情景计算器**（`src/utils/pp.ts`, `src/components/PpCalculatorPanel.tsx`, `src/components/BeatmapDetailModal.tsx`, `BeatmapCard.tsx`, `BeatmapListRow.tsx`, `LazerSongSelect.tsx`）：
+   - 基于 `ppy/osu` 官方 `osu!mania` 准度制公式实现 `calculateBeatmapPp()`（包含 `8.0 * max(SR-0.15, 0.05)^2.2 * max(0, 5*acc-4) * (1 + 0.1*min(1, hits/1500)) * 0.8 * modMultiplier`，以及对 `全部模式` 下非 Mania 谱面的参考估算）。
+   - 所有视图的 `ranked`/`approved` 谱面展示可点击的 `~XXXpp`（`.chip-pp`）徽章（未上架图保持不展示官方 PP，避免误导）；Lazer 左侧面板内置 `HT / NM / DT` 快速切换 `PP 速览`；详情弹窗难度表增加 `大致 PP (98%/SS)` 列，下方内嵌支持准度滑块/预设、失误数、倍速（HT~DT 0.5x–2.0x 等效 SR/BPM 估算）、`Classic/EZ/NF` Mod、Mania `320:300 (MA 比)` 与「模拟上架计算」开关的完整交互式 `PpCalculatorPanel`。
+
+### 验证记录
+- `npm run typecheck` 与 `npm run electron:pack` 均退出码 `0` 通过，更新 `release\win-unpacked\osu-4k-downloader.exe`。
+- 在 `1440×900` 实机浏览器验收（控制台错误 `0`、未捕获异常 `0`）：
+  - **自动加载**：`卡片` 滚底自动从 `24` 增至 `72`；切至 `列表` 滚底自动增至 `96`；切至 `Lazer` 轮盘滚底自动增至 `120`。
+  - **Lazer DOM 与动效**：快速切换 5 张卡片，DOM 内始终仅 `1` 个激活槽位渲染 `.lazer-diff-row`（非激活槽位为 `0`），滚动时 `--arc-x` 实时平滑变化。
+  - **PP 计算与三主题**：Ranked 谱面在三视图均正确显示 `.chip-pp` 而 Qualified/Loved 卡片不显示；在 `#2214615 Kiss Me Again (Nightcore Mix)` 实测 Lazer `HT/NM/DT` 速览与计算器弹窗切换难度、95%/SS、Miss、DT 1.5x、`Classic`/`EZ`/`NF` 与 `3:1` MA 比实时联动正常，三主题（曜石黑/瓷器白/浅咖啡）对比度清晰无遮挡。
+
+---
+
 ## Session 2 — 多形态 Song 选歌界面（含 Lazer 轮盘动效）、运行日志与交接体系
 
 - **日期**：2026-11-22

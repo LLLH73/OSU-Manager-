@@ -65,18 +65,20 @@
 | :--- | :--- |
 | `src/main.tsx` | 引入离线 `@fontsource` 四字体并挂载 `App` |
 | `src/index.css` | 三套主题 CSS Token (`--t-*` 与 `--lazer-*`)、四字体工具类、卡片金框、Lazer 轮盘动效样式 |
-| `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、主题/视图模式持久化、搜索、批量选择、试听、弹窗协调） |
+| `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、主题/视图模式持久化、滚底自动加载、批量选择、试听、弹窗协调） |
 | `src/constants.ts` | 主题元信息 (`THEME_OPTIONS`)、视图选项 (`VIEW_MODE_OPTIONS`)、工作流预设 (`WORKFLOW_PRESETS`)、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()` |
+| `src/utils/pp.ts` | Ranked PP 准度制计算引擎 (`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `isRankedForPp`) |
 | `src/api.ts` | 前端 REST 封装 |
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
 | `src/components/TitleBar.tsx` | 无边框顶部栏（主题切换器、代理 6174 状态、最快镜像延迟、窗口控制） |
 | `src/components/SideRail.tsx` | 左侧边栏（目标 `lazer/stable/both`、包体格式、Mania 4K 预设、双端曲库统计、队列与设置入口） |
 | `src/components/FilterPanel.tsx` | 搜索框、高频词条、基础筛选、折叠高级数值/LN% 筛选 |
-| `src/components/BeatmapCard.tsx` | `grid` 卡片网格单卡 |
-| `src/components/BeatmapListRow.tsx` | `list` 紧凑列表单行 |
-| `src/components/LazerSongSelect.tsx` | `lazer` osu!lazer 弧形选歌轮盘 + 左侧楔形展示 + 手风琴难度列表 + 键盘导航 |
+| `src/components/BeatmapCard.tsx` | `grid` 卡片网格单卡（含 Ranked `~XXXpp` 入口胶囊） |
+| `src/components/BeatmapListRow.tsx` | `list` 紧凑列表单行（含 Ranked `~XXXpp` 入口胶囊） |
+| `src/components/LazerSongSelect.tsx` | `lazer` osu!lazer 弧形选歌轮盘 + 左侧楔形展示（含 `HT/NM/DT` PP 速览）+ 按需交错难度列表 + 滚底自动加载 + 键盘导航 |
+| `src/components/PpCalculatorPanel.tsx` | 交互式 PP 情景估算计算器（准度/Miss/倍速/Mod/MA比/未上架模拟） |
 | `src/components/AudioPlayerBar.tsx` | 底部浮动音频试听栏（带 4K 均衡器动效 `.eq`） |
-| `src/components/BeatmapDetailModal.tsx` | 谱面完整详情、全难度表、标签搜索、单独指定源下载 |
+| `src/components/BeatmapDetailModal.tsx` | 谱面完整详情、全难度表（含 `大致 PP` 列）、内嵌 PP 计算器、标签搜索、单独指定源下载 |
 | `src/components/DownloadDrawer.tsx` | 下载任务队列与 Lazer 待导入队列批量导入抽屉 |
 | `src/components/LibrarySyncModal.tsx` | 双端曲库比对与 Stable→Lazer 零流量同步弹窗 |
 | `src/components/SettingsModal.tsx` | 客户端路径浏览、代理与镜像测速、主题/偏好、可选官方 Cookie 设置弹窗 |
@@ -89,13 +91,16 @@
 1. **三套主题 Token 驱动**：所有界面（含 `LazerSongSelect` 轮盘与遮罩）必须使用 `src/index.css` 中定义的 `--t-*` 与 `--lazer-*` 变量，适配 `dark`（曜石黑）、`light`（瓷器白）、`latte`（浅咖啡）三套主题，避免仅面向暗色写死颜色。
 2. **四字体离线层级**：不要改用在线 Google Fonts CDN；保留 `main.tsx` 中 `@fontsource` 的离线导入和 `.font-display` / `.font-stat` / `.font-mono` 分工。
 3. **已装谱面四边金色框体**：任意 Song 视图中，凡 `beatmapset.localStatus.inStable || beatmapset.localStatus.inLazer` 均需渲染 `.card-installed`（双端均已装追加 `.card-installed-both`）与 `.chip-gold`。**特别注意**：在 `LazerSongSelect` 中，`clip-path` 只能加在内部封面层 `.lazer-cover-slant`，不能直接裁切带边框的外层 `.lazer-set-card`，否则会削掉金色外框。
-4. **防悬停闪烁线（历史已修 Bug）**：
+4. **防悬停闪烁线与 Lazer 轮盘性能规范（历史已修 Bug）**：
    - 严禁对包含放大缩放封面图的卡片整体施加垂直 `translateY` 悬停动画（会导致浏览器在卡片中间闪现亚像素接缝线）。
    - 封面容器统一使用 `.cover-frame`（`transform: translateZ(0); isolation: isolate; backface-visibility: hidden`），封面图与 `.cover-vignette` 均使用 `-inset-[1px]` / `calc(100% + 2px)` 溢边。
-   - `LazerSongSelect` 轮盘槽位仅做水平 `translate3d(calc(var(--arc-x) + var(--active-shift) + var(--hover-shift)), 0, 0)` 与 `opacity` 过渡。
-5. **下拉框防双箭头**：所有 `<select>` 控件统一使用 `src/components/SelectField.tsx`，不要裸写受原生箭头干扰的下拉框。
-6. **Lazer 快捷键隔离**：`LazerSongSelect` 的全局 `keydown` 监听必须继续屏蔽 `INPUT` / `TEXTAREA` / `SELECT` / `isContentEditable` 聚焦态，以及任意 `[role="dialog"]` 弹窗打开状态。
-7. **打包交付与清理检查**：
+   - **Lazer 轮盘动效隔离**：禁止在 `.lazer-slot` 上添加 `transition`（它专供 rAF 实时写入 `--arc-x` / `--arc-opacity` 并保持 `contain: layout style`）；点击/悬停滑移统一由内层 `.lazer-slot-inner` 承担；轮盘卡片内禁止叠加 `backdrop-blur-*`，难度展开仅挂载当前激活项，避免大量隐藏 DOM 与合成卡顿。
+5. **自动加载与 PP 口径约定**：
+   - 滚底自动加载时，`grid`/`list` 的 `IntersectionObserver` 必须以 `<main>`（`mainScrollRef`）为 `root`，`lazer` 必须以轮盘容器 `carouselRef` 为 `root`，并保留 `loadingMoreRef`、`searchEpochRef` 与 `!searchError` 保护。
+   - 官方大致 PP 徽章（`.chip-pp`）仅在 `status === 'ranked' || status === 'approved'` 时渲染在列表卡片中；未上架图仅可在计算器弹窗内手动切换「模拟上架计算」。
+6. **下拉框防双箭头**：所有 `<select>` 控件统一使用 `src/components/SelectField.tsx`，不要裸写受原生箭头干扰的下拉框。
+7. **Lazer 快捷键隔离**：`LazerSongSelect` 的全局 `keydown` 监听必须继续屏蔽 `INPUT` / `TEXTAREA` / `SELECT` / `isContentEditable` 聚焦态，以及任意 `[role="dialog"]` 弹窗打开状态。
+8. **打包交付与清理检查**：
    - `start-desktop.bat` 与 `start.bat` 会优先启动 `release\win-unpacked\osu-4k-downloader.exe`，**代码修改后务必执行 `npm run typecheck` 和 `npm run electron:pack` 更新打包目录**。
    - 每次通过启动桌面端/后端做完测试后，务必关闭测试进程并确认 `3721` 端口已释放。
 
