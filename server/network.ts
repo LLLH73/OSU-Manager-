@@ -2,6 +2,7 @@ import net from 'node:net';
 import { EventEmitter } from 'node:events';
 import { Agent, ProxyAgent, fetch as undiciFetch, type RequestInit as UndiciRequestInit } from 'undici';
 import { getConfig } from './config.js';
+import { logInfo } from './logger.js';
 import { MIRROR_DEFINITIONS, MIRROR_MAP } from './sources.js';
 import {
   MirrorDefinition,
@@ -263,6 +264,13 @@ export async function benchmarkMirrors(forceProxyRefresh = true): Promise<Networ
       benchmarkPromise = null;
     }
     const status = await getNetworkStatus(false);
+    const best = status.mirrors.find((m) => m.id === status.recommendedMirror);
+    logInfo('network', 'Mirror benchmark completed', {
+      proxyOpen: status.proxyOpen,
+      proxyPort: status.proxyPort,
+      recommendedMirror: status.recommendedMirror,
+      latencyMs: best?.latencyMs ?? null,
+    });
     networkEvents.emit('update', status);
     return status;
   })();

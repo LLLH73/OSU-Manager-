@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { AppConfig } from './types.js';
+import { AppConfig, SongViewMode } from './types.js';
 
 export const DATA_DIR = process.env.OSU_DL_DATA_DIR
   ? path.resolve(process.env.OSU_DL_DATA_DIR)
@@ -8,6 +8,11 @@ export const DATA_DIR = process.env.OSU_DL_DATA_DIR
 export const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 export const TMP_DIR = path.join(DATA_DIR, 'tmp');
 export const CACHE_DIR = path.join(DATA_DIR, 'cache');
+export const LOGS_DIR = path.join(DATA_DIR, 'logs');
+
+function normalizeViewMode(val: unknown): SongViewMode {
+  return val === 'grid' || val === 'list' || val === 'lazer' ? val : 'grid';
+}
 
 function detectLazerExePath(): string {
   const localAppData = process.env.LOCALAPPDATA || 'C:\\Users\\LLLH\\AppData\\Local';
@@ -43,6 +48,7 @@ export function getDefaultConfig(): AppConfig {
     stableInstallMode: 'extract',
     officialCookie: '',
     theme: 'dark',
+    viewMode: 'grid',
   };
 }
 
@@ -51,6 +57,7 @@ let cachedConfig: AppConfig | null = null;
 function ensureDirs(cfg: AppConfig): void {
   fs.mkdirSync(DATA_DIR, { recursive: true });
   fs.mkdirSync(TMP_DIR, { recursive: true });
+  fs.mkdirSync(LOGS_DIR, { recursive: true });
   fs.mkdirSync(path.join(CACHE_DIR, 'covers'), { recursive: true });
   fs.mkdirSync(path.join(CACHE_DIR, 'previews'), { recursive: true });
   if (cfg.lazerImportDir) {
@@ -79,6 +86,7 @@ export function loadConfig(): AppConfig {
       ...parsed,
       proxyPort: Number(parsed.proxyPort ?? defaults.proxyPort) || 6174,
       concurrency: Math.min(6, Math.max(1, Number(parsed.concurrency ?? defaults.concurrency) || 3)),
+      viewMode: normalizeViewMode(parsed.viewMode),
     };
   } catch {
     cachedConfig = defaults;
@@ -101,6 +109,7 @@ export function saveConfig(patch: Partial<AppConfig>): AppConfig {
     ...patch,
     proxyPort: Math.min(65535, Math.max(1, Number(patch.proxyPort ?? current.proxyPort) || 6174)),
     concurrency: Math.min(6, Math.max(1, Number(patch.concurrency ?? current.concurrency) || 3)),
+    viewMode: normalizeViewMode(patch.viewMode ?? current.viewMode),
   };
   ensureDirs(next);
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(next, null, 2), 'utf8');

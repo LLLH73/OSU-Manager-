@@ -3,8 +3,11 @@ import {
   AlertTriangle,
   CheckSquare,
   ChevronDown,
+  Disc3,
   Download,
   Layers,
+  LayoutGrid,
+  List,
   Loader2,
   Music,
   Square,
@@ -29,13 +32,15 @@ import {
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import { BeatmapCard } from './components/BeatmapCard';
 import { BeatmapDetailModal } from './components/BeatmapDetailModal';
+import { BeatmapListRow } from './components/BeatmapListRow';
 import { DownloadDrawer } from './components/DownloadDrawer';
 import { FilterPanel } from './components/FilterPanel';
+import { LazerSongSelect } from './components/LazerSongSelect';
 import { LibrarySyncModal } from './components/LibrarySyncModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SideRail } from './components/SideRail';
 import { TitleBar } from './components/TitleBar';
-import { DEFAULT_FILTERS, THEME_OPTIONS, WorkflowPreset } from './constants';
+import { DEFAULT_FILTERS, THEME_OPTIONS, VIEW_MODE_OPTIONS, WorkflowPreset } from './constants';
 import {
   AppConfig,
   DownloadTarget,
@@ -47,6 +52,7 @@ import {
   PreferredMirror,
   SearchFilters,
   SearchResult,
+  SongViewMode,
   ThemeId,
 } from './types';
 
@@ -60,6 +66,22 @@ function readInitialTheme(): ThemeId {
   return 'dark';
 }
 
+function readInitialViewMode(): SongViewMode {
+  try {
+    const stored = localStorage.getItem('osu4k-view-mode');
+    if (stored === 'grid' || stored === 'list' || stored === 'lazer') return stored;
+  } catch {
+    // Ignore storage error
+  }
+  return 'grid';
+}
+
+const VIEW_MODE_ICONS: Record<SongViewMode, typeof LayoutGrid> = {
+  grid: LayoutGrid,
+  list: List,
+  lazer: Disc3,
+};
+
 export function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [network, setNetwork] = useState<NetworkStatus | null>(null);
@@ -67,6 +89,7 @@ export function App() {
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
 
   const [theme, setTheme] = useState<ThemeId>(readInitialTheme);
+  const [viewMode, setViewMode] = useState<SongViewMode>(readInitialViewMode);
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [target, setTarget] = useState<DownloadTarget>('lazer');
@@ -112,6 +135,20 @@ export function App() {
     }
     if (persistBackend) {
       void updateConfig({ theme: nextTheme })
+        .then((cfg) => setConfig(cfg))
+        .catch(() => {});
+    }
+  }, []);
+
+  const applyViewMode = useCallback((nextMode: SongViewMode, persistBackend = true) => {
+    setViewMode(nextMode);
+    try {
+      localStorage.setItem('osu4k-view-mode', nextMode);
+    } catch {
+      // Ignore storage error
+    }
+    if (persistBackend) {
+      void updateConfig({ viewMode: nextMode })
         .then((cfg) => setConfig(cfg))
         .catch(() => {});
     }
@@ -167,6 +204,18 @@ export function App() {
           }
           if (!hasLocal) applyTheme(cfg.theme, false);
         }
+        if (
+          cfg.viewMode &&
+          (cfg.viewMode === 'grid' || cfg.viewMode === 'list' || cfg.viewMode === 'lazer')
+        ) {
+          let hasLocalView = false;
+          try {
+            hasLocalView = Boolean(localStorage.getItem('osu4k-view-mode'));
+          } catch {
+            hasLocalView = false;
+          }
+          if (!hasLocalView) applyViewMode(cfg.viewMode, false);
+        }
         setNetwork(net);
         setLibrary(lib);
         setDownloads(dls);
@@ -200,7 +249,7 @@ export function App() {
     });
 
     return () => es.close();
-  }, [applyTheme, runSearch]);
+  }, [applyTheme, applyViewMode, runSearch]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -300,14 +349,22 @@ export function App() {
     void runSearch(DEFAULT_FILTERS, false);
   };
 
-  const handleTogglePlay = (set: NormalizedBeatmapset) => {
-    if (playingSet?.id === set.id) {
-      setIsPlaying((p) => !p);
-    } else {
-      setPlayingSet(set);
-      setIsPlaying(true);
-    }
-  };
+  const handleTogglePlay = useCallback(
+    (set: NormalizedBeatmapset) => {
+      if (playingSet?.id === set.id) {
+        setIsPlaying((p) => !p);
+      } else {
+        setPlayingSet(set);
+        setIsPlaying(true);
+      }
+    },
+    [playingSet?.id],
+  );
+
+  const handleStartPlay = useCallback((set: NormalizedBeatmapset) => {
+    setPlayingSet(set);
+    setIsPlaying(true);
+  }, []);
 
   const handleDownload = async (
     set: NormalizedBeatmapset,
@@ -465,6 +522,37 @@ export function App() {
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
+                {/* 3-mode Song View Switcher (卡片 / 列表 / Lazer) */}
+                <div
+                  role="group"
+                  aria-label="谱面呈现形式"
+                  className="inline-flex h-[28px] items-center gap-0.5 rounded-[9px] border border-hairline bg-surface-1 p-0.5"
+                >
+                  {VIEW_MODE_OPTIONS.map((opt) => {
+                    const active = viewMode === opt.id;
+                    const Icon = VIEW_MODE_ICONS[opt.id];
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => applyViewMode(opt.id, true)}
+                        title={opt.desc}
+                        aria-pressed={active}
+                        className={`inline-flex h-[22px] items-center gap-1 rounded-[7px] px-2 text-[11px] font-medium transition-colors ${
+                          active
+                            ? opt.id === 'lazer'
+                              ? 'bg-lazer/18 text-lazer-soft shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--t-lazer)_48%,transparent)]'
+                              : 'bg-surface-2 text-ink shadow-[0_1px_2px_rgba(0,0,0,0.14),inset_0_0_0_1px_var(--t-hairline-strong)]'
+                            : 'text-ink-3 hover:bg-tint hover:text-ink'
+                        }`}
+                      >
+                        <Icon className="h-3 w-3" />
+                        <span>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -511,16 +599,33 @@ export function App() {
               </div>
             </div>
 
-            {/* Grid Results */}
+            {/* Song Presentation (Grid / Compact List / Lazer Carousel) */}
             {loading ? (
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="panel h-[284px] animate-pulse opacity-60"
-                  />
-                ))}
-              </div>
+              viewMode === 'list' ? (
+                <div className="space-y-2.5">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div key={i} className="panel h-[84px] animate-pulse opacity-60" />
+                  ))}
+                </div>
+              ) : viewMode === 'lazer' ? (
+                <div className="panel grid h-[670px] grid-cols-1 gap-4 p-4 opacity-70 lg:grid-cols-[minmax(360px,430px)_minmax(0,1fr)]">
+                  <div className="panel-flat h-full animate-pulse" />
+                  <div className="space-y-3 py-2">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="panel-flat h-[88px] animate-pulse" />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="panel h-[284px] animate-pulse opacity-60"
+                    />
+                  ))}
+                </div>
+              )
             ) : results.length === 0 ? (
               <div className="panel-flat flex flex-col items-center justify-center py-20 text-center">
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-hairline bg-surface-2 text-ink-3">
@@ -533,16 +638,73 @@ export function App() {
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                  {results.map((set) => (
-                    <BeatmapCard
-                      key={set.id}
-                      beatmapset={set}
+                <div key={viewMode} className="animate-view-in">
+                  {viewMode === 'grid' && (
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                      {results.map((set) => (
+                        <BeatmapCard
+                          key={set.id}
+                          beatmapset={set}
+                          activeTarget={target}
+                          isPlaying={isPlaying && playingSet?.id === set.id}
+                          activeTask={activeTaskBySet.get(set.id)}
+                          batchMode={batchMode}
+                          selected={selectedIds.has(set.id)}
+                          onToggleSelect={(id) => {
+                            setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(id)) next.delete(id);
+                              else next.add(id);
+                              return next;
+                            });
+                          }}
+                          onTogglePlay={handleTogglePlay}
+                          onDownload={(s, t) => void handleDownload(s, t)}
+                          onOpenDetail={(s) => setDetailSet(s)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {viewMode === 'list' && (
+                    <div className="space-y-2.5">
+                      {results.map((set) => (
+                        <BeatmapListRow
+                          key={set.id}
+                          beatmapset={set}
+                          activeTarget={target}
+                          isPlaying={isPlaying && playingSet?.id === set.id}
+                          activeTask={activeTaskBySet.get(set.id)}
+                          batchMode={batchMode}
+                          selected={selectedIds.has(set.id)}
+                          onToggleSelect={(id) => {
+                            setSelectedIds((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(id)) next.delete(id);
+                              else next.add(id);
+                              return next;
+                            });
+                          }}
+                          onTogglePlay={handleTogglePlay}
+                          onDownload={(s, t) => void handleDownload(s, t)}
+                          onOpenDetail={(s) => setDetailSet(s)}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {viewMode === 'lazer' && (
+                    <LazerSongSelect
+                      results={results}
                       activeTarget={target}
-                      isPlaying={isPlaying && playingSet?.id === set.id}
-                      activeTask={activeTaskBySet.get(set.id)}
+                      playingSetId={playingSet?.id ?? null}
+                      isPlaying={isPlaying}
+                      activeTaskBySet={activeTaskBySet}
                       batchMode={batchMode}
-                      selected={selectedIds.has(set.id)}
+                      selectedIds={selectedIds}
+                      hasMore={Boolean(searchMeta?.hasMore)}
+                      loadingMore={loadingMore}
+                      hasAudioDock={Boolean(playingSet)}
                       onToggleSelect={(id) => {
                         setSelectedIds((prev) => {
                           const next = new Set(prev);
@@ -552,13 +714,18 @@ export function App() {
                         });
                       }}
                       onTogglePlay={handleTogglePlay}
+                      onStartPlay={handleStartPlay}
                       onDownload={(s, t) => void handleDownload(s, t)}
                       onOpenDetail={(s) => setDetailSet(s)}
+                      onLoadMore={() =>
+                        searchMeta &&
+                        void runSearch({ ...filters, offset: searchMeta.nextUpstreamOffset }, true)
+                      }
                     />
-                  ))}
+                  )}
                 </div>
 
-                {searchMeta?.hasMore && (
+                {viewMode !== 'lazer' && searchMeta?.hasMore && (
                   <div className="flex justify-center pt-3">
                     <button
                       type="button"

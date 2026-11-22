@@ -1,4 +1,16 @@
-import { DownloadTarget, DownloadVariant, SearchFilters, ThemeId } from './types';
+import { DownloadTarget, DownloadVariant, SearchFilters, SongViewMode, ThemeId } from './types';
+
+export interface ViewModeMeta {
+  id: SongViewMode;
+  label: string;
+  desc: string;
+}
+
+export const VIEW_MODE_OPTIONS: ViewModeMeta[] = [
+  { id: 'grid', label: '卡片', desc: '多列封面网格视图' },
+  { id: 'list', label: '列表', desc: '高密度紧凑条目视图' },
+  { id: 'lazer', label: 'Lazer', desc: 'osu!lazer 弧形选歌轮盘与动效' },
+];
 
 export interface ThemeMeta {
   id: ThemeId;

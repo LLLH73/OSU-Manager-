@@ -5,6 +5,7 @@ import path from 'node:path';
 import { getConfig, TMP_DIR } from './config.js';
 import { installToLazer, installToStable, verifyOszFile } from './installer.js';
 import { getLibraryStatus, libraryEvents } from './library.js';
+import { logError, logInfo, logWarn } from './logger.js';
 import { fetchWithRoute, getRankedMirrors, resolveRoutes } from './network.js';
 import {
   DownloadTarget,
@@ -279,15 +280,29 @@ async function processTask(taskId: string): Promise<void> {
       message: finalMsg,
     });
 
+    logInfo('download', `Task ${finalStatus}`, {
+      taskId,
+      setId: task.beatmapsetId,
+      target: task.target,
+      mirror: task.activeMirror,
+      route: task.routeUsed,
+    });
+
     libraryEvents.emit('update', await getLibraryStatus(true));
   } catch (err) {
     const isCancelled = controller.signal.aborted;
+    const errMsg = isCancelled ? '已手动取消' : err instanceof Error ? err.message : String(err);
     updateTask(taskId, {
       status: isCancelled ? 'cancelled' : 'failed',
       speedBps: 0,
-      error: isCancelled ? '已手动取消' : err instanceof Error ? err.message : String(err),
+      error: errMsg,
       message: isCancelled ? '已取消' : '下载或安装失败',
     });
+    if (isCancelled) {
+      logWarn('download', 'Task cancelled', { taskId, setId: task.beatmapsetId });
+    } else {
+      logError('download', 'Task failed', { taskId, setId: task.beatmapsetId, error: errMsg });
+    }
   } finally {
     abortControllers.delete(taskId);
     try {
@@ -356,6 +371,12 @@ export function enqueueDownload(input: EnqueueDownloadInput): DownloadTask {
 
   tasks.set(id, task);
   taskOrder.push(id);
+  logInfo('download', 'Task enqueued', {
+    taskId: id,
+    setId: task.beatmapsetId,
+    target: task.target,
+    variant: task.variant,
+  });
   emitTasks();
   pumpQueue();
   return task;

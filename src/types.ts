@@ -4,6 +4,7 @@ export type DownloadVariant = 'novideo' | 'full' | 'mini';
 export type SearchSource = 'auto' | 'osudirect' | 'sayobot';
 export type StableInstallMode = 'extract' | 'drop_osz';
 export type ThemeId = 'dark' | 'light' | 'latte';
+export type SongViewMode = 'grid' | 'list' | 'lazer';
 
 export type MirrorId =
   | 'sayobot-auto'
@@ -33,6 +34,7 @@ export interface AppConfig {
   stableInstallMode: StableInstallMode;
   officialCookie: string;
   theme: ThemeId;
+  viewMode: SongViewMode;
 }
 
 export interface MirrorHealth {

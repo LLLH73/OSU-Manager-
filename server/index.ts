@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import cors from 'cors';
 import express, { type Request, type Response } from 'express';
-import { getConfig, loadConfig, saveConfig } from './config.js';
+import { DATA_DIR, getConfig, loadConfig, saveConfig } from './config.js';
 import {
   cancelDownload,
   clearFinishedDownloads,
@@ -20,6 +20,7 @@ import {
   syncStableToLazer,
 } from './installer.js';
 import { getLibraryDiff, getLibraryStatus, libraryEvents, rescanLibrary } from './library.js';
+import { getLogFilePath, logError, logInfo, readRecentLogs } from './logger.js';
 import { serveCover, servePreview } from './media.js';
 import { benchmarkMirrors, getNetworkStatus, networkEvents, resetProxyCache } from './network.js';
 import { getBeatmapsetDetail, searchBeatmaps } from './search.js';
@@ -46,6 +47,17 @@ app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ ok: true, time: new Date().toISOString() });
 });
 
+app.get('/api/logs', (req: Request, res: Response) => {
+  const requested = parseOptNum(req.query.lines) ?? 120;
+  const clamped = Math.min(500, Math.max(1, Math.floor(requested)));
+  const lines = readRecentLogs(clamped);
+  res.json({
+    logFile: getLogFilePath(),
+    count: lines.length,
+    lines,
+  });
+});
+
 // Config
 app.get('/api/config', (_req: Request, res: Response) => {
   res.json(getConfig());
@@ -54,6 +66,7 @@ app.get('/api/config', (_req: Request, res: Response) => {
 app.put('/api/config', async (req: Request, res: Response) => {
   const body = (req.body || {}) as Partial<AppConfig>;
   const updated = saveConfig(body);
+  logInfo('config', 'Updated config', { keys: Object.keys(body) });
   resetProxyCache();
   await rescanLibrary(false);
   res.json(updated);
@@ -115,8 +128,10 @@ app.get('/api/search', async (req: Request, res: Response) => {
     const result = await searchBeatmaps(filters);
     res.json(result);
   } catch (err) {
+    const msg = err instanceof Error ? err.message : '搜索请求失败';
+    logError('search', 'Search failed', { q: req.query.q, error: msg });
     res.status(502).json({
-      error: err instanceof Error ? err.message : '搜索请求失败',
+      error: msg,
     });
   }
 });
@@ -215,6 +230,10 @@ app.post('/api/lazer/import-pending', async (req: Request, res: Response) => {
     ? req.body.filenames.map((x: unknown) => String(x))
     : undefined;
   const result = await launchLazerBatchImport(cfg, filenames);
+  logInfo('lazer', 'Batch import triggered', {
+    launched: result.launched,
+    count: result.count,
+  });
   res.json(result);
 });
 
@@ -368,12 +387,13 @@ export async function startServer(
 
   const addr = server.address();
   const port = typeof addr === 'object' && addr ? addr.port : preferredPort;
-  console.log(`[osu-downloader] Server running at http://127.0.0.1:${port}`);
+  logInfo('server', `Server listening on http://127.0.0.1:${port}`, { port, dataDir: DATA_DIR });
   void rescanLibrary(true);
   void benchmarkMirrors(true);
 
   const close = () =>
     new Promise<void>((resolve) => {
+      logInfo('server', 'Server shutting down', { port });
       server.closeAllConnections?.();
       server.close(() => resolve());
     });
