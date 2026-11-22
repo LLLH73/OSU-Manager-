@@ -255,7 +255,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                         color: c.text,
                         borderColor: c.border,
                       }}
-                      className="font-stat inline-flex h-[17px] items-center gap-0.5 rounded-[4px] border px-1 text-[9px] font-bold"
+                      className="font-stat inline-flex h-[17px] shrink-0 items-center gap-0.5 rounded-[4px] border px-1 text-[9px] leading-none font-bold whitespace-nowrap"
                     >
                       <span>{keyTag}</span>
                       <span>{bm.difficultyRating.toFixed(2)}★</span>
@@ -396,7 +396,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                           color: c.text,
                           borderColor: c.border,
                         }}
-                        className="font-stat inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] border px-1.5 text-[9.5px] font-bold"
+                        className="font-stat inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] border px-1.5 text-[9.5px] leading-none font-bold whitespace-nowrap"
                       >
                         <span>{keyTag}</span>
                         <span>{bm.difficultyRating.toFixed(2)}★</span>

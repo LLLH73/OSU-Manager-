@@ -18,6 +18,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - 解耦 `.lazer-slot`（纯 rAF 弧线位移 + `contain: layout style`）与 `.lazer-slot-inner`（点击/悬停水平滑移），消除滚动与切换动画冲突。
   - 改用批量先读后写、视口裁剪与增量写入的 `updateArcPositions()`；使用 `React.memo` 封装 `LazerCarouselSlot` 并仅对当前激活项挂载交错入场（`.lazer-diff-enter`）的难度列表；采用双缓冲背景交叉淡入（`blur-lg`）并移除轮盘卡片内 `backdrop-blur` 堆栈开销。
 
+### Fixed
+- 修复 [BeatmapDetailModal.tsx](src/components/BeatmapDetailModal.tsx) 新增 `大致 PP` 列后难度表星数胶囊内部 `★` 与星数数字折行的问题，并为全部视图星数胶囊补齐 `whitespace-nowrap shrink-0 leading-none` 防护。
+
 ## [1.1.0] - 2026-11-22
 
 ### Added

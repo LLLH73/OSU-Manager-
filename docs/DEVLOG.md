@@ -39,6 +39,7 @@
   - **自动加载**：`卡片` 滚底自动从 `24` 增至 `72`；切至 `列表` 滚底自动增至 `96`；切至 `Lazer` 轮盘滚底自动增至 `120`。
   - **Lazer DOM 与动效**：快速切换 5 张卡片，DOM 内始终仅 `1` 个激活槽位渲染 `.lazer-diff-row`（非激活槽位为 `0`），滚动时 `--arc-x` 实时平滑变化。
   - **PP 计算与三主题**：Ranked 谱面在三视图均正确显示 `.chip-pp` 而 Qualified/Loved 卡片不显示；在 `#2214615 Kiss Me Again (Nightcore Mix)` 实测 Lazer `HT/NM/DT` 速览与计算器弹窗切换难度、95%/SS、Miss、DT 1.5x、`Classic`/`EZ`/`NF` 与 `3:1` MA 比实时联动正常，三主题（曜石黑/瓷器白/浅咖啡）对比度清晰无遮挡。
+  - **详情表星数折行修复**：针对 `BeatmapDetailModal` 新增 `大致 PP` 列后 `星数` 胶囊内 `★` 与数字折行的问题，为星数单元格及胶囊（含 `BeatmapCard` / `BeatmapListRow` / `LazerSongSelect`）统一加上 `whitespace-nowrap shrink-0 leading-none` 并将难度名列限宽为 `max-w-[190px]`；实机复检 `#2585097 (Rift (Cut Ver.))` 6 难度与 `#2214615` 4 难度均单行整齐显示（`22px` 高度，无横向滚动条），控制台错误 `0`。
 
 ---
 

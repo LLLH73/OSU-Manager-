@@ -308,7 +308,10 @@ export function BeatmapDetailModal({
                           isPicked ? 'bg-lazer/12' : ''
                         } ${bm.matchesFilter === false ? 'opacity-45' : ''}`}
                       >
-                        <td className="font-display max-w-[220px] truncate font-semibold text-ink">
+                        <td
+                          title={bm.version}
+                          className="font-display max-w-[190px] truncate font-semibold text-ink"
+                        >
                           {bm.version}
                         </td>
                         <td className="whitespace-nowrap text-ink-2">
@@ -318,16 +321,17 @@ export function BeatmapDetailModal({
                             `${bm.mode} (CS ${bm.cs})`
                           )}
                         </td>
-                        <td>
+                        <td className="whitespace-nowrap">
                           <span
                             style={{
                               backgroundColor: color.bg,
                               color: color.text,
                               borderColor: color.border,
                             }}
-                            className="font-stat inline-flex h-5 items-center gap-0.5 rounded-full border px-2 text-[11px] font-bold"
+                            className="font-stat inline-flex h-[22px] shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] leading-none font-bold whitespace-nowrap"
                           >
-                            ★ {bm.difficultyRating.toFixed(2)}
+                            <span>★</span>
+                            <span>{bm.difficultyRating.toFixed(2)}</span>
                           </span>
                         </td>
                         <td className="font-stat whitespace-nowrap tabular-nums">
@@ -340,7 +344,9 @@ export function BeatmapDetailModal({
                             <span className="text-[11px] text-ink-3">未上架</span>
                           )}
                         </td>
-                        <td className="font-mono text-ink-2">{formatDuration(bm.totalLength)}</td>
+                        <td className="font-mono whitespace-nowrap text-ink-2">
+                          {formatDuration(bm.totalLength)}
+                        </td>
                         <td className="font-mono whitespace-nowrap text-ink-2">
                           <span className="text-ink-3">OD</span> {bm.od}
                           <span className="mx-1.5 text-ink-4">·</span>

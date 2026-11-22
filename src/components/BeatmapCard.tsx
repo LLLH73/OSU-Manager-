@@ -269,7 +269,7 @@ export function BeatmapCard({
                     borderColor: color.border,
                   }}
                   title={`${bm.version} | ${keyTag} | ${bm.difficultyRating.toFixed(2)}★ | OD ${bm.od} | HP ${bm.hp} | ${formatDuration(bm.totalLength)}${bm.lnRatio != null ? ` | LN ${bm.lnRatio}%` : ''}${ppQuick ? ` | ~${formatPp(ppQuick.pp98)}pp(98%) / ~${formatPp(ppQuick.pp100)}pp(SS)` : ''}`}
-                  className="font-stat inline-flex h-[19px] items-center gap-1 rounded-[5px] border px-1.5 text-[10px] font-bold"
+                  className="font-stat inline-flex h-[19px] shrink-0 items-center gap-1 rounded-[5px] border px-1.5 text-[10px] leading-none font-bold whitespace-nowrap"
                 >
                   <span>{keyTag}</span>
                   <span>{bm.difficultyRating.toFixed(2)}★</span>
