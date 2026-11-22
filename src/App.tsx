@@ -108,12 +108,31 @@ export function App() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const [navOpen, setNavOpen] = useState(false);
-  const [detailSet, setDetailSet] = useState<NormalizedBeatmapset | null>(null);
+  const [detailState, setDetailState] = useState<{
+    set: NormalizedBeatmapset;
+    diffId?: number | null;
+    focusPp?: boolean;
+  } | null>(null);
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   const [librarySyncOpen, setLibrarySyncOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<number | null>(null);
+  const mainScrollRef = useRef<HTMLElement | null>(null);
+  const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
+  const loadingMoreRef = useRef(false);
+  const searchEpochRef = useRef(0);
+
+  const openDetail = useCallback(
+    (set: NormalizedBeatmapset, options?: { diffId?: number; focusPp?: boolean }) => {
+      setDetailState({
+        set,
+        diffId: options?.diffId ?? null,
+        focusPp: options?.focusPp ?? false,
+      });
+    },
+    [],
+  );
 
   const notify = useCallback((msg: string) => {
     setToast(msg);
@@ -163,11 +182,21 @@ export function App() {
   }, [theme]);
 
   const runSearch = useCallback(async (f: SearchFilters, append = false) => {
-    if (append) setLoadingMore(true);
-    else setLoading(true);
+    if (append && loadingMoreRef.current) return;
+    if (append) {
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+    } else {
+      searchEpochRef.current += 1;
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+      setLoading(true);
+    }
+    const myEpoch = searchEpochRef.current;
     setSearchError(null);
     try {
       const res = await searchBeatmapsets(f);
+      if (myEpoch !== searchEpochRef.current) return;
       const { beatmapsets, ...meta } = res;
       setSearchMeta(meta);
       setResults((prev) => {
@@ -176,12 +205,24 @@ export function App() {
         return [...prev, ...beatmapsets.filter((x) => !existingIds.has(x.id))];
       });
     } catch (err) {
+      if (myEpoch !== searchEpochRef.current) return;
       setSearchError(err instanceof Error ? err.message : '搜索失败');
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (myEpoch === searchEpochRef.current) {
+        if (append) {
+          loadingMoreRef.current = false;
+          setLoadingMore(false);
+        } else {
+          setLoading(false);
+        }
+      }
     }
   }, []);
+
+  const handleLoadMore = useCallback(() => {
+    if (loading || loadingMoreRef.current || !searchMeta?.hasMore) return;
+    void runSearch({ ...filters, offset: searchMeta.nextUpstreamOffset }, true);
+  }, [loading, searchMeta, filters, runSearch]);
 
   useEffect(() => {
     void (async () => {
@@ -256,13 +297,34 @@ export function App() {
       if (e.key !== 'Escape') return;
       if (settingsOpen) setSettingsOpen(false);
       else if (librarySyncOpen) setLibrarySyncOpen(false);
-      else if (detailSet) setDetailSet(null);
+      else if (detailState) setDetailState(null);
       else if (downloadsOpen) setDownloadsOpen(false);
       else if (navOpen) setNavOpen(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [settingsOpen, librarySyncOpen, detailSet, downloadsOpen, navOpen]);
+  }, [settingsOpen, librarySyncOpen, detailState, downloadsOpen, navOpen]);
+
+  // Infinite auto-load more when scrolling near the bottom in grid / list views
+  useEffect(() => {
+    if (viewMode === 'lazer') return;
+    const root = mainScrollRef.current;
+    const sentinel = loadMoreSentinelRef.current;
+    if (!root || !sentinel) return;
+    if (!searchMeta?.hasMore || loading || loadingMore || searchError) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          handleLoadMore();
+        }
+      },
+      { root, rootMargin: '300px 0px' },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [viewMode, searchMeta?.hasMore, loading, loadingMore, searchError, results.length, handleLoadMore]);
 
   const completedCount = useMemo(
     () => downloads.filter((d) => d.status === 'completed' || d.status === 'queued_lazer').length,
@@ -491,7 +553,10 @@ export function App() {
         )}
 
         {/* Main Workspace */}
-        <main className={`flex-1 overflow-y-auto px-4 pt-4 sm:px-5 ${playingSet ? 'pb-28' : 'pb-8'}`}>
+        <main
+          ref={mainScrollRef}
+          className={`flex-1 overflow-y-auto px-4 pt-4 sm:px-5 ${playingSet ? 'pb-28' : 'pb-8'}`}
+        >
           <div className="mx-auto max-w-[1440px] space-y-4">
             <FilterPanel
               filters={filters}
@@ -660,7 +725,7 @@ export function App() {
                           }}
                           onTogglePlay={handleTogglePlay}
                           onDownload={(s, t) => void handleDownload(s, t)}
-                          onOpenDetail={(s) => setDetailSet(s)}
+                          onOpenDetail={openDetail}
                         />
                       ))}
                     </div>
@@ -687,7 +752,7 @@ export function App() {
                           }}
                           onTogglePlay={handleTogglePlay}
                           onDownload={(s, t) => void handleDownload(s, t)}
-                          onOpenDetail={(s) => setDetailSet(s)}
+                          onOpenDetail={openDetail}
                         />
                       ))}
                     </div>
@@ -704,6 +769,7 @@ export function App() {
                       selectedIds={selectedIds}
                       hasMore={Boolean(searchMeta?.hasMore)}
                       loadingMore={loadingMore}
+                      searchError={Boolean(searchError)}
                       hasAudioDock={Boolean(playingSet)}
                       onToggleSelect={(id) => {
                         setSelectedIds((prev) => {
@@ -716,33 +782,48 @@ export function App() {
                       onTogglePlay={handleTogglePlay}
                       onStartPlay={handleStartPlay}
                       onDownload={(s, t) => void handleDownload(s, t)}
-                      onOpenDetail={(s) => setDetailSet(s)}
-                      onLoadMore={() =>
-                        searchMeta &&
-                        void runSearch({ ...filters, offset: searchMeta.nextUpstreamOffset }, true)
-                      }
+                      onOpenDetail={openDetail}
+                      onLoadMore={handleLoadMore}
                     />
                   )}
                 </div>
 
-                {viewMode !== 'lazer' && searchMeta?.hasMore && (
-                  <div className="flex justify-center pt-3">
-                    <button
-                      type="button"
-                      disabled={loadingMore}
-                      onClick={() =>
-                        void runSearch({ ...filters, offset: searchMeta.nextUpstreamOffset }, true)
-                      }
-                      className="btn h-9 px-6 text-[13px]"
-                    >
+                {viewMode !== 'lazer' && (
+                  <>
+                    <div ref={loadMoreSentinelRef} className="h-2" aria-hidden="true" />
+                    <div className="flex justify-center pt-2">
                       {loadingMore ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-osu" />
+                        <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-surface-1 px-4 py-1.5 text-[12px] text-ink-2">
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-osu" />
+                          <span>正在自动加载更多谱面…</span>
+                        </div>
+                      ) : searchError && searchMeta?.hasMore ? (
+                        <button
+                          type="button"
+                          onClick={handleLoadMore}
+                          className="btn h-9 border-amber-500/45 px-5 text-[12.5px] text-warn"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                          <span>加载失败，点击重试加载更多</span>
+                        </button>
+                      ) : searchMeta?.hasMore ? (
+                        <button
+                          type="button"
+                          onClick={handleLoadMore}
+                          className="btn h-9 px-6 text-[13px]"
+                        >
+                          <ChevronDown className="h-4 w-4 text-osu" />
+                          <span>加载更多谱面</span>
+                        </button>
                       ) : (
-                        <ChevronDown className="h-4 w-4 text-osu" />
+                        results.length > 0 && (
+                          <span className="text-[11.5px] text-ink-3">
+                            已显示全部 {results.length} 套搜索结果
+                          </span>
+                        )
                       )}
-                      <span>{loadingMore ? '加载中…' : '加载更多谱面'}</span>
-                    </button>
-                  </div>
+                    </div>
+                  </>
                 )}
               </>
             )}
@@ -765,12 +846,14 @@ export function App() {
 
       {/* Detail Modal */}
       <BeatmapDetailModal
-        beatmapset={detailSet}
+        beatmapset={detailState?.set ?? null}
+        initialDiffId={detailState?.diffId ?? null}
+        focusPp={Boolean(detailState?.focusPp)}
         network={network}
         defaultTarget={target}
         defaultVariant={variant}
-        isPlaying={Boolean(detailSet && isPlaying && playingSet?.id === detailSet.id)}
-        onClose={() => setDetailSet(null)}
+        isPlaying={Boolean(detailState && isPlaying && playingSet?.id === detailState.set.id)}
+        onClose={() => setDetailState(null)}
         onTogglePlay={handleTogglePlay}
         onSearchTag={(tag) => {
           const next = { ...filters, q: tag, offset: 0 };

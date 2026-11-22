@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Activity,
+  Calculator,
   Check,
   Clock,
   Download,
@@ -32,10 +33,14 @@ import {
   NormalizedBeatmapset,
   PreferredMirror,
 } from '../types';
+import { formatPp, getQuickPpSummary, isRankedForPp } from '../utils/pp';
+import { PpCalculatorPanel } from './PpCalculatorPanel';
 import { SelectField } from './SelectField';
 
 interface BeatmapDetailModalProps {
   beatmapset: NormalizedBeatmapset | null;
+  initialDiffId?: number | null;
+  focusPp?: boolean;
   network: NetworkStatus | null;
   defaultTarget: DownloadTarget;
   defaultVariant: DownloadVariant;
@@ -67,6 +72,8 @@ const TARGET_TITLE: Record<DownloadTarget, string> = {
 
 export function BeatmapDetailModal({
   beatmapset,
+  initialDiffId = null,
+  focusPp = false,
   network,
   defaultTarget,
   defaultVariant,
@@ -80,14 +87,35 @@ export function BeatmapDetailModal({
   const [variant, setVariant] = useState<DownloadVariant>(defaultVariant);
   const [mirror, setMirror] = useState<PreferredMirror>('auto');
   const [imgError, setImgError] = useState(false);
+  const [selectedDiffId, setSelectedDiffId] = useState<number | null>(initialDiffId);
+  const ppSectionRef = useRef<HTMLDivElement | null>(null);
+
+  const defaultBestDiffId = useMemo(() => {
+    if (!beatmapset || beatmapset.beatmaps.length === 0) return null;
+    const matching = beatmapset.beatmaps.filter((b) => b.matchesFilter !== false);
+    const pool = matching.length > 0 ? matching : beatmapset.beatmaps;
+    const sorted = [...pool].sort((a, b) => a.difficultyRating - b.difficultyRating);
+    return sorted[sorted.length - 1]?.id ?? null;
+  }, [beatmapset]);
 
   useEffect(() => {
     setTarget(defaultTarget);
     setVariant(defaultVariant);
     setImgError(false);
-  }, [beatmapset?.id, defaultTarget, defaultVariant]);
+    setSelectedDiffId(initialDiffId ?? defaultBestDiffId);
+  }, [beatmapset?.id, defaultTarget, defaultVariant, initialDiffId, defaultBestDiffId]);
+
+  useEffect(() => {
+    if (!beatmapset || !focusPp) return;
+    const timer = window.setTimeout(() => {
+      ppSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [beatmapset?.id, focusPp]);
 
   if (!beatmapset) return null;
+
+  const rankedForPp = isRankedForPp(beatmapset.status);
 
   const statusBadge = getStatusBadge(beatmapset.status);
   const tags = beatmapset.tags
@@ -249,7 +277,10 @@ export function BeatmapDetailModal({
 
           {/* Difficulties Table */}
           <div>
-            <div className="overline mb-2">难度列表</div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <span className="overline">难度列表</span>
+              <span className="text-[11px] text-ink-3">点击任意难度行可在下方模拟多情景 PP</span>
+            </div>
             <div className="panel-flat overflow-x-auto">
               <table className="data-table">
                 <thead>
@@ -257,6 +288,7 @@ export function BeatmapDetailModal({
                     <th>难度名</th>
                     <th>模式 / 键数</th>
                     <th>星数</th>
+                    <th>大致 PP (98%/SS)</th>
                     <th>时长</th>
                     <th>OD / HP</th>
                     <th>单键 / 长条 (LN%)</th>
@@ -266,8 +298,16 @@ export function BeatmapDetailModal({
                   {beatmapset.beatmaps.map((bm) => {
                     const color = getStarColor(bm.difficultyRating);
                     const lnInfo = getLnCategory(bm.lnRatio);
+                    const ppQuick = rankedForPp ? getQuickPpSummary(bm, 1) : null;
+                    const isPicked = selectedDiffId === bm.id;
                     return (
-                      <tr key={bm.id} className={bm.matchesFilter === false ? 'opacity-45' : ''}>
+                      <tr
+                        key={bm.id}
+                        onClick={() => setSelectedDiffId(bm.id)}
+                        className={`cursor-pointer ${
+                          isPicked ? 'bg-lazer/12' : ''
+                        } ${bm.matchesFilter === false ? 'opacity-45' : ''}`}
+                      >
                         <td className="font-display max-w-[220px] truncate font-semibold text-ink">
                           {bm.version}
                         </td>
@@ -289,6 +329,16 @@ export function BeatmapDetailModal({
                           >
                             ★ {bm.difficultyRating.toFixed(2)}
                           </span>
+                        </td>
+                        <td className="font-stat whitespace-nowrap tabular-nums">
+                          {ppQuick ? (
+                            <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-lazer-soft">
+                              <Calculator className="h-3 w-3 opacity-80" />
+                              ~{formatPp(ppQuick.pp98)} / {formatPp(ppQuick.pp100)}pp
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-ink-3">未上架</span>
+                          )}
                         </td>
                         <td className="font-mono text-ink-2">{formatDuration(bm.totalLength)}</td>
                         <td className="font-mono whitespace-nowrap text-ink-2">
@@ -316,6 +366,17 @@ export function BeatmapDetailModal({
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Interactive PP Scenario Calculator */}
+          <div ref={ppSectionRef}>
+            <PpCalculatorPanel
+              beatmaps={beatmapset.beatmaps}
+              selectedDiffId={selectedDiffId}
+              onSelectDiff={(id) => setSelectedDiffId(id)}
+              status={beatmapset.status}
+              bpm={beatmapset.bpm}
+            />
           </div>
 
           {/* Tags */}

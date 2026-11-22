@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  Calculator,
   Check,
   CheckCircle2,
   Clock,
@@ -24,6 +25,7 @@ import {
   openExternalLink,
 } from '../constants';
 import { DownloadTarget, DownloadTask, NormalizedBeatmapset } from '../types';
+import { formatPp, getBeatmapsetPpBadge, getQuickPpSummary, isRankedForPp } from '../utils/pp';
 
 interface BeatmapCardProps {
   beatmapset: NormalizedBeatmapset;
@@ -35,7 +37,7 @@ interface BeatmapCardProps {
   onToggleSelect: (id: number) => void;
   onTogglePlay: (set: NormalizedBeatmapset) => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
-  onOpenDetail: (set: NormalizedBeatmapset) => void;
+  onOpenDetail: (set: NormalizedBeatmapset, options?: { diffId?: number; focusPp?: boolean }) => void;
 }
 
 export function BeatmapCard({
@@ -60,6 +62,8 @@ export function BeatmapCard({
 
   const primaryDiff = matchingDiffs[0] || beatmapset.beatmaps[0];
   const lnBadge = primaryDiff ? getLnCategory(primaryDiff.lnRatio) : null;
+  const ppBadge = getBeatmapsetPpBadge(beatmapset);
+  const rankedForPp = isRankedForPp(beatmapset.status);
 
   const isInstalled = beatmapset.localStatus.inStable || beatmapset.localStatus.inLazer;
   const inBoth = beatmapset.localStatus.inStable && beatmapset.localStatus.inLazer;
@@ -255,6 +259,7 @@ export function BeatmapCard({
             {displayDiffs.map((bm) => {
               const color = getStarColor(bm.difficultyRating);
               const keyTag = bm.modeInt === 3 ? `${Math.round(bm.cs)}K` : bm.mode.toUpperCase();
+              const ppQuick = rankedForPp ? getQuickPpSummary(bm, 1) : null;
               return (
                 <span
                   key={bm.id}
@@ -263,7 +268,7 @@ export function BeatmapCard({
                     color: color.text,
                     borderColor: color.border,
                   }}
-                  title={`${bm.version} | ${keyTag} | ${bm.difficultyRating.toFixed(2)}★ | OD ${bm.od} | HP ${bm.hp} | ${formatDuration(bm.totalLength)}${bm.lnRatio != null ? ` | LN ${bm.lnRatio}%` : ''}`}
+                  title={`${bm.version} | ${keyTag} | ${bm.difficultyRating.toFixed(2)}★ | OD ${bm.od} | HP ${bm.hp} | ${formatDuration(bm.totalLength)}${bm.lnRatio != null ? ` | LN ${bm.lnRatio}%` : ''}${ppQuick ? ` | ~${formatPp(ppQuick.pp98)}pp(98%) / ~${formatPp(ppQuick.pp100)}pp(SS)` : ''}`}
                   className="font-stat inline-flex h-[19px] items-center gap-1 rounded-[5px] border px-1.5 text-[10px] font-bold"
                 >
                   <span>{keyTag}</span>
@@ -278,6 +283,19 @@ export function BeatmapCard({
               <span className={`chip font-mono h-[19px] text-[10px] ${lnBadge.cls}`}>
                 {lnBadge.label}
               </span>
+            )}
+            {ppBadge && (
+              <button
+                type="button"
+                onClick={() =>
+                  onOpenDetail(beatmapset, { diffId: ppBadge.focusDiffId, focusPp: true })
+                }
+                title={ppBadge.tooltip}
+                className="chip chip-pp font-stat h-[19px] text-[10px]"
+              >
+                <Calculator className="h-2.5 w-2.5" />
+                <span>{ppBadge.label}</span>
+              </button>
             )}
           </div>
         </div>
