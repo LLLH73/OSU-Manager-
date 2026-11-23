@@ -24,7 +24,7 @@
 | **Lazer 待导入目录** | `D:\OSU\Downloads\lazer-import` | Lazer 未运行时暂存 `.osz`，支持一键批量导入 |
 | **本地代理** | `127.0.0.1:6174` (`proxyMode: "auto"`) | 国内镜像直连优先，海外源优先探测 `6174` 代理 |
 | **账号要求** | **完全免登录** | 必须保证不填任何 osu! 账号 / Cookie 即可搜索、试听、下载 |
-| **界面审美与习惯** | 简约美观 | 中文界面，支持「曜石黑 / 瓷器白 / 浅咖啡」三主题切换 |
+| **界面审美与习惯** | Impeccable 克制极简 | 中文界面，默认 Lazer 视图 + 8 套主题（暗色 4 / 浅色 4）+ 全窗封面背景动态取色 |
 
 > **关键警告**：
 > - `data/` 目录（含用户的 `config.json`、`lazer-scan-cache.json`、封面/试听缓存、`data/logs/server.log`）已被 `.gitignore` 忽略，**绝不要提交到 Git**，测试时也**绝不要覆盖或清空用户的 Stable/Lazer 真实路径或 6174 代理配置**。
@@ -57,8 +57,8 @@
 
 #### 主要 HTTP / SSE 接口
 - 健康与日志：`GET /api/health`、`GET /api/logs?lines=120`
-- 配置与网络：`GET /api/config`、`PUT /api/config`、`GET /api/network/status`、`POST /api/network/benchmark`
-- 搜索与媒体：`GET /api/search`、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`
+- 配置与网络：`GET /api/config`、`PUT /api/config`、`POST /api/config/background`、`DELETE /api/config/background`、`GET /api/network/status`、`POST /api/network/benchmark`
+- 搜索与媒体：`GET /api/search`、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`、`GET /api/media/custom-bg`
 - 预览与皮肤：`GET /api/preview/beatmapset/:setId`、`GET /api/preview/beatmapset/:setId/chart/:index`、`GET /api/preview/beatmapset/:setId/audio/:index`、`GET /api/preview/beatmapset/:setId/bg/:index`、`GET /api/skins`、`GET /api/skins/:skinId/mania`、`GET /api/skins/:skinId/asset`
 - 本地曲库、Lazer 与游戏加载：`GET /api/library/status`、`POST /api/library/rescan`、`GET /api/library/diff`、`POST /api/library/sync-to-lazer`、`POST /api/library/open-folder`、`GET /api/lazer/pending`、`POST /api/lazer/import-pending`、`DELETE /api/lazer/pending`、`POST /api/game/load`
 - 下载与实时推送：`GET /api/downloads`、`POST /api/downloads`、`POST /api/downloads/batch`、`POST /api/downloads/:id/cancel`、`POST /api/downloads/:id/retry`、`DELETE /api/downloads/completed`、SSE `GET /api/events`（事件：`downloads`, `network`, `library`，含 6 秒轻量级游戏进程状态感知）
@@ -66,36 +66,37 @@
 ### 3.3 前端界面 (`src/`, React 19 + Vite 6 + Tailwind CSS v4)
 | 文件 | 职责 |
 | :--- | :--- |
-| `src/main.tsx` | 引入离线 `@fontsource` 四字体，按 `?mode=overlay` 路由挂载 `OverlayApp` 或 `App` |
-| `src/index.css` | 三套主题 CSS Token (`--t-*`、`--lazer-*` 与 `--mac-*` 磨砂变量)、四字体工具类、卡片金框、Lazer 轮盘动效样式 |
-| `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、主题/视图模式持久化、滚底自动加载、批量选择、试听、Mania 预览与浮窗调度） |
-| `src/constants.ts` | 主题元信息 (`THEME_OPTIONS`)、视图选项 (`VIEW_MODE_OPTIONS`)、工作流预设 (`WORKFLOW_PRESETS`)、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()` |
+| `src/main.tsx` | 引入离线 `@fontsource` Lazer 风格四字体（`Quicksand`, `Outfit`, `Exo 2`, `Noto Sans SC` + `JetBrains Mono`），按 `?mode=overlay` 路由挂载 `OverlayApp` 或 `App` |
+| `src/index.css` | 8 套主题 CSS Token (`--t-*`、`--lazer-*`、`--mac-*`)、`data-has-bg="true"` 全窗背景玻璃态规则、Lazer 字体工具类、`.impeccable-range`、卡片金框、Lazer 轮盘动效样式 |
+| `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠持久化、主题/视图模式持久化、滚底自动加载、批量选择、试听与浮窗调度） |
+| `src/constants.ts` | 8 套主题元信息 (`THEME_OPTIONS`, `isValidTheme`, `isDarkTheme`)、10 组强调色预设 (`ACCENT_PRESETS`)、视图选项、工作流预设、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()` |
+| `src/utils/themeColor.ts` | Canvas 24-bin 色相主色调提取器 (`extractDominantColor`) 与动态强调色 CSS 变量推导/应用 (`deriveAccentVariables`, `applyAccentVariables`, `clearAccentVariables`) |
 | `src/utils/pp.ts` | Ranked PP 准度制计算引擎 (`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `isRankedForPp`) |
 | `src/utils/maniaEngine.ts` | osu!mania Canvas2D 轨道渲染器（480p 坐标、BPM+SV 时间轴、PerCy `NoteBodyStyle` 0/1/2）与右侧滚动缩略图绘制引擎 |
-| `src/api.ts` | 前端 REST 封装 |
+| `src/api.ts` | 前端 REST 封装（含自定义壁纸上传/链接/清除接口） |
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
-| `src/components/TitleBar.tsx` | 无边框顶部栏（浮窗模式开关、主题切换器、代理 6174 状态、最快镜像延迟、窗口控制） |
-| `src/components/SideRail.tsx` | 左侧边栏（目标 `lazer/stable/both`、包体格式、Mania 4K 预设、双端曲库统计、队列与设置入口） |
-| `src/components/FilterPanel.tsx` | 搜索框、高频词条、基础筛选、折叠高级数值/LN% 筛选 |
+| `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏折叠按钮、单色粗线图标 `LaneEmblem` + `OSU!Downloader!`、浮窗开关、8 主题分组弹窗、代理 6174、镜像延迟、窗口控制） |
+| `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、队列与设置入口） |
+| `src/components/FilterPanel.tsx` | 可收起/展开的搜索框、高频词条、基础筛选、折叠高级数值/LN% 筛选 |
 | `src/components/BeatmapCard.tsx` | `grid` 卡片网格单卡（含 Ranked `~XXXpp` 入口胶囊与已装 Mania 预览入口） |
 | `src/components/BeatmapListRow.tsx` | `list` 紧凑列表单行（含 Ranked `~XXXpp` 入口胶囊与已装 Mania 预览入口） |
-| `src/components/LazerSongSelect.tsx` | `lazer` osu!lazer 弧形选歌轮盘 + 左侧楔形展示（含 `HT/NM/DT` PP 速览与预览入口）+ 按需交错难度列表 + 滚底自动加载 + 键盘导航 |
+| `src/components/LazerSongSelect.tsx` | `lazer` osu!lazer 弧形选歌轮盘 + 左侧楔形展示（支持 `hasGlobalBg` 全窗背景穿透与 `onActiveBeatmapsetChange` 联动）+ 按需交错难度列表 + 滚底自动加载 + 键盘导航 |
 | `src/components/ManiaPreviewModal.tsx` | Mania 谱面实时预览弹窗（皮肤切换、流速/倍速/方向、Canvas2D 轨道、右侧可滑缩放缩略图、NPS 可拖进度条） |
 | `src/components/OverlayApp.tsx` | macOS 毛玻璃游戏内浮窗（红黄绿灯折叠、Spotlight 搜索、实时下载/加载、透明度调节） |
 | `src/components/PpCalculatorPanel.tsx` | 交互式 PP 情景估算计算器（准度/Miss/倍速/Mod/MA比/未上架模拟） |
-| `src/components/AudioPlayerBar.tsx` | 底部浮动音频试听栏（带 4K 均衡器动效 `.eq`） |
+| `src/components/AudioPlayerBar.tsx` | `pbakaus/impeccable` 风格底部浮动胶囊音频试听栏（圆形封面、`2px` 细滑轨与自适应左侧栏折叠居中偏移） |
 | `src/components/BeatmapDetailModal.tsx` | 谱面完整详情、全难度表（含 `大致 PP` 列与单难度预览入口）、内嵌 PP 计算器、标签搜索、单独指定源下载 |
 | `src/components/DownloadDrawer.tsx` | 下载任务队列（含完成态预览/再加载按钮）与 Lazer 待导入队列批量导入抽屉 |
 | `src/components/LibrarySyncModal.tsx` | 双端曲库比对与 Stable→Lazer 零流量同步弹窗 |
-| `src/components/SettingsModal.tsx` | 客户端路径浏览、代理与镜像测速、Stable/Lazer 自动加载与浮窗热键、主题/偏好、可选官方 Cookie 设置弹窗 |
+| `src/components/SettingsModal.tsx` | 客户端路径浏览、代理与镜像测速、8 主题/10 预设+自由取色强调色、自定义背景图与透明度、动态开关、浮窗热键与可选官方 Cookie 设置弹窗 |
 | `src/components/SelectField.tsx` | 统一下拉封装（支持 `<optgroup>` 嵌套匹配，解决 Chromium 原生箭头重叠问题） |
 
 ---
 
 ## 4. 不可破坏的设计规范与历史避坑清单
 
-1. **三套主题 Token 驱动**：所有界面（含 `LazerSongSelect` 轮盘与遮罩）必须使用 `src/index.css` 中定义的 `--t-*` 与 `--lazer-*` 变量，适配 `dark`（曜石黑）、`light`（瓷器白）、`latte`（浅咖啡）三套主题，避免仅面向暗色写死颜色。
-2. **四字体离线层级**：不要改用在线 Google Fonts CDN；保留 `main.tsx` 中 `@fontsource` 的离线导入和 `.font-display` / `.font-stat` / `.font-mono` 分工。
+1. **8 套主题与动态背景/强调色驱动**：所有界面（含 `LazerSongSelect` 轮盘与遮罩）必须使用 `src/index.css` 中定义的 `--t-*` 与 `--lazer-*` 变量，适配暗色 4 套（`dark`, `stone`, `midnight`, `forest`）与浅色 4 套（`light`, `paper`, `latte`, `sakura`），避免硬编码颜色；开启全窗封面/壁纸背景时（`html[data-has-bg="true"]`）由 `src/index.css` 统一控制面板玻璃透明度和动态 `--t-osu`/`--t-lazer`/`--pp-*` 对比度。
+2. **Lazer 风格四字体离线层级**：不要改用在线 Google Fonts CDN；保留 `main.tsx` 中 `@fontsource`（`Quicksand`, `Outfit`, `Exo 2`, `Noto Sans SC`, `JetBrains Mono`）的离线导入和 `.font-display` / `.font-stat` / `.font-mono` 分工。
 3. **已装谱面四边金色框体**：任意 Song 视图中，凡 `beatmapset.localStatus.inStable || beatmapset.localStatus.inLazer` 均需渲染 `.card-installed`（双端均已装追加 `.card-installed-both`）与 `.chip-gold`。**特别注意**：在 `LazerSongSelect` 中，`clip-path` 只能加在内部封面层 `.lazer-cover-slant`，不能直接裁切带边框的外层 `.lazer-set-card`，否则会削掉金色外框。
 4. **防悬停闪烁线与 Lazer 轮盘性能规范（历史已修 Bug）**：
    - 严禁对包含放大缩放封面图的卡片整体施加垂直 `translateY` 悬停动画（会导致浏览器在卡片中间闪现亚像素接缝线）。

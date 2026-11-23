@@ -4,6 +4,44 @@
 
 ---
 
+## Session 6 — Impeccable 风格重构、全窗动态封面背景配色、8 主题与 Lazer 离线字体体系 (`v1.4.0`)
+
+- **日期**：2026-11-23
+- **对话 ID**：`47592ae1-76a6-4271-857c-db1635c92580`
+- **版本**：`v1.3.1` → `v1.4.0`
+- **关联提交**：
+  - 核心功能：`8dee501` (`feat(ui,theme): add collapsible impeccable sidebar/filter, dynamic cover backdrop & accent, 8 themes, and lazer fonts (v1.4.0)`)
+
+### 本次目标
+1. 基于先前的多套设计原型评估（原型保留于本地忽略目录 `ui-prototypes/`），采纳 `pbakaus/impeccable` 克制美学风格重构左侧边栏（并支持收起/展开）与底部试听浮窗。
+2. 将默认呈现模式切换为 `lazer`，在 Lazer 选中歌曲后以高透明度封面铺满整个桌面窗口背景，并根据背景主色调自动计算主题强调色。
+3. 在设置中补齐自定义背景图、背景图透明度、随选中歌曲切换背景开关、主题颜色随背景主色调开关，以及更多主题与自定义强调色。
+4. 顶部搜索筛选栏支持收起与展开；左上角更名为 `OSU!Downloader!` 并重绘黑白粗线条简约图标；全部中英文及数字切换为 osu!lazer 风格离线字体。
+
+### 关键实现
+1. **Lazer 风格离线字体与品牌标识重塑**（`package.json`, `src/main.tsx`, `src/index.css`, `src/components/TitleBar.tsx`, `index.html`, `electron/main.ts`）：
+   - 在 `devDependencies` 安装 `@fontsource/quicksand`、`@fontsource/outfit`、`@fontsource/exo-2`、`@fontsource/noto-sans-sc`（由 Vite 按子集打包进 `dist/assets/`），配置 `--font-display` / `--font-sans` / `--font-stat` / `--font-mono`。
+   - `TitleBar.tsx` 将 `LaneEmblem` 替换为 `strokeWidth="2.3"` 的单色高对比圆环下载极简图标，主窗与托盘更名为 `OSU!Downloader!`。
+2. **`pbakaus/impeccable` 左侧栏、底部试听浮窗与双面板收起**（`src/components/SideRail.tsx`, `src/components/AudioPlayerBar.tsx`, `src/components/FilterPanel.tsx`, `src/App.tsx`）：
+   - `SideRail.tsx` 去掉嵌套卡片边框与霓虹阴影，采用机械感三段式目标胶囊、下划线式变体切换、`5px` 强调色圆点预设列表与单线曲库摘要，并支持标题栏及侧栏顶部折叠（`osu4k-sidebar-collapsed`）。
+   - `AudioPlayerBar.tsx` 改为悬浮胶囊条（`sm:rounded-full`、圆形封面、`2px` `.impeccable-range` 滑轨），随左侧栏折叠态动态调整左侧偏移。
+   - `FilterPanel.tsx` 新增「收起 / 展开筛选」（`osu4k-filter-collapsed`），折叠后保留单行搜索框与当前筛选摘要胶囊。
+3. **全窗封面背景、主色调提取与 8 主题/自定义配置系统**（`server/types.ts`, `server/config.ts`, `server/index.ts`, `src/types.ts`, `src/api.ts`, `src/constants.ts`, `src/utils/themeColor.ts`, `src/components/SettingsModal.tsx`, `src/components/LazerSongSelect.tsx`, `src/components/OverlayApp.tsx`）：
+   - `server/config.ts` 将默认 `viewMode` 改为 `'lazer'`，扩展 `ThemeId` 至 8 套主题（`dark`/`stone`/`midnight`/`forest` 与 `light`/`paper`/`latte`/`sakura`），新增 `customBgImage`、`customBgOpacity`（默认 `0.22`，范围 `0.04–0.75`）、`dynamicBgFromSong`（默认 `true`）、`dynamicThemeFromBg`（默认 `true`）和 `accentColor`。
+   - `server/index.ts` 将 JSON 请求体上限升至 `20mb`，新增 `GET /api/media/custom-bg`、`POST /api/config/background`（支持本地路径复制、DataURL 上传与 HTTP 链接）和 `DELETE /api/config/background`。
+   - `src/utils/themeColor.ts` 实现 `extractDominantColor()`（48×27 Canvas 24-bin 色相直方图提取与缓存）和 `deriveAccentVariables()` / `applyAccentVariables()`，随封面或壁纸动态刷新 `--t-osu` / `--t-lazer` / `--pp-*` / `--t-glow-*` 并保证暗/浅色主题可读对比度；`LazerSongSelect.tsx` 通过 `onActiveBeatmapsetChange` 向上同步当前选中曲目并在 `hasGlobalBg` 时隐藏内层重复模糊封面。
+
+### 验证记录
+- **类型检查与打包**：`npm run typecheck` 与 `npm run electron:pack`（`v1.4.0`）均退出码 `0` 通过，重新输出 `release\win-unpacked\osu-4k-downloader.exe`（`249,978,368` 字节）。
+- **浏览器实机视觉与交互验收**（`1440×900` 主界面 + `460×700` 浮窗，控制台错误 `0`，HTTP `>=400` 失败 `0`）：
+  - 确认左上角展示 `OSU!Downloader!` 与单色粗线条圆环图标，字体链加载 `Quicksand` / `Exo 2` / `Noto Sans SC`；
+  - 默认以 `Lazer` 视图打开，`<html data-has-bg="true">` 生效；从首曲切换至第 2 曲后全窗背景 `<img>` 由 `/api/media/cover/2591669` 切换为 `/api/media/cover/2581294`，`--t-osu` 自动由 `#ae8037` 更新为 `#ae8237`；
+  - 验证桌面左侧栏收起（宽度 `0`）与展开（恢复 `232px`）、顶部筛选栏收起/展开、底部 Impeccable 胶囊试听条打开与关闭、设置弹窗 8 主题 / 10 强调色预设 / 取色器 / 自定义壁纸与透明度实时预览及「取消」不覆盖用户配置，以及 `/?mode=overlay` 浮窗正常加载；
+  - 实测期间完整保留用户 `data/config.json`（`theme: "latte"`, `viewMode: "lazer"`, `D:\OSU`, `6174` 代理）。
+- **打包产物冒烟与现场清理**：以 `OSU_DL_DATA_DIR=d:\Code\osumapdownloader\data` 启动 `release\win-unpacked\osu-4k-downloader.exe` 验证 `GET /api/health` 返回 `200` (`{"ok":true}`)；退出后确认 `3721` 端口 `Listen` 监听数为 `0`。
+
+---
+
 ## Session 5 — 浮窗 Acrylic 真模糊、极简扁平按钮与 Mania 16:9 皮肤/长条/光效精准还原 (`v1.3.1`)
 
 - **日期**：2026-11-23

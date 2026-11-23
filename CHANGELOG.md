@@ -1,8 +1,28 @@
 # Changelog
 
-All notable changes to **osu! 4K 谱面工坊 (`osu-4k-dual-downloader`)** will be documented in this file.
+All notable changes to **OSU!Downloader! (`osu-4k-dual-downloader`)** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [1.4.0] - 2026-11-23
+
+### Added
+- **全窗口动态封面背景与主色调自动配色**（`src/App.tsx`, `src/utils/themeColor.ts`, `src/components/LazerSongSelect.tsx`, `src/index.css`）：
+  - 默认呈现模式调整为 **`lazer`**，并在 Lazer 模式切换曲目时将整个桌面窗口背景双缓冲交叉淡入为高透明度当前曲目封面（`html[data-has-bg="true"]` 下各玻璃层自动呈现克制半透效果）。
+  - 新增 `src/utils/themeColor.ts`（`extractDominantColor` 24 区间色相直方图提取 + `deriveAccentVariables` / `applyAccentVariables`），自动提取当前背景图鲜明主色调并联动 `--t-osu`、`--t-lazer`、`--pp-*` 与环境微光变量。
+- **自定义桌面背景图、8 套主题与强调色配置**（`server/types.ts`, `server/config.ts`, `server/index.ts`, `src/api.ts`, `src/constants.ts`, `src/components/SettingsModal.tsx`, `src/components/TitleBar.tsx`, `src/components/OverlayApp.tsx`）：
+  - 主题从 3 套扩展至 **8 套**（暗色 4 套：`dark` / `stone` / `midnight` / `forest`；浅色 4 套：`light` / `paper` / `latte` / `sakura`），标题栏升级为分组弹出主题选择器。
+  - 设置弹窗新增「界面主题、动态配色与桌面背景」面板：支持 **10 组预设强调色 + 自由拾色器**、本地图片上传 / 网络链接背景图（`GET /api/media/custom-bg`、`POST /api/config/background`、`DELETE /api/config/background`）、**背景图不透明度滑块 (`4%–75%`)**，以及「Lazer 模式随选中歌曲更换桌面背景」「主题强调色随背景图主色调自动改变」两项独立开关（支持实时预览与取消还原）。
+- **顶部筛选搜索栏与左侧栏可收起 / 展开**（`src/components/FilterPanel.tsx`, `src/components/SideRail.tsx`, `src/components/TitleBar.tsx`, `src/App.tsx`）：
+  - 桌面左侧栏可在标题栏与侧栏顶部一键收起/展开，折叠后主工作区自动扩宽并持久化至 `localStorage`（`osu4k-sidebar-collapsed`）。
+  - 上方 `FilterPanel` 支持收起为紧凑单行搜索条 + 筛选摘要胶囊（`osu4k-filter-collapsed`）。
+
+### Changed
+- **`pbakaus/impeccable` 风格左侧栏与底部试听浮窗重构**（`src/components/SideRail.tsx`, `src/components/AudioPlayerBar.tsx`, `src/index.css`）：
+  - 左侧栏改为克制编辑风排版（机械感三段式目标胶囊、下划线式格式切换、`5px` 圆点预设索引与单线表格曲库摘要，去掉套娃卡片边框）。
+  - 底部 `AudioPlayerBar` 改造成自适应居中圆角胶囊浮窗（圆形专辑缩略图、圆形播放键、`2px` 极细 `.impeccable-range` 滑轨与极简胶囊下载按钮）。
+- **品牌更名与黑白粗线简约图标**（`src/components/TitleBar.tsx`, `index.html`, `electron/main.ts`）：主标题与托盘更名为 **`OSU!Downloader!`**，重绘纯单色高对比粗线条圆环下载图标（`LaneEmblem`）。
+- **osu!lazer 风格全套离线字体**（`src/main.tsx`, `src/index.css`, `package.json`）：改为打包内嵌 `Quicksand`、`Outfit`、`Exo 2`（几何科技数字）与 `Noto Sans SC`（简体中文配套）+ `JetBrains Mono`。
 
 ## [1.3.1] - 2026-11-23
 
