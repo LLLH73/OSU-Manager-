@@ -3,7 +3,15 @@ export type DownloadTarget = 'lazer' | 'stable' | 'both';
 export type DownloadVariant = 'novideo' | 'full' | 'mini';
 export type SearchSource = 'auto' | 'osudirect' | 'sayobot';
 export type StableInstallMode = 'extract' | 'drop_osz';
-export type ThemeId = 'dark' | 'light' | 'latte';
+export type ThemeId =
+  | 'dark'
+  | 'stone'
+  | 'midnight'
+  | 'forest'
+  | 'light'
+  | 'paper'
+  | 'latte'
+  | 'sakura';
 export type SongViewMode = 'grid' | 'list' | 'lazer';
 
 export type MirrorId =
@@ -40,6 +48,11 @@ export interface AppConfig {
   overlayOpacity: number;
   previewSkinId: string;
   previewScrollSpeed: number;
+  customBgImage: string;
+  customBgOpacity: number;
+  dynamicBgFromSong: boolean;
+  dynamicThemeFromBg: boolean;
+  accentColor: string;
 }
 
 export interface MirrorHealth {

@@ -54,6 +54,9 @@ interface LazerSongSelectProps {
   loadingMore: boolean;
   searchError?: boolean;
   hasAudioDock: boolean;
+  hasGlobalBg?: boolean;
+  filterCollapsed?: boolean;
+  onActiveBeatmapsetChange?: (set: NormalizedBeatmapset | null) => void;
   onToggleSelect: (id: number) => void;
   onTogglePlay: (set: NormalizedBeatmapset) => void;
   onStartPlay: (set: NormalizedBeatmapset) => void;
@@ -449,6 +452,9 @@ export function LazerSongSelect({
   loadingMore,
   searchError = false,
   hasAudioDock,
+  hasGlobalBg = false,
+  filterCollapsed = false,
+  onActiveBeatmapsetChange,
   onToggleSelect,
   onTogglePlay,
   onStartPlay,
@@ -515,6 +521,10 @@ export function LazerSongSelect({
     () => results.find((r) => r.id === activeSetId) ?? results[0] ?? null,
     [results, activeSetId],
   );
+
+  useEffect(() => {
+    onActiveBeatmapsetChange?.(activeSet);
+  }, [activeSet, onActiveBeatmapsetChange]);
 
   const activeDiffs = useMemo(
     () => (activeSet ? sortedDiffsMap.get(activeSet.id) ?? [] : []),
@@ -836,33 +846,38 @@ export function LazerSongSelect({
       aria-label="osu!lazer 选歌轮盘视图"
       className="lazer-stage relative overflow-hidden rounded-[18px] border border-hairline shadow-lg"
     >
-      {/* Double-buffered ambient background (zero blur-2xl stutter) */}
-      {([0, 1] as const).map((slotIdx) => {
-        const url = bgLayers[slotIdx];
-        if (!url) return null;
-        return (
-          <img
-            key={slotIdx}
-            src={url}
-            alt=""
-            aria-hidden="true"
-            onLoad={() => {
-              loadedBgUrlsRef.current.add(url);
-              if (url === activeSet.coverUrl && frontBgSlot !== slotIdx) {
-                setFrontBgSlot(slotIdx);
-              }
-            }}
-            style={{
-              transform: 'translateZ(0) scale(1.06)',
-              opacity: frontBgSlot === slotIdx ? 0.35 : 0,
-            }}
-            className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-lg transition-opacity duration-300 ease-out select-none"
-          />
-        );
-      })}
+      {/* Double-buffered ambient background (skipped when global desktop background handles it) */}
+      {!hasGlobalBg &&
+        ([0, 1] as const).map((slotIdx) => {
+          const url = bgLayers[slotIdx];
+          if (!url) return null;
+          return (
+            <img
+              key={slotIdx}
+              src={url}
+              alt=""
+              aria-hidden="true"
+              onLoad={() => {
+                loadedBgUrlsRef.current.add(url);
+                if (url === activeSet.coverUrl && frontBgSlot !== slotIdx) {
+                  setFrontBgSlot(slotIdx);
+                }
+              }}
+              style={{
+                transform: 'translateZ(0) scale(1.06)',
+                opacity: frontBgSlot === slotIdx ? 0.35 : 0,
+              }}
+              className="pointer-events-none absolute inset-0 h-full w-full object-cover blur-lg transition-opacity duration-300 ease-out select-none"
+            />
+          );
+        })}
       <div className="lazer-stage-scrim pointer-events-none absolute inset-0" />
 
-      <div className="relative z-10 grid grid-cols-1 lg:h-[670px] lg:grid-cols-[minmax(360px,430px)_minmax(0,1fr)] xl:grid-cols-[minmax(390px,460px)_minmax(0,1fr)]">
+      <div
+        className={`relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(360px,430px)_minmax(0,1fr)] xl:grid-cols-[minmax(390px,460px)_minmax(0,1fr)] ${
+          filterCollapsed ? 'lg:h-[calc(100vh-164px)] lg:min-h-[600px]' : 'lg:h-[670px]'
+        }`}
+      >
         {/* LEFT: osu!lazer Wedge Showcase */}
         <div className="flex min-h-0 flex-col justify-between gap-3 border-b border-hairline p-4 sm:p-5 lg:overflow-y-auto lg:border-r lg:border-b-0">
           <div

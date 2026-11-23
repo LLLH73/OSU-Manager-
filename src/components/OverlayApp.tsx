@@ -26,7 +26,7 @@ import {
   searchBeatmapsets,
   updateConfig,
 } from '../api';
-import { DEFAULT_FILTERS, THEME_OPTIONS, formatBytes, getStarColor } from '../constants';
+import { DEFAULT_FILTERS, THEME_OPTIONS, formatBytes, getStarColor, isValidTheme } from '../constants';
 import {
   AppConfig,
   DownloadTarget,
@@ -52,7 +52,7 @@ const STAR_PRESETS: Array<{ id: string; label: string; min?: number; max?: numbe
 function readInitialTheme(): ThemeId {
   try {
     const stored = localStorage.getItem('osu4k-theme');
-    if (stored === 'dark' || stored === 'light' || stored === 'latte') return stored;
+    if (isValidTheme(stored)) return stored;
   } catch {
     // Ignore storage error
   }
@@ -437,7 +437,9 @@ export function OverlayApp() {
           <div className="app-no-drag flex shrink-0 items-center gap-1">
             {!compact && (
               <div className="flex items-center gap-1 rounded-full border border-hairline bg-tint px-1.5 py-1">
-                {THEME_OPTIONS.map((t) => (
+                {THEME_OPTIONS.filter((t) =>
+                  ['dark', 'stone', 'light', 'paper', 'latte'].includes(t.id),
+                ).map((t) => (
                   <button
                     key={t.id}
                     type="button"

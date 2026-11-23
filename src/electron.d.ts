@@ -28,7 +28,7 @@ export interface ElectronAPI {
   closeOverlay: () => Promise<boolean>;
   isOverlayOpen: () => Promise<boolean>;
   setOverlayOpacity: (opacity: number) => Promise<void>;
-  setOverlayNativeTheme: (theme: 'dark' | 'light' | 'latte') => Promise<void>;
+  setOverlayNativeTheme: (theme: string) => Promise<void>;
   setOverlayAlwaysOnTop: (flag: boolean) => Promise<void>;
   setOverlayCompact: (compact: boolean) => Promise<void>;
   setOverlayHotkey: (hotkey: string) => Promise<{ ok: boolean; error?: string }>;

@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Download, Pause, Play, Volume2, VolumeX, X } from 'lucide-react';
-import { TARGET_META, formatDuration } from '../constants';
+import { formatDuration } from '../constants';
 import { DownloadTarget, NormalizedBeatmapset } from '../types';
 
 interface AudioPlayerBarProps {
   beatmapset: NormalizedBeatmapset | null;
   playing: boolean;
   activeTarget: DownloadTarget;
+  sidebarCollapsed?: boolean;
   onTogglePlay: () => void;
   onStop: () => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
@@ -17,6 +18,7 @@ export function AudioPlayerBar({
   beatmapset,
   playing,
   activeTarget,
+  sidebarCollapsed = false,
   onTogglePlay,
   onStop,
   onDownload,
@@ -64,11 +66,14 @@ export function AudioPlayerBar({
   const seekMax = duration > 0 ? duration : 10;
   const seekFillPct = Math.min(100, Math.max(0, (currentTime / seekMax) * 100));
   const volFillPct = Math.round((muted ? 0 : volume) * 100);
-  const targetMeta = TARGET_META[activeTarget];
 
   return (
-    <div className="pointer-events-none fixed right-4 bottom-4 left-4 z-40 flex justify-center lg:left-[280px]">
-      <div className="glass animate-dock-in pointer-events-auto flex w-full max-w-4xl flex-wrap items-center gap-3 rounded-2xl px-3.5 py-2.5">
+    <div
+      className={`pointer-events-none fixed right-4 bottom-4 left-4 z-40 flex justify-center transition-[left] duration-250 ${
+        sidebarCollapsed ? 'lg:left-4' : 'lg:left-[248px]'
+      }`}
+    >
+      <div className="animate-dock-in pointer-events-auto flex w-full max-w-[740px] flex-wrap items-center gap-3 rounded-2xl border border-hairline-strong bg-surface-2/90 px-3.5 py-2 shadow-[0_18px_44px_-16px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:rounded-full">
         <audio
           ref={audioRef}
           onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
@@ -77,44 +82,48 @@ export function AudioPlayerBar({
           onError={() => setErrorMsg('试听加载失败')}
         />
 
-        {/* Cover & Track Meta */}
-        <div className="flex min-w-0 flex-1 items-center gap-3">
-          <div className="relative h-10 w-14 shrink-0 overflow-hidden rounded-[9px] border border-hairline bg-surface-1">
+        {/* Circular Cover & Quiet Track Meta */}
+        <div className="flex min-w-0 flex-1 items-center gap-2.5">
+          <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-hairline bg-surface-1">
             <img
               src={beatmapset.coverUrl}
               alt={beatmapset.title}
               className="h-full w-full object-cover"
             />
-            <div className="absolute right-1 bottom-1 flex items-center rounded bg-black/70 px-1 py-0.5 text-osu">
-              <span className={`eq h-[9px] ${!playing ? 'eq-paused' : ''}`}>
+          </div>
+          <div className="min-w-0">
+            <div className="font-display truncate text-[12.5px] font-bold text-ink">
+              {beatmapset.title}
+            </div>
+            <div className="flex items-center gap-1.5 truncate text-[11px] text-ink-3">
+              <span className="truncate">{beatmapset.artist}</span>
+              <span className={`eq h-[8px] shrink-0 text-osu ${!playing ? 'eq-paused' : ''}`}>
                 <i />
                 <i />
                 <i />
                 <i />
               </span>
-            </div>
-          </div>
-          <div className="min-w-0">
-            <div className="font-display truncate text-[13px] font-bold text-ink">{beatmapset.title}</div>
-            <div className="truncate text-[11px] text-ink-2">
-              {beatmapset.artist}
-              {errorMsg && <span className="ml-2 text-bad">({errorMsg})</span>}
+              {errorMsg && <span className="shrink-0 text-bad">({errorMsg})</span>}
             </div>
           </div>
         </div>
 
-        {/* Transport & Seek */}
-        <div className="flex w-full items-center gap-2.5 sm:w-auto sm:min-w-[300px] sm:flex-[1.35]">
+        {/* Transport & Ultra-Slim 2px Scrubber */}
+        <div className="flex w-full items-center gap-2.5 sm:w-auto sm:min-w-[260px] sm:flex-[1.25]">
           <button
             type="button"
             onClick={onTogglePlay}
-            className="btn-primary flex h-8 w-8 shrink-0 items-center justify-center rounded-full"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-osu text-white transition-transform hover:scale-[1.04]"
             title={playing ? '暂停试听' : '播放试听'}
           >
-            {playing ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+            {playing ? (
+              <Pause className="h-3.5 w-3.5" />
+            ) : (
+              <Play className="h-3.5 w-3.5 translate-x-[0.5px] fill-current" />
+            )}
           </button>
 
-          <span className="font-mono w-9 text-right text-[11px] text-ink-3 tabular-nums">
+          <span className="font-mono w-8 text-right text-[10.5px] text-ink-3 tabular-nums">
             {formatDuration(currentTime)}
           </span>
           <input
@@ -129,26 +138,26 @@ export function AudioPlayerBar({
               if (audioRef.current) audioRef.current.currentTime = t;
             }}
             style={{ '--fill': `${seekFillPct}%` } as CSSProperties}
-            className="slim-range flex-1"
+            className="impeccable-range flex-1"
             aria-label="试听进度"
           />
-          <span className="font-mono w-9 text-[11px] text-ink-3 tabular-nums">
+          <span className="font-mono w-8 text-[10.5px] text-ink-3 tabular-nums">
             {formatDuration(duration)}
           </span>
         </div>
 
-        {/* Volume & Actions */}
+        {/* Restrained Volume, Pill Download CTA & Close */}
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => setMuted((m) => !m)}
-            className="btn btn-icon btn-sm"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-tint-hover hover:text-ink"
             title={muted ? '取消静音' : '静音'}
           >
             {muted || volume === 0 ? (
               <VolumeX className="h-3.5 w-3.5 text-ink-3" />
             ) : (
-              <Volume2 className="h-3.5 w-3.5 text-ink-2" />
+              <Volume2 className="h-3.5 w-3.5" />
             )}
           </button>
           <input
@@ -162,21 +171,21 @@ export function AudioPlayerBar({
               setVolume(Number(e.target.value));
             }}
             style={{ '--fill': `${volFillPct}%` } as CSSProperties}
-            className="slim-range hidden w-16 md:block"
+            className="impeccable-range hidden w-14 md:block"
             aria-label="音量"
           />
           <button
             type="button"
             onClick={() => onDownload(beatmapset, activeTarget)}
-            className={`btn btn-sm ml-1 ${targetMeta.btnCls}`}
+            className="ml-1 inline-flex h-7 items-center gap-1.5 rounded-full bg-ink px-3 text-[11px] font-semibold text-canvas transition-opacity hover:opacity-88"
           >
-            <Download className="h-3.5 w-3.5" />
+            <Download className="h-3 w-3" />
             <span>下载</span>
           </button>
           <button
             type="button"
             onClick={onStop}
-            className="btn btn-icon btn-sm"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-ink-3 transition-colors hover:bg-tint-hover hover:text-ink"
             title="关闭试听栏"
           >
             <X className="h-3.5 w-3.5" />

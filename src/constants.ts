@@ -16,6 +16,7 @@ export interface ThemeMeta {
   id: ThemeId;
   label: string;
   desc: string;
+  isDark: boolean;
   swatchBg: string;
   swatchRing: string;
   electronBg: string;
@@ -26,26 +27,101 @@ export const THEME_OPTIONS: ThemeMeta[] = [
     id: 'dark',
     label: '曜石黑',
     desc: '深邃暗夜对比，音游护眼',
+    isDark: true,
     swatchBg: '#12141f',
     swatchRing: '#a855f7',
     electronBg: '#0b0c12',
   },
   {
+    id: 'stone',
+    label: '墨石暗夜',
+    desc: 'Impeccable 温润炭灰石感',
+    isDark: true,
+    swatchBg: '#1a1a18',
+    swatchRing: '#ec5b8e',
+    electronBg: '#131312',
+  },
+  {
+    id: 'midnight',
+    label: '深海午夜',
+    desc: '沉静靛蓝夜色，长时舒适',
+    isDark: true,
+    swatchBg: '#0c1526',
+    swatchRing: '#38bdf8',
+    electronBg: '#070d18',
+  },
+  {
+    id: 'forest',
+    label: '松影暗绿',
+    desc: '低饱和深松绿，柔和护眼',
+    isDark: true,
+    swatchBg: '#101c17',
+    swatchRing: '#34d399',
+    electronBg: '#0a120f',
+  },
+  {
     id: 'light',
     label: '瓷器白',
     desc: '通透清简，日间高对比度',
+    isDark: false,
     swatchBg: '#f8f9fc',
     swatchRing: '#e03a82',
     electronBg: '#f3f5f9',
   },
   {
+    id: 'paper',
+    label: '暖石纸感',
+    desc: 'Impeccable 雪花石膏纸面',
+    isDark: false,
+    swatchBg: '#f6f4ef',
+    swatchRing: '#d6336c',
+    electronBg: '#f6f4ef',
+  },
+  {
     id: 'latte',
     label: '浅咖啡',
     desc: '温润燕麦拿铁纸感配色',
+    isDark: false,
     swatchBg: '#efe4d4',
     swatchRing: '#b87e14',
     electronBg: '#f2ebe1',
   },
+  {
+    id: 'sakura',
+    label: '樱雾浅粉',
+    desc: '柔和淡樱音游浅色氛围',
+    isDark: false,
+    swatchBg: '#fdf2f6',
+    swatchRing: '#e14b88',
+    electronBg: '#fbf1f5',
+  },
+];
+
+export const VALID_THEMES: ThemeId[] = THEME_OPTIONS.map((t) => t.id);
+
+export const DARK_THEME_IDS: ReadonlySet<ThemeId> = new Set(
+  THEME_OPTIONS.filter((t) => t.isDark).map((t) => t.id),
+);
+
+export function isValidTheme(val: unknown): val is ThemeId {
+  return typeof val === 'string' && VALID_THEMES.includes(val as ThemeId);
+}
+
+export function isDarkTheme(id: ThemeId): boolean {
+  return DARK_THEME_IDS.has(id);
+}
+
+export const ACCENT_PRESETS: Array<{ id: string; label: string; hex: string }> = [
+  { id: 'osu-pink', label: 'osu! 粉', hex: '#ff66aa' },
+  { id: 'lazer-violet', label: 'Lazer 紫', hex: '#a855f7' },
+  { id: 'impeccable-rose', label: '玫红', hex: '#d6336c' },
+  { id: 'ice-blue', label: '冰海蓝', hex: '#38bdf8' },
+  { id: 'mint-teal', label: '薄荷青', hex: '#2dd4bf' },
+  { id: 'emerald', label: '翡翠绿', hex: '#34d399' },
+  { id: 'amber-gold', label: '琥珀金', hex: '#f59e0b' },
+  { id: 'coral-red', label: '珊瑚红', hex: '#fb7185' },
+  { id: 'indigo', label: '靛蓝', hex: '#6366f1' },
+  { id: 'slate-silver', label: '银石', hex: '#94a3b8' },
 ];
 
 export const DEFAULT_FILTERS: SearchFilters = {

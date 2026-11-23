@@ -1,16 +1,20 @@
-import { useEffect, useState } from 'react';
-import type { ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ChangeEvent, ReactNode } from 'react';
 import {
   Activity,
   FolderOpen,
+  ImagePlus,
   Loader2,
   Palette,
+  RotateCcw,
   Save,
   Settings2,
   ShieldCheck,
+  Sparkles,
+  Trash2,
   X,
 } from 'lucide-react';
-import { THEME_OPTIONS } from '../constants';
+import { ACCENT_PRESETS, THEME_OPTIONS } from '../constants';
 import {
   AppConfig,
   DownloadTarget,
@@ -30,7 +34,15 @@ interface SettingsModalProps {
   config: AppConfig | null;
   network: NetworkStatus | null;
   theme: ThemeId;
+  activeExtractedColor?: string | null;
   onChangeTheme: (t: ThemeId) => void;
+  onPreviewAppearance?: (patch: Partial<AppConfig> | null) => void;
+  onUploadBackground?: (payload: {
+    filePath?: string;
+    dataUrl?: string;
+    url?: string;
+  }) => Promise<AppConfig>;
+  onClearBackground?: () => Promise<AppConfig>;
   onClose: () => void;
   onSave: (patch: Partial<AppConfig>) => Promise<void>;
   onBenchmark: () => void;
@@ -88,30 +100,146 @@ export function SettingsModal({
   config,
   network,
   theme,
+  activeExtractedColor = null,
   onChangeTheme,
+  onPreviewAppearance,
+  onUploadBackground,
+  onClearBackground,
   onClose,
   onSave,
   onBenchmark,
 }: SettingsModalProps) {
   const [form, setForm] = useState<AppConfig | null>(config);
   const [saving, setSaving] = useState(false);
+  const [bgUploading, setBgUploading] = useState(false);
+  const [bgError, setBgError] = useState<string | null>(null);
+  const [bgUrlDraft, setBgUrlDraft] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (open && config) setForm({ ...config, theme });
+    if (open && config) {
+      setForm({ ...config, theme });
+      setBgError(null);
+      setBgUrlDraft(
+        config.customBgImage && /^https?:\/\//i.test(config.customBgImage)
+          ? config.customBgImage
+          : '',
+      );
+    }
   }, [open, config]);
 
   if (!open || !form) return null;
 
   const isElectron = !!window.electronAPI?.isElectron;
 
+  const handleCloseCancel = () => {
+    onPreviewAppearance?.(null);
+    onClose();
+  };
+
+  const updateAppearance = (patch: Partial<AppConfig>) => {
+    setForm((prev) => (prev ? { ...prev, ...patch } : prev));
+    onPreviewAppearance?.(patch);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
       await onSave({ ...form, theme });
+      onPreviewAppearance?.(null);
       onClose();
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePickBackground = async () => {
+    if (!onUploadBackground) return;
+    setBgError(null);
+    const api = window.electronAPI;
+    if (api?.isElectron && api.selectFile) {
+      const picked = await api.selectFile(undefined, [
+        { name: '图片文件', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif'] },
+      ]);
+      if (!picked) return;
+      setBgUploading(true);
+      try {
+        const updated = await onUploadBackground({ filePath: picked });
+        setForm((prev) => (prev ? { ...prev, customBgImage: updated.customBgImage } : prev));
+        setBgUrlDraft('');
+      } catch (err) {
+        setBgError(err instanceof Error ? err.message : '设置背景图失败');
+      } finally {
+        setBgUploading(false);
+      }
+      return;
+    }
+    fileInputRef.current?.click();
+  };
+
+  const handleWebFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file || !onUploadBackground) return;
+    if (file.size > 20 * 1024 * 1024) {
+      setBgError('背景图片不能超过 20 MB');
+      return;
+    }
+    setBgError(null);
+    setBgUploading(true);
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const dataUrl = typeof reader.result === 'string' ? reader.result : '';
+        if (!dataUrl) throw new Error('读取图片失败');
+        const updated = await onUploadBackground({ dataUrl });
+        setForm((prev) => (prev ? { ...prev, customBgImage: updated.customBgImage } : prev));
+        setBgUrlDraft('');
+      } catch (err) {
+        setBgError(err instanceof Error ? err.message : '上传背景图失败');
+      } finally {
+        setBgUploading(false);
+      }
+    };
+    reader.onerror = () => {
+      setBgError('读取图片失败');
+      setBgUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleApplyBgUrl = async () => {
+    if (!onUploadBackground) return;
+    const trimmed = bgUrlDraft.trim();
+    if (!/^https?:\/\//i.test(trimmed)) {
+      setBgError('请输入以 http:// 或 https:// 开头的图片链接');
+      return;
+    }
+    setBgError(null);
+    setBgUploading(true);
+    try {
+      const updated = await onUploadBackground({ url: trimmed });
+      setForm((prev) => (prev ? { ...prev, customBgImage: updated.customBgImage } : prev));
+    } catch (err) {
+      setBgError(err instanceof Error ? err.message : '应用链接失败');
+    } finally {
+      setBgUploading(false);
+    }
+  };
+
+  const handleClearBg = async () => {
+    if (!onClearBackground) return;
+    setBgError(null);
+    setBgUploading(true);
+    try {
+      const updated = await onClearBackground();
+      setForm((prev) => (prev ? { ...prev, customBgImage: updated.customBgImage } : prev));
+      setBgUrlDraft('');
+    } catch (err) {
+      setBgError(err instanceof Error ? err.message : '清除背景图失败');
+    } finally {
+      setBgUploading(false);
     }
   };
 
@@ -164,11 +292,11 @@ export function SettingsModal({
   );
 
   return (
-    <div className="modal-backdrop flex items-center justify-center p-4" onClick={onClose}>
+    <div className="modal-backdrop flex items-center justify-center p-4" onClick={handleCloseCancel}>
       <form
         role="dialog"
         aria-modal="true"
-        aria-label="客户端路径、代理与下载源设置"
+        aria-label="客户端路径、代理与主题背景设置"
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
         className="modal-surface flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden"
@@ -181,14 +309,14 @@ export function SettingsModal({
             </div>
             <div className="min-w-0">
               <h2 className="font-display text-[14.5px] font-bold text-ink">
-                客户端路径、代理与主题设置
+                客户端路径、代理与主题背景设置
               </h2>
               <p className="truncate text-[11px] text-ink-3">
                 默认已自动绑定本机 Stable / Lazer 路径及 <span className="font-mono tabular-nums">6174</span> 代理端口
               </p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="btn btn-icon shrink-0" aria-label="关闭">
+          <button type="button" onClick={handleCloseCancel} className="btn btn-icon shrink-0" aria-label="关闭">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -369,14 +497,14 @@ export function SettingsModal({
             )}
           </Section>
 
-          {/* 3. Theme & Download Preferences */}
+          {/* 3. Theme, Custom Background & Download Preferences */}
           <Section
             index={3}
-            title="界面主题与下载偏好"
+            title="界面主题、动态配色与桌面背景"
             icon={<Palette className="h-3.5 w-3.5 shrink-0 text-osu-soft" />}
           >
-            {/* Theme Picker */}
-            <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+            {/* 8 Theme Picker */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {THEME_OPTIONS.map((opt) => {
                 const active = theme === opt.id;
                 return (
@@ -387,26 +515,213 @@ export function SettingsModal({
                       onChangeTheme(opt.id);
                       setForm({ ...form, theme: opt.id });
                     }}
-                    className={`flex items-center gap-3 rounded-[10px] border px-3 py-2.5 text-left transition-colors ${
+                    title={opt.desc}
+                    className={`flex items-center gap-2.5 rounded-[10px] border px-2.5 py-2 text-left transition-colors ${
                       active
                         ? 'border-osu/60 bg-surface-2 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--t-osu)_35%,transparent)]'
                         : 'border-hairline bg-surface-2/60 hover:border-hairline-strong hover:bg-surface-2'
                     }`}
                   >
                     <span
-                      className="h-6 w-6 shrink-0 rounded-full border border-black/20 shadow-inner"
+                      className="h-5 w-5 shrink-0 rounded-full border border-black/20 shadow-inner"
                       style={{
                         backgroundColor: opt.swatchBg,
                         boxShadow: active ? `0 0 0 2px ${opt.swatchRing}` : undefined,
                       }}
                     />
                     <div className="min-w-0">
-                      <div className="font-display text-[12.5px] font-bold text-ink">{opt.label}</div>
-                      <div className="truncate text-[10.5px] text-ink-3">{opt.desc}</div>
+                      <div className="font-display truncate text-[12px] font-bold text-ink">
+                        {opt.label}
+                      </div>
+                      <div className="truncate text-[10px] text-ink-3">
+                        {opt.isDark ? '暗色' : '浅色'}
+                      </div>
                     </div>
                   </button>
                 );
               })}
+            </div>
+
+            {/* Custom Accent Color Picker */}
+            <div className="space-y-2 rounded-[10px] border border-hairline bg-surface-2/55 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="field-label font-semibold text-ink">自定义主题强调色</span>
+                <div className="flex items-center gap-2">
+                  {form.dynamicThemeFromBg && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-osu/35 bg-osu/10 px-2 py-0.5 text-[10.5px] text-osu-soft">
+                      <Sparkles className="h-3 w-3" />
+                      <span>
+                        随背景变色中
+                        {activeExtractedColor ? ` (${activeExtractedColor})` : ''}
+                      </span>
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => updateAppearance({ accentColor: '' })}
+                    className={`btn btn-sm h-6 px-2 text-[10.5px] ${
+                      !form.accentColor ? 'border-osu/45 bg-osu/12 text-osu-soft' : ''
+                    }`}
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    <span>主题默认</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {ACCENT_PRESETS.map((preset) => {
+                  const active = form.accentColor.toLowerCase() === preset.hex.toLowerCase();
+                  return (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => updateAppearance({ accentColor: preset.hex })}
+                      title={`${preset.label} (${preset.hex})`}
+                      className={`h-6 w-6 rounded-full border border-black/25 transition-transform hover:scale-110 ${
+                        active ? 'ring-2 ring-ink ring-offset-2 ring-offset-surface-2' : ''
+                      }`}
+                      style={{ backgroundColor: preset.hex }}
+                    />
+                  );
+                })}
+
+                <label
+                  className="ml-1 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-hairline bg-surface-1 px-2.5 text-[11px] text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink"
+                  title="自由选取任意强调色"
+                >
+                  <input
+                    type="color"
+                    value={form.accentColor || '#ff66aa'}
+                    onChange={(e) => updateAppearance({ accentColor: e.target.value })}
+                    className="h-4 w-4 cursor-pointer rounded border-none bg-transparent p-0"
+                  />
+                  <span className="font-mono text-[10.5px] uppercase">
+                    {form.accentColor || '自选颜色'}
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            {/* Custom Desktop Background Image + Opacity + Dynamic Switches */}
+            <div className="space-y-3 rounded-[10px] border border-hairline bg-surface-2/55 p-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+                onChange={handleWebFileChange}
+                className="hidden"
+              />
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="relative h-16 w-28 shrink-0 overflow-hidden rounded-[8px] border border-hairline bg-surface-1">
+                  {form.customBgImage ? (
+                    <img
+                      src={form.customBgImage}
+                      alt="自定义桌面背景预览"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-[10.5px] text-ink-4">
+                      未设置壁纸
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1 space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={bgUploading}
+                      onClick={() => void handlePickBackground()}
+                      className="btn btn-sm"
+                    >
+                      {bgUploading ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <ImagePlus className="h-3.5 w-3.5 text-osu" />
+                      )}
+                      <span>选择本地背景图...</span>
+                    </button>
+
+                    {form.customBgImage && (
+                      <button
+                        type="button"
+                        disabled={bgUploading}
+                        onClick={() => void handleClearBg()}
+                        className="btn btn-sm btn-danger"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>清除背景图</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="url"
+                      value={bgUrlDraft}
+                      onChange={(e) => setBgUrlDraft(e.target.value)}
+                      placeholder="或粘贴网络图片链接 (https://...)"
+                      className="field h-7 flex-1 font-mono text-[11px]"
+                    />
+                    <button
+                      type="button"
+                      disabled={bgUploading || !bgUrlDraft.trim()}
+                      onClick={() => void handleApplyBgUrl()}
+                      className="btn btn-sm h-7 px-2.5"
+                    >
+                      应用链接
+                    </button>
+                  </div>
+                  {bgError && <div className="text-[11px] text-bad">{bgError}</div>}
+                </div>
+              </div>
+
+              {/* Background Opacity Slider */}
+              <div className="space-y-1.5 border-t border-hairline pt-2.5">
+                <div className="flex items-center justify-between text-[11.5px]">
+                  <span className="font-medium text-ink-2">背景图不透明度（越高越清晰，建议 15%–35%）</span>
+                  <span className="font-mono font-semibold text-ink tabular-nums">
+                    {Math.round((form.customBgOpacity ?? 0.22) * 100)}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0.04}
+                  max={0.75}
+                  step={0.01}
+                  value={form.customBgOpacity ?? 0.22}
+                  onChange={(e) => updateAppearance({ customBgOpacity: Number(e.target.value) })}
+                  style={{
+                    '--fill': `${Math.round((((form.customBgOpacity ?? 0.22) - 0.04) / (0.75 - 0.04)) * 100)}%`,
+                  } as React.CSSProperties}
+                  className="slim-range w-full"
+                />
+              </div>
+
+              {/* Dynamic Song Background & Theme-from-Bg Toggles */}
+              <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-2">
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-hairline bg-surface-1/70 px-3 py-2 text-[11.5px] text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
+                  <input
+                    type="checkbox"
+                    checked={form.dynamicBgFromSong ?? true}
+                    onChange={(e) => updateAppearance({ dynamicBgFromSong: e.target.checked })}
+                    className="check"
+                  />
+                  <span>Lazer 模式随选中歌曲更换桌面背景</span>
+                </label>
+
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-hairline bg-surface-1/70 px-3 py-2 text-[11.5px] text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
+                  <input
+                    type="checkbox"
+                    checked={form.dynamicThemeFromBg ?? true}
+                    onChange={(e) => updateAppearance({ dynamicThemeFromBg: e.target.checked })}
+                    className="check check-lazer"
+                  />
+                  <span>主题强调色随背景图主色调自动改变</span>
+                </label>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -566,7 +881,7 @@ export function SettingsModal({
 
         {/* Footer */}
         <div className="flex items-center justify-end gap-2 border-t border-hairline bg-surface-1/75 px-5 py-3">
-          <button type="button" onClick={onClose} className="btn">
+          <button type="button" onClick={handleCloseCancel} className="btn">
             取消
           </button>
           <button type="submit" disabled={saving} className="btn btn-primary px-4">

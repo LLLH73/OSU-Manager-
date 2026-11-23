@@ -21,6 +21,8 @@ import { SelectField } from './SelectField';
 interface FilterPanelProps {
   filters: SearchFilters;
   loading: boolean;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
   onChange: (next: SearchFilters, autoSearch?: boolean) => void;
   onSearch: (overrideFilters?: SearchFilters) => void;
   onReset: () => void;
@@ -79,6 +81,8 @@ function RangeInput({
 export function FilterPanel({
   filters,
   loading,
+  collapsed = false,
+  onToggleCollapsed,
   onChange,
   onSearch,
   onReset,
@@ -110,6 +114,79 @@ export function FilterPanel({
     const next = { ...filters, ...patch, offset: 0 };
     onChange(next, triggerSearch);
   };
+
+  const modeSummary =
+    filters.mode === '3'
+      ? `Mania ${filters.keys && filters.keys !== 'any' ? `${filters.keys}K` : '全部键数'}`
+      : filters.mode === '0'
+        ? 'Standard'
+        : filters.mode === '1'
+          ? 'Taiko'
+          : filters.mode === '2'
+            ? 'Catch'
+            : '全模式';
+  const statusSummary =
+    STATUS_OPTIONS.find((s) => s.value === (filters.status || 'leaderboard'))?.label.split(' ')[0] ??
+    '排行榜';
+  const sortSummary = SORT_FIELDS.find((s) => s.value === sortField)?.label ?? '上架时间';
+
+  if (collapsed) {
+    return (
+      <section className="panel px-3 py-2">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSearch();
+          }}
+          className="flex flex-wrap items-center gap-2"
+        >
+          <div className="relative min-w-[180px] flex-1">
+            <Search className="pointer-events-none absolute top-1/2 left-3 h-3.5 w-3.5 -translate-y-1/2 text-ink-3" />
+            <input
+              type="text"
+              value={filters.q || ''}
+              onChange={(e) => onChange({ ...filters, q: e.target.value, offset: 0 }, false)}
+              placeholder="快速搜索曲名、艺术家、谱师或粘贴谱面链接..."
+              className="field h-8 pl-8.5 pr-3 text-[12px]"
+            />
+          </div>
+
+          <div className="hidden items-center gap-1.5 md:flex">
+            <span className="chip">{modeSummary}</span>
+            <span className="chip">{statusSummary}</span>
+            <span className="chip">{sortSummary}</span>
+            {advancedCount > 0 && (
+              <span className="chip border-osu/40 bg-osu/12 text-osu-soft">
+                +{advancedCount} 高级
+              </span>
+            )}
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn btn-primary btn-sm h-8 rounded-[8px] px-3"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span>{loading ? '搜索中' : '搜索'}</span>
+          </button>
+
+          {onToggleCollapsed && (
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              title="展开完整搜索与筛选面板"
+              className="btn btn-sm h-8 rounded-[8px] px-3"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 text-osu" />
+              <span>展开筛选</span>
+              <ChevronDown className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </form>
+      </section>
+    );
+  }
 
   return (
     <section className="panel p-3.5 sm:p-4">
@@ -163,6 +240,17 @@ export function FilterPanel({
             <RotateCcw className="h-3.5 w-3.5" />
             <span className="hidden md:inline">重置</span>
           </button>
+          {onToggleCollapsed && (
+            <button
+              type="button"
+              onClick={onToggleCollapsed}
+              title="收起搜索与筛选栏"
+              className="btn h-[40px] rounded-[8px] px-2.5 text-ink-2"
+            >
+              <ChevronUp className="h-4 w-4" />
+              <span className="hidden lg:inline">收起</span>
+            </button>
+          )}
         </div>
       </form>
 

@@ -1,5 +1,17 @@
-import { useEffect, useId, useState } from 'react';
-import { Gauge, Loader2, Menu, Minus, PictureInPicture2, Square, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import {
+  Check,
+  Gauge,
+  Loader2,
+  Menu,
+  Minus,
+  Palette,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PictureInPicture2,
+  Square,
+  X,
+} from 'lucide-react';
 import { THEME_OPTIONS } from '../constants';
 import { NetworkStatus, ThemeId } from '../types';
 
@@ -8,37 +20,32 @@ interface TitleBarProps {
   theme: ThemeId;
   overlayOpen?: boolean;
   overlayHotkey?: string;
+  sidebarCollapsed?: boolean;
+  activeAccentHex?: string | null;
   onToggleOverlay: () => void;
   onChangeTheme: (t: ThemeId) => void;
   onBenchmark: () => void;
   onToggleNav: () => void;
+  onToggleSidebar?: () => void;
 }
 
-/** 4K key-lane emblem: four lanes with staggered notes + a hold note, osu! pink -> lazer violet. */
-export function LaneEmblem({ className = 'h-[22px] w-[22px]' }: { className?: string }) {
-  const gid = `lane-grad-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
+/** Monochrome bold-stroke minimalist emblem for OSU!Downloader! */
+export function LaneEmblem({ className = 'h-[21px] w-[21px]' }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
-      <defs>
-        <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#ff66aa" />
-          <stop offset="100%" stopColor="#a855f7" />
-        </linearGradient>
-      </defs>
-      <rect x="0.75" y="0.75" width="22.5" height="22.5" rx="6.5" fill={`url(#${gid})`} />
-      <rect x="0.75" y="0.75" width="22.5" height="22.5" rx="6.5" fill="none" stroke="rgba(255,255,255,0.28)" strokeWidth="0.75" />
-      <g stroke="rgba(9,10,16,0.26)" strokeWidth="0.8">
-        <line x1="8" y1="4" x2="8" y2="20" />
-        <line x1="12" y1="4" x2="12" y2="20" />
-        <line x1="16" y1="4" x2="16" y2="20" />
-      </g>
-      <g fill="#fff">
-        <rect x="4.6" y="12.5" width="2.8" height="2" rx="0.8" />
-        <rect x="8.6" y="6.2" width="2.8" height="2" rx="0.8" />
-        <rect x="12.6" y="7.5" width="2.8" height="8.5" rx="1" opacity="0.92" />
-        <rect x="16.6" y="10" width="2.8" height="2" rx="0.8" />
-      </g>
-      <rect x="4" y="17.6" width="16" height="1.3" rx="0.65" fill="rgba(255,255,255,0.9)" />
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={`${className} shrink-0 text-ink`}
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9.5" />
+      <path d="M12 6.6v7.8" />
+      <path d="M8.6 11.4 12 14.8l3.4-3.4" />
+      <path d="M8.4 17.4h7.2" />
     </svg>
   );
 }
@@ -48,14 +55,19 @@ export function TitleBar({
   theme,
   overlayOpen = false,
   overlayHotkey = 'Alt+Shift+O',
+  sidebarCollapsed = false,
+  activeAccentHex = null,
   onToggleOverlay,
   onChangeTheme,
   onBenchmark,
   onToggleNav,
+  onToggleSidebar,
 }: TitleBarProps) {
   const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
   const isElectron = Boolean(api?.isElectron);
   const [maximized, setMaximized] = useState(false);
+  const [themeMenuOpen, setThemeMenuOpen] = useState(false);
+  const themeMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!api?.isElectron) return;
@@ -69,6 +81,28 @@ export function TitleBar({
       unsubscribe();
     };
   }, [api]);
+
+  useEffect(() => {
+    if (!themeMenuOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target as Node)) {
+        setThemeMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setThemeMenuOpen(false);
+    };
+    window.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [themeMenuOpen]);
+
+  const currentThemeMeta = THEME_OPTIONS.find((t) => t.id === theme) ?? THEME_OPTIONS[0];
+  const darkThemes = THEME_OPTIONS.filter((t) => t.isDark);
+  const lightThemes = THEME_OPTIONS.filter((t) => !t.isDark);
 
   const recommended = network?.mirrors.find((m) => m.id === network.recommendedMirror);
   const proxyPort = network?.proxyPort ?? 6174;
@@ -84,9 +118,9 @@ export function TitleBar({
           : 'text-bad';
 
   return (
-    <header className="app-drag relative z-40 flex h-[40px] shrink-0 items-center border-b border-hairline bg-surface-0/90 backdrop-blur-xl">
-      {/* Left: nav toggle + emblem + title */}
-      <div className="flex h-full min-w-0 items-center gap-2.5 pl-2.5 lg:pl-3.5">
+    <header className="app-drag relative z-40 flex h-[40px] shrink-0 items-center border-b border-hairline bg-surface-0/78 backdrop-blur-xl">
+      {/* Left: sidebar toggle + monochrome emblem + OSU!Downloader! */}
+      <div className="flex h-full min-w-0 items-center gap-2 pl-2.5 lg:pl-3">
         <button
           type="button"
           onClick={onToggleNav}
@@ -95,21 +129,32 @@ export function TitleBar({
         >
           <Menu className="h-4 w-4" />
         </button>
+
+        {onToggleSidebar && (
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            title={sidebarCollapsed ? '展开左侧栏' : '收起左侧栏'}
+            className="app-no-drag hidden h-7 w-7 items-center justify-center rounded-md text-ink-2 transition-colors hover:bg-tint-hover hover:text-ink lg:flex"
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+        )}
+
         <LaneEmblem />
-        <div className="flex min-w-0 items-baseline gap-2">
-          <span className="font-display truncate text-[13px] font-bold text-ink">
-            osu! 4K 谱面工坊
-          </span>
-          <span className="font-stat hidden text-[10px] font-semibold tracking-[0.14em] text-ink-3 uppercase sm:inline">
-            Desktop
-          </span>
-        </div>
+        <span className="font-display truncate text-[13.5px] font-bold tracking-tight text-ink">
+          OSU!Downloader!
+        </span>
       </div>
 
       {/* Draggable spacer */}
       <div className="h-full flex-1" />
 
-      {/* Right: overlay button + theme switcher + status pills */}
+      {/* Right: overlay button + 8-theme popover + status pills */}
       <div className="flex h-full items-center gap-2 pr-2">
         <button
           type="button"
@@ -125,36 +170,114 @@ export function TitleBar({
           <span className="hidden sm:inline">浮窗模式</span>
         </button>
 
-        {/* Minimalist 3-theme switcher */}
-        <div
-          className="app-no-drag flex h-[25px] items-center gap-1 rounded-full border border-hairline bg-tint px-1.5"
-          title="切换界面主题：曜石黑 / 瓷器白 / 浅咖啡"
-        >
-          {THEME_OPTIONS.map((opt) => {
-            const active = theme === opt.id;
-            return (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => onChangeTheme(opt.id)}
-                title={`${opt.label} · ${opt.desc}`}
-                className={`flex h-[19px] items-center gap-1 rounded-full px-1.5 text-[10.5px] font-medium transition-colors ${
-                  active
-                    ? 'bg-surface-2 text-ink shadow-[0_1px_2px_rgba(0,0,0,0.18),inset_0_0_0_1px_var(--t-hairline-strong)]'
-                    : 'text-ink-3 hover:text-ink'
-                }`}
-              >
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/20"
-                  style={{
-                    backgroundColor: opt.swatchBg,
-                    boxShadow: active ? `0 0 0 1.5px ${opt.swatchRing}` : undefined,
-                  }}
-                />
-                <span className="hidden md:inline">{opt.label}</span>
-              </button>
-            );
-          })}
+        {/* Compact 8-theme popover trigger */}
+        <div ref={themeMenuRef} className="app-no-drag relative">
+          <button
+            type="button"
+            onClick={() => setThemeMenuOpen((v) => !v)}
+            title="切换界面主题（共 8 套配色，可在设置中开启随封面变色）"
+            className={`flex h-[25px] items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors ${
+              themeMenuOpen
+                ? 'border-hairline-strong bg-surface-2 text-ink'
+                : 'border-hairline bg-tint text-ink-2 hover:border-hairline-strong hover:bg-tint-hover hover:text-ink'
+            }`}
+          >
+            <span
+              className="h-2.5 w-2.5 shrink-0 rounded-full border border-black/25"
+              style={{
+                backgroundColor: currentThemeMeta.swatchBg,
+                boxShadow: `0 0 0 1.5px ${activeAccentHex || currentThemeMeta.swatchRing}`,
+              }}
+            />
+            <span className="hidden md:inline">{currentThemeMeta.label}</span>
+            <Palette className="h-3 w-3 text-ink-3" />
+          </button>
+
+          {themeMenuOpen && (
+            <div className="animate-fade-in fixed top-[44px] right-3 z-50 w-[264px] rounded-xl border border-hairline-strong bg-surface-2/95 p-2.5 shadow-2xl backdrop-blur-xl sm:absolute sm:top-[32px] sm:right-0">
+              <div className="mb-1.5 flex items-center justify-between px-1">
+                <span className="overline">暗色主题</span>
+                {activeAccentHex && (
+                  <span
+                    className="inline-flex items-center gap-1 text-[10px] font-medium text-ink-3"
+                    title="当前强调色正随背景或自定义强调色联动"
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full"
+                      style={{ backgroundColor: activeAccentHex }}
+                    />
+                    动态配色
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                {darkThemes.map((opt) => {
+                  const active = theme === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        onChangeTheme(opt.id);
+                        setThemeMenuOpen(false);
+                      }}
+                      title={opt.desc}
+                      className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-colors ${
+                        active
+                          ? 'border-osu/45 bg-surface-3 font-semibold text-ink'
+                          : 'border-transparent text-ink-2 hover:bg-tint-hover hover:text-ink'
+                      }`}
+                    >
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full border border-white/20"
+                        style={{
+                          backgroundColor: opt.swatchBg,
+                          boxShadow: active ? `0 0 0 1.5px ${opt.swatchRing}` : undefined,
+                        }}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                      {active && <Check className="h-3 w-3 shrink-0 text-osu" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-2.5 mb-1.5 px-1">
+                <span className="overline">浅色与纸感</span>
+              </div>
+              <div className="grid grid-cols-2 gap-1">
+                {lightThemes.map((opt) => {
+                  const active = theme === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        onChangeTheme(opt.id);
+                        setThemeMenuOpen(false);
+                      }}
+                      title={opt.desc}
+                      className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-colors ${
+                        active
+                          ? 'border-osu/45 bg-surface-3 font-semibold text-ink'
+                          : 'border-transparent text-ink-2 hover:bg-tint-hover hover:text-ink'
+                      }`}
+                    >
+                      <span
+                        className="h-3 w-3 shrink-0 rounded-full border border-black/20"
+                        style={{
+                          backgroundColor: opt.swatchBg,
+                          boxShadow: active ? `0 0 0 1.5px ${opt.swatchRing}` : undefined,
+                        }}
+                      />
+                      <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                      {active && <Check className="h-3 w-3 shrink-0 text-osu" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         <button
@@ -172,7 +295,7 @@ export function TitleBar({
           )}
           <span className="text-ink-3">Proxy</span>
           <span className="font-mono text-ink">{proxyPort}</span>
-          <span className={proxyOpen ? 'text-ok font-medium' : 'text-ink-3'}>
+          <span className={proxyOpen ? 'font-medium text-ok' : 'text-ink-3'}>
             {proxyOpen ? '在线' : '离线'}
           </span>
         </button>

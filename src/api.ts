@@ -42,6 +42,23 @@ export function updateConfig(patch: Partial<AppConfig>): Promise<AppConfig> {
   });
 }
 
+export function uploadCustomBackground(payload: {
+  filePath?: string;
+  dataUrl?: string;
+  url?: string;
+}): Promise<AppConfig> {
+  return apiJson<AppConfig>('/api/config/background', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function clearCustomBackground(): Promise<AppConfig> {
+  return apiJson<AppConfig>('/api/config/background', {
+    method: 'DELETE',
+  });
+}
+
 export function fetchNetworkStatus(refresh = false): Promise<NetworkStatus> {
   return apiJson<NetworkStatus>(`/api/network/status?refresh=${refresh}`);
 }

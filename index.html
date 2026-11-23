@@ -3,12 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>osu! 4K 谱面工坊 · Desktop</title>
+    <title>OSU!Downloader!</title>
     <script>
       (function () {
+        var validThemes = ['dark', 'stone', 'midnight', 'forest', 'light', 'paper', 'latte', 'sakura'];
         try {
           var t = localStorage.getItem('osu4k-theme');
-          if (t === 'dark' || t === 'light' || t === 'latte') {
+          if (t && validThemes.indexOf(t) !== -1) {
             document.documentElement.dataset.theme = t;
           } else {
             document.documentElement.dataset.theme = 'dark';

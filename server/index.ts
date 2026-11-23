@@ -43,7 +43,38 @@ import { AppConfig, InstalledFilter, SearchFilters, SearchMode, SearchSource, Se
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({ limit: '20mb' }));
+
+const CUSTOM_BG_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.avif'] as const;
+const CUSTOM_BG_MIME: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+  '.avif': 'image/avif',
+};
+
+function findCustomBgFile(): string | null {
+  for (const ext of CUSTOM_BG_EXTS) {
+    const candidate = path.join(DATA_DIR, `custom-bg${ext}`);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+function removeCustomBgFiles(): void {
+  for (const ext of CUSTOM_BG_EXTS) {
+    const candidate = path.join(DATA_DIR, `custom-bg${ext}`);
+    if (fs.existsSync(candidate)) {
+      try {
+        fs.unlinkSync(candidate);
+      } catch {
+        // Ignore cleanup failure
+      }
+    }
+  }
+}
 
 function parseOptNum(val: unknown): number | undefined {
   if (val === undefined || val === null || val === '') return undefined;
@@ -83,6 +114,83 @@ app.put('/api/config', async (req: Request, res: Response) => {
   logInfo('config', 'Updated config', { keys: Object.keys(body) });
   resetProxyCache();
   await rescanLibrary(false);
+  res.json(updated);
+});
+
+app.get('/api/media/custom-bg', (_req: Request, res: Response) => {
+  const filePath = findCustomBgFile();
+  if (!filePath) {
+    res.status(404).end();
+    return;
+  }
+  const ext = path.extname(filePath).toLowerCase();
+  res.setHeader('Cache-Control', 'no-cache');
+  res.type(CUSTOM_BG_MIME[ext] || 'image/png').sendFile(filePath);
+});
+
+app.post('/api/config/background', (req: Request, res: Response) => {
+  const body = (req.body || {}) as { filePath?: string; dataUrl?: string; url?: string };
+  const maxBytes = 20 * 1024 * 1024;
+
+  if (typeof body.filePath === 'string' && body.filePath.trim()) {
+    const resolved = path.resolve(body.filePath.trim());
+    const ext = path.extname(resolved).toLowerCase();
+    if (!CUSTOM_BG_EXTS.includes(ext as (typeof CUSTOM_BG_EXTS)[number])) {
+      res.status(400).json({ error: '仅支持 PNG / JPG / WEBP / GIF / AVIF 图片格式' });
+      return;
+    }
+    if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
+      res.status(400).json({ error: '选择的图片文件不存在' });
+      return;
+    }
+    if (fs.statSync(resolved).size > maxBytes) {
+      res.status(400).json({ error: '背景图片不能超过 20 MB' });
+      return;
+    }
+    removeCustomBgFiles();
+    const targetPath = path.join(DATA_DIR, `custom-bg${ext}`);
+    fs.copyFileSync(resolved, targetPath);
+    const updated = saveConfig({ customBgImage: `/api/media/custom-bg?v=${Date.now()}` });
+    res.json(updated);
+    return;
+  }
+
+  if (typeof body.dataUrl === 'string' && body.dataUrl.trim()) {
+    const match = body.dataUrl
+      .trim()
+      .match(/^data:image\/(png|jpeg|jpg|webp|gif|avif);base64,([A-Za-z0-9+/=\s]+)$/i);
+    if (!match) {
+      res.status(400).json({ error: '无效的图片 DataURL 格式' });
+      return;
+    }
+    const rawSubtype = match[1].toLowerCase();
+    const ext = rawSubtype === 'jpeg' ? '.jpg' : `.${rawSubtype}`;
+    const buf = Buffer.from(match[2].replace(/\s+/g, ''), 'base64');
+    if (buf.length === 0 || buf.length > maxBytes) {
+      res.status(400).json({ error: '背景图片为空或超过 20 MB 限制' });
+      return;
+    }
+    removeCustomBgFiles();
+    const targetPath = path.join(DATA_DIR, `custom-bg${ext}`);
+    fs.writeFileSync(targetPath, buf);
+    const updated = saveConfig({ customBgImage: `/api/media/custom-bg?v=${Date.now()}` });
+    res.json(updated);
+    return;
+  }
+
+  if (typeof body.url === 'string' && /^https?:\/\//i.test(body.url.trim())) {
+    removeCustomBgFiles();
+    const updated = saveConfig({ customBgImage: body.url.trim() });
+    res.json(updated);
+    return;
+  }
+
+  res.status(400).json({ error: '请提供有效的本地图片路径、图片数据或 HTTP(S) 图片链接' });
+});
+
+app.delete('/api/config/background', (_req: Request, res: Response) => {
+  removeCustomBgFiles();
+  const updated = saveConfig({ customBgImage: '' });
   res.json(updated);
 });
 

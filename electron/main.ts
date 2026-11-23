@@ -209,7 +209,7 @@ function updateTrayMenu(): void {
     },
     { type: 'separator' },
     {
-      label: '退出 osu! 4K 谱面工坊',
+      label: '退出 OSU!Downloader!',
       click: () => {
         quitting = true;
         if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.destroy();
@@ -230,7 +230,7 @@ function createTray(): void {
   if (!fs.existsSync(iconPath)) return;
   const iconImg = nativeImage.createFromPath(iconPath).resize({ width: 20, height: 20 });
   tray = new Tray(iconImg);
-  tray.setToolTip('osu! 4K 谱面工坊');
+  tray.setToolTip('OSU!Downloader!');
   tray.on('click', () => {
     toggleOverlayWindow();
   });
@@ -371,7 +371,8 @@ function registerIpcHandlers(): void {
     void value;
   });
   ipcMain.handle('overlay:setNativeTheme', (_event, theme: string) => {
-    nativeTheme.themeSource = theme === 'dark' ? 'dark' : 'light';
+    const darkSet = new Set(['dark', 'stone', 'midnight', 'forest']);
+    nativeTheme.themeSource = darkSet.has(theme) ? 'dark' : 'light';
   });
   ipcMain.handle('overlay:setAlwaysOnTop', (_event, flag: boolean) => {
     overlayPinned = Boolean(flag);

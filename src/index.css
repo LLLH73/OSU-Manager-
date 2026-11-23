@@ -330,6 +330,441 @@
   --mac-bar-bg: rgba(255, 250, 242, 0.38);
 }
 
+:root[data-theme="stone"] {
+  color-scheme: dark;
+  --t-canvas: #131312;
+  --t-surface-0: #1a1a18;
+  --t-surface-1: #1e1e1c;
+  --t-surface-2: #22221f;
+  --t-surface-3: #292925;
+  --t-surface-4: #33322d;
+  --t-tint: rgba(242, 239, 233, 0.045);
+  --t-tint-hover: rgba(242, 239, 233, 0.085);
+  --t-hairline: rgba(242, 239, 233, 0.09);
+  --t-hairline-strong: rgba(242, 239, 233, 0.18);
+
+  --t-ink: #f2efe9;
+  --t-ink-2: #b5b0a6;
+  --t-ink-3: #837d73;
+  --t-ink-4: #5a564f;
+
+  --t-lazer: #c084fc;
+  --t-lazer-soft: #d8b4fe;
+  --t-stable: #38bdf8;
+  --t-stable-soft: #7dd3fc;
+  --t-osu: #ec5b8e;
+  --t-osu-soft: #f47aa6;
+
+  --t-ok: #34d399;
+  --t-warn: #d6a449;
+  --t-bad: #fb7185;
+
+  --t-panel-bg: linear-gradient(180deg, rgba(35, 35, 32, 0.88), rgba(26, 26, 24, 0.92));
+  --t-panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 26px -14px rgba(0, 0, 0, 0.6);
+  --t-panel-flat-bg: rgba(26, 26, 24, 0.78);
+  --t-field-bg: rgba(16, 16, 15, 0.82);
+  --t-field-focus-bg: rgba(16, 16, 15, 0.96);
+  --t-glass-bg: rgba(30, 30, 27, 0.9);
+  --t-glass-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 20px 50px -16px rgba(0, 0, 0, 0.8);
+  --t-modal-bg: linear-gradient(180deg, #22221f 0%, #171715 100%);
+  --t-modal-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 36px 96px -24px rgba(0, 0, 0, 0.88);
+  --t-backdrop: rgba(8, 8, 7, 0.72);
+  --t-table-head: rgba(26, 26, 24, 0.96);
+  --t-option-bg: #1e1e1c;
+  --t-scroll: rgba(242, 239, 233, 0.14);
+  --t-scroll-hover: rgba(242, 239, 233, 0.26);
+  --t-glow-a: rgba(236, 91, 142, 0.055);
+  --t-glow-b: rgba(214, 164, 73, 0.045);
+  --t-glow-c: rgba(192, 132, 252, 0.035);
+  --t-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239b958b' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+  --gold-border: rgba(214, 164, 73, 0.82);
+  --gold-inner: rgba(235, 194, 114, 0.26);
+  --gold-ring: rgba(214, 164, 73, 0.2);
+  --gold-glow: 0 10px 26px -12px rgba(214, 164, 73, 0.36);
+  --gold-pill-bg: rgba(42, 32, 14, 0.88);
+  --gold-pill-text: #f3d79b;
+  --gold-pill-border: rgba(214, 164, 73, 0.58);
+
+  --ln-rice-bg: rgba(56, 189, 248, 0.12);
+  --ln-rice-text: #a5f3fc;
+  --ln-rice-border: rgba(56, 189, 248, 0.32);
+  --ln-hybrid-bg: rgba(129, 140, 248, 0.14);
+  --ln-hybrid-text: #c7d2fe;
+  --ln-hybrid-border: rgba(129, 140, 248, 0.34);
+  --ln-heavy-bg: rgba(232, 121, 249, 0.14);
+  --ln-heavy-text: #f5d0fe;
+  --ln-heavy-border: rgba(232, 121, 249, 0.34);
+
+  --pp-bg: rgba(236, 91, 142, 0.14);
+  --pp-text: #fbcfe8;
+  --pp-border: rgba(236, 91, 142, 0.38);
+
+  --lazer-stage-bg: #171715;
+  --lazer-backdrop-scrim: linear-gradient(115deg, rgba(19, 19, 18, 0.88) 0%, rgba(22, 22, 20, 0.72) 50%, rgba(19, 19, 18, 0.84) 100%);
+  --lazer-card-bg: rgba(29, 29, 26, 0.9);
+  --lazer-card-active-bg: rgba(38, 38, 34, 0.96);
+  --lazer-card-scrim: linear-gradient(96deg, rgba(26, 26, 24, 0.97) 0%, rgba(26, 26, 24, 0.91) 44%, rgba(26, 26, 24, 0.54) 72%, rgba(26, 26, 24, 0.22) 100%);
+  --lazer-card-active-scrim: linear-gradient(96deg, rgba(34, 34, 30, 0.96) 0%, rgba(34, 34, 30, 0.85) 44%, rgba(34, 34, 30, 0.36) 74%, rgba(34, 34, 30, 0.12) 100%);
+  --lazer-diff-bg: rgba(24, 24, 22, 0.88);
+  --lazer-diff-active-bg: rgba(40, 40, 36, 0.96);
+
+  --mac-shell-bg: linear-gradient(165deg, rgba(28, 28, 25, var(--mac-tint-alpha, 0.56)), rgba(18, 18, 16, calc(var(--mac-tint-alpha, 0.56) + 0.08)));
+  --mac-shell-border: rgba(242, 239, 233, 0.14);
+  --mac-shell-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  --mac-card-bg: rgba(242, 239, 233, 0.055);
+  --mac-card-border: rgba(242, 239, 233, 0.1);
+  --mac-bar-bg: rgba(242, 239, 233, 0.04);
+}
+
+:root[data-theme="midnight"] {
+  color-scheme: dark;
+  --t-canvas: #070d18;
+  --t-surface-0: #0a1220;
+  --t-surface-1: #0d1729;
+  --t-surface-2: #111e35;
+  --t-surface-3: #162540;
+  --t-surface-4: #1e3152;
+  --t-tint: rgba(186, 214, 255, 0.045);
+  --t-tint-hover: rgba(186, 214, 255, 0.09);
+  --t-hairline: rgba(148, 187, 248, 0.11);
+  --t-hairline-strong: rgba(148, 187, 248, 0.22);
+
+  --t-ink: #eaf2ff;
+  --t-ink-2: #9db4d8;
+  --t-ink-3: #6780a8;
+  --t-ink-4: #44587b;
+
+  --t-lazer: #818cf8;
+  --t-lazer-soft: #a5b4fc;
+  --t-stable: #38bdf8;
+  --t-stable-soft: #7dd3fc;
+  --t-osu: #38bdf8;
+  --t-osu-soft: #7dd3fc;
+
+  --t-ok: #34d399;
+  --t-warn: #fbbf24;
+  --t-bad: #fb7185;
+
+  --t-panel-bg: linear-gradient(180deg, rgba(17, 30, 53, 0.84), rgba(11, 20, 36, 0.9));
+  --t-panel-shadow: inset 0 1px 0 rgba(186, 214, 255, 0.05), 0 10px 28px -14px rgba(0, 6, 18, 0.72);
+  --t-panel-flat-bg: rgba(10, 18, 32, 0.78);
+  --t-field-bg: rgba(6, 11, 22, 0.82);
+  --t-field-focus-bg: rgba(6, 11, 22, 0.96);
+  --t-glass-bg: rgba(14, 24, 44, 0.9);
+  --t-glass-shadow: inset 0 1px 0 rgba(186, 214, 255, 0.08), 0 22px 54px -16px rgba(0, 6, 18, 0.88);
+  --t-modal-bg: linear-gradient(180deg, #121f38 0%, #0a1220 100%);
+  --t-modal-shadow: inset 0 1px 0 rgba(186, 214, 255, 0.06), 0 36px 96px -24px rgba(0, 6, 18, 0.92);
+  --t-backdrop: rgba(3, 7, 16, 0.74);
+  --t-table-head: rgba(10, 18, 32, 0.96);
+  --t-option-bg: #0d1729;
+  --t-scroll: rgba(148, 187, 248, 0.15);
+  --t-scroll-hover: rgba(148, 187, 248, 0.28);
+  --t-glow-a: rgba(56, 189, 248, 0.085);
+  --t-glow-b: rgba(129, 140, 248, 0.065);
+  --t-glow-c: rgba(34, 211, 238, 0.045);
+  --t-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237a95c0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+  --gold-border: rgba(245, 196, 81, 0.84);
+  --gold-inner: rgba(255, 224, 130, 0.26);
+  --gold-ring: rgba(245, 196, 81, 0.22);
+  --gold-glow: 0 10px 28px -12px rgba(245, 196, 81, 0.4);
+  --gold-pill-bg: rgba(36, 27, 8, 0.88);
+  --gold-pill-text: #fde68a;
+  --gold-pill-border: rgba(245, 196, 81, 0.6);
+
+  --ln-rice-bg: rgba(34, 211, 238, 0.12);
+  --ln-rice-text: #a5f3fc;
+  --ln-rice-border: rgba(34, 211, 238, 0.34);
+  --ln-hybrid-bg: rgba(129, 140, 248, 0.14);
+  --ln-hybrid-text: #c7d2fe;
+  --ln-hybrid-border: rgba(129, 140, 248, 0.36);
+  --ln-heavy-bg: rgba(232, 121, 249, 0.14);
+  --ln-heavy-text: #f5d0fe;
+  --ln-heavy-border: rgba(232, 121, 249, 0.36);
+
+  --pp-bg: rgba(56, 189, 248, 0.15);
+  --pp-text: #bae6fd;
+  --pp-border: rgba(56, 189, 248, 0.38);
+
+  --lazer-stage-bg: #08101e;
+  --lazer-backdrop-scrim: linear-gradient(115deg, rgba(7, 13, 24, 0.88) 0%, rgba(10, 18, 32, 0.72) 50%, rgba(7, 13, 24, 0.84) 100%);
+  --lazer-card-bg: rgba(14, 24, 42, 0.9);
+  --lazer-card-active-bg: rgba(20, 34, 58, 0.96);
+  --lazer-card-scrim: linear-gradient(96deg, rgba(13, 23, 41, 0.97) 0%, rgba(13, 23, 41, 0.91) 44%, rgba(13, 23, 41, 0.56) 72%, rgba(13, 23, 41, 0.24) 100%);
+  --lazer-card-active-scrim: linear-gradient(96deg, rgba(18, 31, 54, 0.96) 0%, rgba(18, 31, 54, 0.85) 44%, rgba(18, 31, 54, 0.36) 74%, rgba(18, 31, 54, 0.14) 100%);
+  --lazer-diff-bg: rgba(11, 20, 36, 0.88);
+  --lazer-diff-active-bg: rgba(22, 37, 64, 0.96);
+
+  --mac-shell-bg: linear-gradient(165deg, rgba(13, 23, 41, var(--mac-tint-alpha, 0.56)), rgba(7, 13, 24, calc(var(--mac-tint-alpha, 0.56) + 0.08)));
+  --mac-shell-border: rgba(186, 214, 255, 0.16);
+  --mac-shell-shadow: inset 0 1px 0 rgba(186, 214, 255, 0.12);
+  --mac-card-bg: rgba(186, 214, 255, 0.06);
+  --mac-card-border: rgba(186, 214, 255, 0.12);
+  --mac-bar-bg: rgba(186, 214, 255, 0.04);
+}
+
+:root[data-theme="forest"] {
+  color-scheme: dark;
+  --t-canvas: #0a120f;
+  --t-surface-0: #0e1814;
+  --t-surface-1: #12201b;
+  --t-surface-2: #172822;
+  --t-surface-3: #1d322a;
+  --t-surface-4: #264036;
+  --t-tint: rgba(185, 245, 220, 0.045);
+  --t-tint-hover: rgba(185, 245, 220, 0.085);
+  --t-hairline: rgba(134, 214, 182, 0.11);
+  --t-hairline-strong: rgba(134, 214, 182, 0.22);
+
+  --t-ink: #eaf5ef;
+  --t-ink-2: #a0c1b2;
+  --t-ink-3: #6c8e7e;
+  --t-ink-4: #476457;
+
+  --t-lazer: #2dd4bf;
+  --t-lazer-soft: #5eead4;
+  --t-stable: #38bdf8;
+  --t-stable-soft: #7dd3fc;
+  --t-osu: #34d399;
+  --t-osu-soft: #6ee7b7;
+
+  --t-ok: #34d399;
+  --t-warn: #fbbf24;
+  --t-bad: #fb7185;
+
+  --t-panel-bg: linear-gradient(180deg, rgba(23, 40, 34, 0.85), rgba(14, 24, 20, 0.9));
+  --t-panel-shadow: inset 0 1px 0 rgba(185, 245, 220, 0.05), 0 10px 28px -14px rgba(2, 10, 7, 0.7);
+  --t-panel-flat-bg: rgba(14, 24, 20, 0.78);
+  --t-field-bg: rgba(8, 15, 12, 0.82);
+  --t-field-focus-bg: rgba(8, 15, 12, 0.96);
+  --t-glass-bg: rgba(18, 32, 27, 0.9);
+  --t-glass-shadow: inset 0 1px 0 rgba(185, 245, 220, 0.08), 0 22px 54px -16px rgba(2, 10, 7, 0.85);
+  --t-modal-bg: linear-gradient(180deg, #182a23 0%, #0e1814 100%);
+  --t-modal-shadow: inset 0 1px 0 rgba(185, 245, 220, 0.06), 0 36px 96px -24px rgba(2, 10, 7, 0.9);
+  --t-backdrop: rgba(4, 10, 7, 0.74);
+  --t-table-head: rgba(14, 24, 20, 0.96);
+  --t-option-bg: #12201b;
+  --t-scroll: rgba(134, 214, 182, 0.15);
+  --t-scroll-hover: rgba(134, 214, 182, 0.28);
+  --t-glow-a: rgba(52, 211, 153, 0.075);
+  --t-glow-b: rgba(45, 212, 191, 0.055);
+  --t-glow-c: rgba(56, 189, 248, 0.04);
+  --t-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2381a695' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+  --gold-border: rgba(235, 187, 74, 0.84);
+  --gold-inner: rgba(255, 224, 130, 0.26);
+  --gold-ring: rgba(235, 187, 74, 0.2);
+  --gold-glow: 0 10px 28px -12px rgba(235, 187, 74, 0.4);
+  --gold-pill-bg: rgba(36, 27, 8, 0.88);
+  --gold-pill-text: #fde68a;
+  --gold-pill-border: rgba(235, 187, 74, 0.6);
+
+  --ln-rice-bg: rgba(34, 211, 238, 0.12);
+  --ln-rice-text: #a5f3fc;
+  --ln-rice-border: rgba(34, 211, 238, 0.34);
+  --ln-hybrid-bg: rgba(129, 140, 248, 0.14);
+  --ln-hybrid-text: #c7d2fe;
+  --ln-hybrid-border: rgba(129, 140, 248, 0.36);
+  --ln-heavy-bg: rgba(232, 121, 249, 0.14);
+  --ln-heavy-text: #f5d0fe;
+  --ln-heavy-border: rgba(232, 121, 249, 0.36);
+
+  --pp-bg: rgba(45, 212, 191, 0.15);
+  --pp-text: #99f6e4;
+  --pp-border: rgba(45, 212, 191, 0.38);
+
+  --lazer-stage-bg: #0c1612;
+  --lazer-backdrop-scrim: linear-gradient(115deg, rgba(10, 18, 15, 0.88) 0%, rgba(14, 24, 20, 0.72) 50%, rgba(10, 18, 15, 0.84) 100%);
+  --lazer-card-bg: rgba(18, 32, 27, 0.9);
+  --lazer-card-active-bg: rgba(24, 42, 36, 0.96);
+  --lazer-card-scrim: linear-gradient(96deg, rgba(16, 28, 24, 0.97) 0%, rgba(16, 28, 24, 0.91) 44%, rgba(16, 28, 24, 0.56) 72%, rgba(16, 28, 24, 0.24) 100%);
+  --lazer-card-active-scrim: linear-gradient(96deg, rgba(22, 38, 32, 0.96) 0%, rgba(22, 38, 32, 0.85) 44%, rgba(22, 38, 32, 0.36) 74%, rgba(22, 38, 32, 0.14) 100%);
+  --lazer-diff-bg: rgba(14, 25, 21, 0.88);
+  --lazer-diff-active-bg: rgba(26, 46, 39, 0.96);
+
+  --mac-shell-bg: linear-gradient(165deg, rgba(18, 32, 27, var(--mac-tint-alpha, 0.56)), rgba(10, 18, 15, calc(var(--mac-tint-alpha, 0.56) + 0.08)));
+  --mac-shell-border: rgba(185, 245, 220, 0.16);
+  --mac-shell-shadow: inset 0 1px 0 rgba(185, 245, 220, 0.12);
+  --mac-card-bg: rgba(185, 245, 220, 0.06);
+  --mac-card-border: rgba(185, 245, 220, 0.12);
+  --mac-bar-bg: rgba(185, 245, 220, 0.04);
+}
+
+:root[data-theme="paper"] {
+  color-scheme: light;
+  --t-canvas: #f6f4ef;
+  --t-surface-0: #efece5;
+  --t-surface-1: #ebe7de;
+  --t-surface-2: #ffffff;
+  --t-surface-3: #f9f7f2;
+  --t-surface-4: #e4e0d7;
+  --t-tint: rgba(23, 22, 20, 0.04);
+  --t-tint-hover: rgba(23, 22, 20, 0.08);
+  --t-hairline: #e4e0d7;
+  --t-hairline-strong: #d3cec3;
+
+  --t-ink: #171614;
+  --t-ink-2: #57534c;
+  --t-ink-3: #837d74;
+  --t-ink-4: #a8a298;
+
+  --t-lazer: #7c3aed;
+  --t-lazer-soft: #6d28d9;
+  --t-stable: #0284c7;
+  --t-stable-soft: #0369a1;
+  --t-osu: #d6336c;
+  --t-osu-soft: #b82458;
+
+  --t-ok: #15803d;
+  --t-warn: #b07d1e;
+  --t-bad: #c7324e;
+
+  --t-panel-bg: #ffffff;
+  --t-panel-shadow: 0 1px 2px rgba(23, 22, 20, 0.04), 0 8px 20px -14px rgba(23, 22, 20, 0.12);
+  --t-panel-flat-bg: rgba(239, 236, 229, 0.78);
+  --t-field-bg: #fdfcf9;
+  --t-field-focus-bg: #ffffff;
+  --t-glass-bg: rgba(255, 255, 255, 0.92);
+  --t-glass-shadow: 0 14px 36px -14px rgba(23, 22, 20, 0.2), 0 0 0 1px rgba(23, 22, 20, 0.06);
+  --t-modal-bg: #ffffff;
+  --t-modal-shadow: 0 32px 80px -24px rgba(23, 22, 20, 0.22);
+  --t-backdrop: rgba(23, 22, 20, 0.34);
+  --t-table-head: #f6f4ef;
+  --t-option-bg: #ffffff;
+  --t-scroll: rgba(23, 22, 20, 0.15);
+  --t-scroll-hover: rgba(23, 22, 20, 0.28);
+  --t-glow-a: rgba(214, 51, 108, 0.035);
+  --t-glow-b: rgba(176, 125, 30, 0.035);
+  --t-glow-c: rgba(124, 58, 237, 0.025);
+  --t-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e6a63' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+  --gold-border: #b07d1e;
+  --gold-inner: rgba(176, 125, 30, 0.32);
+  --gold-ring: rgba(176, 125, 30, 0.16);
+  --gold-glow: 0 8px 22px -12px rgba(176, 125, 30, 0.26);
+  --gold-pill-bg: #fef3c7;
+  --gold-pill-text: #78480a;
+  --gold-pill-border: rgba(176, 125, 30, 0.5);
+
+  --ln-rice-bg: rgba(8, 145, 178, 0.1);
+  --ln-rice-text: #0e7490;
+  --ln-rice-border: rgba(8, 145, 178, 0.26);
+  --ln-hybrid-bg: rgba(79, 70, 229, 0.1);
+  --ln-hybrid-text: #4338ca;
+  --ln-hybrid-border: rgba(79, 70, 229, 0.26);
+  --ln-heavy-bg: rgba(192, 38, 211, 0.1);
+  --ln-heavy-text: #a21caf;
+  --ln-heavy-border: rgba(192, 38, 211, 0.26);
+
+  --pp-bg: rgba(214, 51, 108, 0.1);
+  --pp-text: #b82458;
+  --pp-border: rgba(214, 51, 108, 0.3);
+
+  --lazer-stage-bg: #efece5;
+  --lazer-backdrop-scrim: linear-gradient(115deg, rgba(246, 244, 239, 0.92) 0%, rgba(246, 244, 239, 0.82) 50%, rgba(239, 236, 229, 0.88) 100%);
+  --lazer-card-bg: rgba(255, 255, 255, 0.95);
+  --lazer-card-active-bg: #ffffff;
+  --lazer-card-scrim: linear-gradient(96deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.93) 46%, rgba(255, 255, 255, 0.56) 74%, rgba(255, 255, 255, 0.2) 100%);
+  --lazer-card-active-scrim: linear-gradient(96deg, rgba(255, 255, 255, 0.97) 0%, rgba(255, 255, 255, 0.88) 44%, rgba(255, 255, 255, 0.38) 74%, rgba(255, 255, 255, 0.12) 100%);
+  --lazer-diff-bg: rgba(255, 255, 255, 0.88);
+  --lazer-diff-active-bg: #ffffff;
+
+  --mac-shell-bg: linear-gradient(165deg, rgba(255, 255, 255, var(--mac-tint-alpha, 0.64)), rgba(242, 239, 233, calc(var(--mac-tint-alpha, 0.64) + 0.08)));
+  --mac-shell-border: rgba(255, 255, 255, 0.82);
+  --mac-shell-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --mac-card-bg: rgba(255, 255, 255, 0.65);
+  --mac-card-border: rgba(23, 22, 20, 0.12);
+  --mac-bar-bg: rgba(255, 255, 255, 0.42);
+}
+
+:root[data-theme="sakura"] {
+  color-scheme: light;
+  --t-canvas: #fbf1f5;
+  --t-surface-0: #f7e9ef;
+  --t-surface-1: #f4e1ea;
+  --t-surface-2: #fffbfd;
+  --t-surface-3: #fcf4f8;
+  --t-surface-4: #f1d9e4;
+  --t-tint: rgba(168, 42, 94, 0.045);
+  --t-tint-hover: rgba(168, 42, 94, 0.09);
+  --t-hairline: rgba(154, 48, 92, 0.13);
+  --t-hairline-strong: rgba(154, 48, 92, 0.24);
+
+  --t-ink: #2b1822;
+  --t-ink-2: #6b4758;
+  --t-ink-3: #997183;
+  --t-ink-4: #bc98a8;
+
+  --t-lazer: #9333ea;
+  --t-lazer-soft: #7e22ce;
+  --t-stable: #0284c7;
+  --t-stable-soft: #0369a1;
+  --t-osu: #e14b88;
+  --t-osu-soft: #be185d;
+
+  --t-ok: #059669;
+  --t-warn: #d97706;
+  --t-bad: #e11d48;
+
+  --t-panel-bg: #fffbfd;
+  --t-panel-shadow: 0 1px 2px rgba(105, 32, 64, 0.05), 0 8px 22px -12px rgba(105, 32, 64, 0.12);
+  --t-panel-flat-bg: rgba(247, 233, 239, 0.78);
+  --t-field-bg: #ffffff;
+  --t-field-focus-bg: #ffffff;
+  --t-glass-bg: rgba(255, 251, 253, 0.9);
+  --t-glass-shadow: 0 16px 40px -14px rgba(105, 32, 64, 0.18), 0 0 0 1px rgba(154, 48, 92, 0.08);
+  --t-modal-bg: #fffbfd;
+  --t-modal-shadow: 0 32px 80px -24px rgba(90, 26, 54, 0.24);
+  --t-backdrop: rgba(43, 24, 34, 0.34);
+  --t-table-head: #fbf1f5;
+  --t-option-bg: #fffbfd;
+  --t-scroll: rgba(154, 48, 92, 0.16);
+  --t-scroll-hover: rgba(154, 48, 92, 0.28);
+  --t-glow-a: rgba(225, 75, 136, 0.06);
+  --t-glow-b: rgba(147, 51, 234, 0.045);
+  --t-glow-c: rgba(56, 189, 248, 0.03);
+  --t-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23885c70' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+
+  --gold-border: #ca8a04;
+  --gold-inner: rgba(217, 155, 24, 0.34);
+  --gold-ring: rgba(202, 138, 4, 0.18);
+  --gold-glow: 0 10px 26px -10px rgba(202, 138, 4, 0.3);
+  --gold-pill-bg: #fef3c7;
+  --gold-pill-text: #854d0e;
+  --gold-pill-border: rgba(202, 138, 4, 0.5);
+
+  --ln-rice-bg: rgba(8, 145, 178, 0.1);
+  --ln-rice-text: #0e7490;
+  --ln-rice-border: rgba(8, 145, 178, 0.28);
+  --ln-hybrid-bg: rgba(79, 70, 229, 0.1);
+  --ln-hybrid-text: #4338ca;
+  --ln-hybrid-border: rgba(79, 70, 229, 0.28);
+  --ln-heavy-bg: rgba(192, 38, 211, 0.1);
+  --ln-heavy-text: #a21caf;
+  --ln-heavy-border: rgba(192, 38, 211, 0.28);
+
+  --pp-bg: rgba(225, 75, 136, 0.11);
+  --pp-text: #be185d;
+  --pp-border: rgba(225, 75, 136, 0.32);
+
+  --lazer-stage-bg: #f7e9ef;
+  --lazer-backdrop-scrim: linear-gradient(115deg, rgba(251, 241, 245, 0.92) 0%, rgba(251, 241, 245, 0.8) 50%, rgba(247, 233, 239, 0.88) 100%);
+  --lazer-card-bg: rgba(255, 251, 253, 0.95);
+  --lazer-card-active-bg: #ffffff;
+  --lazer-card-scrim: linear-gradient(96deg, rgba(255, 251, 253, 0.98) 0%, rgba(255, 251, 253, 0.92) 46%, rgba(255, 251, 253, 0.56) 74%, rgba(255, 251, 253, 0.2) 100%);
+  --lazer-card-active-scrim: linear-gradient(96deg, rgba(255, 255, 255, 0.97) 0%, rgba(255, 255, 255, 0.88) 44%, rgba(255, 255, 255, 0.38) 74%, rgba(255, 255, 255, 0.12) 100%);
+  --lazer-diff-bg: rgba(255, 251, 253, 0.88);
+  --lazer-diff-active-bg: #ffffff;
+
+  --mac-shell-bg: linear-gradient(165deg, rgba(255, 250, 253, var(--mac-tint-alpha, 0.62)), rgba(248, 235, 242, calc(var(--mac-tint-alpha, 0.62) + 0.08)));
+  --mac-shell-border: rgba(255, 255, 255, 0.82);
+  --mac-shell-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  --mac-card-bg: rgba(255, 255, 255, 0.64);
+  --mac-card-border: rgba(154, 48, 92, 0.12);
+  --mac-bar-bg: rgba(255, 255, 255, 0.42);
+}
+
 /* ------------------------------------------------------------------
  * 2. Tailwind v4 Theme Bridge & 4-Role Typography
  * ------------------------------------------------------------------ */
@@ -361,12 +796,12 @@
   --color-warn: var(--t-warn);
   --color-bad: var(--t-bad);
 
-  --font-display: "Plus Jakarta Sans", "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei UI",
-    "Microsoft YaHei", system-ui, sans-serif;
-  --font-sans: "Inter", "Segoe UI Variable Text", "Segoe UI", "PingFang SC", "Microsoft YaHei UI",
-    "Microsoft YaHei", system-ui, sans-serif;
-  --font-stat: "Space Grotesk", "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", "Cascadia Mono", "Cascadia Code", Consolas, ui-monospace, monospace;
+  --font-display: "Quicksand", "Outfit", "Noto Sans SC", "HarmonyOS Sans SC", "MiSans", "PingFang SC",
+    "Microsoft YaHei UI", system-ui, sans-serif;
+  --font-sans: "Quicksand", "Noto Sans SC", "HarmonyOS Sans SC", "MiSans", "PingFang SC",
+    "Microsoft YaHei UI", system-ui, sans-serif;
+  --font-stat: "Exo 2", "Outfit", "Quicksand", "Noto Sans SC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Exo 2", "Noto Sans SC", Consolas, ui-monospace, monospace;
 
   --animate-fade-in: fade-in 160ms ease-out both;
   --animate-modal-in: modal-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -410,7 +845,6 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    font-feature-settings: "cv11", "ss01";
     overflow: hidden;
   }
 
@@ -998,6 +1432,83 @@
 
   .slim-range:hover::-webkit-slider-thumb {
     transform: scale(1.15);
+  }
+
+  /* Impeccable ultra-slim 2px audio scrubber hairline */
+  .impeccable-range {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 2px;
+    border-radius: 9999px;
+    background: linear-gradient(
+      90deg,
+      var(--t-osu) 0%,
+      var(--t-osu) var(--fill, 50%),
+      var(--t-hairline-strong) var(--fill, 50%),
+      var(--t-hairline-strong) 100%
+    );
+    cursor: pointer;
+    outline: none;
+    transition: height 140ms ease;
+  }
+
+  .impeccable-range::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 9px;
+    height: 9px;
+    border-radius: 9999px;
+    background: var(--t-osu);
+    border: 1.5px solid var(--t-surface-2);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform 120ms ease;
+  }
+
+  .impeccable-range:hover::-webkit-slider-thumb {
+    transform: scale(1.22);
+  }
+
+  /* Translucent glass surfaces when whole-desktop background image is active */
+  html[data-has-bg="true"] .panel {
+    background: color-mix(in srgb, var(--t-surface-2) 78%, transparent);
+    backdrop-filter: blur(14px) saturate(125%);
+    -webkit-backdrop-filter: blur(14px) saturate(125%);
+  }
+
+  html[data-has-bg="true"] .panel-flat {
+    background: color-mix(in srgb, var(--t-surface-0) 74%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  html[data-has-bg="true"] .lazer-stage {
+    background: color-mix(in srgb, var(--t-surface-0) 42%, transparent);
+    backdrop-filter: blur(10px) saturate(120%);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
+  }
+
+  html[data-has-bg="true"] .lazer-stage-scrim {
+    background: linear-gradient(
+      115deg,
+      color-mix(in srgb, var(--t-canvas) 64%, transparent) 0%,
+      color-mix(in srgb, var(--t-canvas) 44%, transparent) 50%,
+      color-mix(in srgb, var(--t-canvas) 58%, transparent) 100%
+    );
+  }
+
+  html[data-has-bg="true"] .lazer-set-card {
+    background: color-mix(in srgb, var(--t-surface-2) 80%, transparent);
+  }
+
+  html[data-has-bg="true"] .lazer-set-card[data-active="true"] {
+    background: color-mix(in srgb, var(--t-surface-2) 90%, transparent);
+  }
+
+  html[data-has-bg="true"] .lazer-diff-row {
+    background: color-mix(in srgb, var(--t-surface-1) 80%, transparent);
+  }
+
+  html[data-has-bg="true"] .lazer-diff-row[data-active="true"] {
+    background: color-mix(in srgb, var(--t-surface-2) 92%, transparent);
   }
 
   /* ------------------------------------------------------------------

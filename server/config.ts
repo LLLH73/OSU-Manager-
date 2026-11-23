@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { AppConfig, SongViewMode } from './types.js';
+import { AppConfig, SongViewMode, ThemeId } from './types.js';
 
 export const DATA_DIR = process.env.OSU_DL_DATA_DIR
   ? path.resolve(process.env.OSU_DL_DATA_DIR)
@@ -12,7 +12,34 @@ export const PREVIEW_OSZ_CACHE_DIR = path.join(CACHE_DIR, 'osz');
 export const LOGS_DIR = path.join(DATA_DIR, 'logs');
 
 function normalizeViewMode(val: unknown): SongViewMode {
-  return val === 'grid' || val === 'list' || val === 'lazer' ? val : 'grid';
+  return val === 'grid' || val === 'list' || val === 'lazer' ? val : 'lazer';
+}
+
+const VALID_THEME_IDS: ReadonlySet<string> = new Set([
+  'dark',
+  'stone',
+  'midnight',
+  'forest',
+  'light',
+  'paper',
+  'latte',
+  'sakura',
+]);
+
+function normalizeTheme(val: unknown): ThemeId {
+  return typeof val === 'string' && VALID_THEME_IDS.has(val) ? (val as ThemeId) : 'dark';
+}
+
+function clampBgOpacity(val: unknown, fallback = 0.22): number {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(0.75, Math.max(0.04, Math.round(n * 100) / 100));
+}
+
+function normalizeAccentColor(val: unknown): string {
+  if (typeof val !== 'string') return '';
+  const trimmed = val.trim();
+  return /^#[0-9a-fA-F]{6}$/.test(trimmed) ? trimmed.toLowerCase() : '';
 }
 
 function clampOverlayOpacity(val: unknown, fallback = 0.94): number {
@@ -61,12 +88,17 @@ export function getDefaultConfig(): AppConfig {
     stableInstallMode: 'extract',
     officialCookie: '',
     theme: 'dark',
-    viewMode: 'grid',
+    viewMode: 'lazer',
     autoLoadWhenStableRunning: true,
     overlayHotkey: 'Alt+Shift+O',
     overlayOpacity: 0.94,
     previewSkinId: '',
     previewScrollSpeed: 28,
+    customBgImage: '',
+    customBgOpacity: 0.22,
+    dynamicBgFromSong: true,
+    dynamicThemeFromBg: true,
+    accentColor: '',
   };
 }
 
@@ -105,6 +137,7 @@ export function loadConfig(): AppConfig {
       ...parsed,
       proxyPort: Number(parsed.proxyPort ?? defaults.proxyPort) || 6174,
       concurrency: Math.min(6, Math.max(1, Number(parsed.concurrency ?? defaults.concurrency) || 3)),
+      theme: normalizeTheme(parsed.theme),
       viewMode: normalizeViewMode(parsed.viewMode),
       autoLoadWhenStableRunning: parsed.autoLoadWhenStableRunning ?? defaults.autoLoadWhenStableRunning,
       overlayHotkey:
@@ -115,6 +148,18 @@ export function loadConfig(): AppConfig {
       previewSkinId:
         typeof parsed.previewSkinId === 'string' ? parsed.previewSkinId : defaults.previewSkinId,
       previewScrollSpeed: clampScrollSpeed(parsed.previewScrollSpeed, defaults.previewScrollSpeed),
+      customBgImage:
+        typeof parsed.customBgImage === 'string' ? parsed.customBgImage : defaults.customBgImage,
+      customBgOpacity: clampBgOpacity(parsed.customBgOpacity, defaults.customBgOpacity),
+      dynamicBgFromSong:
+        typeof parsed.dynamicBgFromSong === 'boolean'
+          ? parsed.dynamicBgFromSong
+          : defaults.dynamicBgFromSong,
+      dynamicThemeFromBg:
+        typeof parsed.dynamicThemeFromBg === 'boolean'
+          ? parsed.dynamicThemeFromBg
+          : defaults.dynamicThemeFromBg,
+      accentColor: normalizeAccentColor(parsed.accentColor),
     };
   } catch {
     cachedConfig = defaults;
@@ -137,6 +182,7 @@ export function saveConfig(patch: Partial<AppConfig>): AppConfig {
     ...patch,
     proxyPort: Math.min(65535, Math.max(1, Number(patch.proxyPort ?? current.proxyPort) || 6174)),
     concurrency: Math.min(6, Math.max(1, Number(patch.concurrency ?? current.concurrency) || 3)),
+    theme: normalizeTheme(patch.theme ?? current.theme),
     viewMode: normalizeViewMode(patch.viewMode ?? current.viewMode),
     overlayHotkey:
       typeof (patch.overlayHotkey ?? current.overlayHotkey) === 'string' &&
@@ -145,6 +191,14 @@ export function saveConfig(patch: Partial<AppConfig>): AppConfig {
         : 'Alt+Shift+O',
     overlayOpacity: clampOverlayOpacity(patch.overlayOpacity, current.overlayOpacity),
     previewScrollSpeed: clampScrollSpeed(patch.previewScrollSpeed, current.previewScrollSpeed),
+    customBgImage:
+      typeof (patch.customBgImage ?? current.customBgImage) === 'string'
+        ? (patch.customBgImage ?? current.customBgImage)
+        : '',
+    customBgOpacity: clampBgOpacity(patch.customBgOpacity, current.customBgOpacity),
+    dynamicBgFromSong: Boolean(patch.dynamicBgFromSong ?? current.dynamicBgFromSong),
+    dynamicThemeFromBg: Boolean(patch.dynamicThemeFromBg ?? current.dynamicThemeFromBg),
+    accentColor: normalizeAccentColor(patch.accentColor ?? current.accentColor),
   };
   ensureDirs(next);
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(next, null, 2), 'utf8');

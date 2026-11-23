@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import {
   cancelDownloadTask,
+  clearCustomBackground,
   clearFinishedDownloadTasks,
   clearLazerPending,
   enqueueBatchDownloads,
@@ -29,6 +30,7 @@ import {
   runNetworkBenchmark,
   searchBeatmapsets,
   updateConfig,
+  uploadCustomBackground,
 } from './api';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
 import { BeatmapCard } from './components/BeatmapCard';
@@ -42,7 +44,19 @@ import { ManiaPreviewModal } from './components/ManiaPreviewModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SideRail } from './components/SideRail';
 import { TitleBar } from './components/TitleBar';
-import { DEFAULT_FILTERS, THEME_OPTIONS, VIEW_MODE_OPTIONS, WorkflowPreset } from './constants';
+import {
+  DEFAULT_FILTERS,
+  THEME_OPTIONS,
+  VIEW_MODE_OPTIONS,
+  WorkflowPreset,
+  isDarkTheme,
+  isValidTheme,
+} from './constants';
+import {
+  applyAccentVariables,
+  clearAccentVariables,
+  extractDominantColor,
+} from './utils/themeColor';
 import {
   AppConfig,
   DownloadTarget,
@@ -61,7 +75,7 @@ import {
 function readInitialTheme(): ThemeId {
   try {
     const stored = localStorage.getItem('osu4k-theme');
-    if (stored === 'dark' || stored === 'light' || stored === 'latte') return stored;
+    if (isValidTheme(stored)) return stored;
   } catch {
     // Ignore storage error
   }
@@ -75,7 +89,18 @@ function readInitialViewMode(): SongViewMode {
   } catch {
     // Ignore storage error
   }
-  return 'grid';
+  return 'lazer';
+}
+
+function readBoolStorage(key: string, fallback = false): boolean {
+  try {
+    const stored = localStorage.getItem(key);
+    if (stored === 'true') return true;
+    if (stored === 'false') return false;
+  } catch {
+    // Ignore storage error
+  }
+  return fallback;
 }
 
 const VIEW_MODE_ICONS: Record<SongViewMode, typeof LayoutGrid> = {
@@ -110,6 +135,18 @@ export function App() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const [navOpen, setNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() =>
+    readBoolStorage('osu4k-sidebar-collapsed', false),
+  );
+  const [filterCollapsed, setFilterCollapsed] = useState<boolean>(() =>
+    readBoolStorage('osu4k-filter-collapsed', false),
+  );
+  const [activeLazerSet, setActiveLazerSet] = useState<NormalizedBeatmapset | null>(null);
+  const [appearancePreview, setAppearancePreview] = useState<Partial<AppConfig> | null>(null);
+  const [extractedColor, setExtractedColor] = useState<string | null>(null);
+  const [globalBgLayers, setGlobalBgLayers] = useState<[string | null, string | null]>([null, null]);
+  const [frontGlobalBgSlot, setFrontGlobalBgSlot] = useState<0 | 1>(0);
+  const loadedGlobalBgUrlsRef = useRef<Set<string>>(new Set());
   const [detailState, setDetailState] = useState<{
     set: NormalizedBeatmapset;
     diffId?: number | null;
@@ -207,6 +244,110 @@ export function App() {
     }
   }, []);
 
+  const toggleSidebarCollapsed = useCallback(() => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('osu4k-sidebar-collapsed', String(next));
+      } catch {
+        // Ignore storage error
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleFilterCollapsed = useCallback(() => {
+    setFilterCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('osu4k-filter-collapsed', String(next));
+      } catch {
+        // Ignore storage error
+      }
+      return next;
+    });
+  }, []);
+
+  const effectiveConfig = useMemo(
+    () => ({
+      customBgImage: config?.customBgImage ?? '',
+      customBgOpacity: config?.customBgOpacity ?? 0.22,
+      dynamicBgFromSong: config?.dynamicBgFromSong ?? true,
+      dynamicThemeFromBg: config?.dynamicThemeFromBg ?? true,
+      accentColor: config?.accentColor ?? '',
+      ...appearancePreview,
+    }),
+    [config, appearancePreview],
+  );
+
+  const effectiveBgUrl = useMemo(() => {
+    if (viewMode === 'lazer' && effectiveConfig.dynamicBgFromSong && activeLazerSet?.coverUrl) {
+      return activeLazerSet.coverUrl;
+    }
+    return effectiveConfig.customBgImage || null;
+  }, [viewMode, effectiveConfig.dynamicBgFromSong, effectiveConfig.customBgImage, activeLazerSet]);
+
+  useEffect(() => {
+    document.documentElement.dataset.hasBg = effectiveBgUrl ? 'true' : 'false';
+  }, [effectiveBgUrl]);
+
+  useEffect(() => {
+    if (!effectiveBgUrl) {
+      setGlobalBgLayers([null, null]);
+      return;
+    }
+    if (globalBgLayers[frontGlobalBgSlot] === effectiveBgUrl) return;
+    const backSlot: 0 | 1 = frontGlobalBgSlot === 0 ? 1 : 0;
+    if (globalBgLayers[backSlot] === effectiveBgUrl) {
+      if (loadedGlobalBgUrlsRef.current.has(effectiveBgUrl)) {
+        setFrontGlobalBgSlot(backSlot);
+      }
+      return;
+    }
+    setGlobalBgLayers((prev) => {
+      const next: [string | null, string | null] = [...prev];
+      next[backSlot] = effectiveBgUrl;
+      return next;
+    });
+  }, [effectiveBgUrl, frontGlobalBgSlot, globalBgLayers]);
+
+  useEffect(() => {
+    if (!effectiveConfig.dynamicThemeFromBg || !effectiveBgUrl) {
+      setExtractedColor(null);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void extractDominantColor(effectiveBgUrl).then((hex) => {
+        if (!cancelled) setExtractedColor(hex);
+      });
+    }, 80);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [effectiveConfig.dynamicThemeFromBg, effectiveBgUrl]);
+
+  const activeAccentHex = useMemo(() => {
+    if (effectiveConfig.dynamicThemeFromBg && effectiveBgUrl && extractedColor) {
+      return extractedColor;
+    }
+    return effectiveConfig.accentColor || null;
+  }, [
+    effectiveConfig.dynamicThemeFromBg,
+    effectiveBgUrl,
+    extractedColor,
+    effectiveConfig.accentColor,
+  ]);
+
+  useEffect(() => {
+    if (activeAccentHex) {
+      applyAccentVariables(activeAccentHex, isDarkTheme(theme));
+    } else {
+      clearAccentVariables();
+    }
+  }, [activeAccentHex, theme]);
+
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
     const meta = THEME_OPTIONS.find((t) => t.id === theme);
@@ -270,7 +411,7 @@ export function App() {
         setConfig(cfg);
         setTarget(cfg.defaultTarget);
         setVariant(cfg.defaultVariant);
-        if (cfg.theme && (cfg.theme === 'dark' || cfg.theme === 'light' || cfg.theme === 'latte')) {
+        if (isValidTheme(cfg.theme)) {
           let hasLocal = false;
           try {
             hasLocal = Boolean(localStorage.getItem('osu4k-theme'));
@@ -357,7 +498,10 @@ export function App() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (settingsOpen) setSettingsOpen(false);
+      if (settingsOpen) {
+        setAppearancePreview(null);
+        setSettingsOpen(false);
+      }
       else if (librarySyncOpen) setLibrarySyncOpen(false);
       else if (previewState) setPreviewState(null);
       else if (detailState) setDetailState(null);
@@ -609,42 +753,114 @@ export function App() {
     }
   };
 
+  const handlePreviewAppearance = useCallback((patch: Partial<AppConfig> | null) => {
+    if (!patch) {
+      setAppearancePreview(null);
+    } else {
+      setAppearancePreview((prev) => ({ ...(prev ?? {}), ...patch }));
+    }
+  }, []);
+
+  const handleUploadBackground = useCallback(
+    async (payload: { filePath?: string; dataUrl?: string; url?: string }) => {
+      const updated = await uploadCustomBackground(payload);
+      setConfig(updated);
+      return updated;
+    },
+    [],
+  );
+
+  const handleClearBackground = useCallback(async () => {
+    const updated = await clearCustomBackground();
+    setConfig(updated);
+    return updated;
+  }, []);
+
   return (
-    <div className="app-canvas flex h-screen flex-col overflow-hidden text-ink">
+    <div className="app-canvas relative isolate flex h-screen flex-col overflow-hidden text-ink">
+      {/* Whole-Desktop Double-Buffered Background Layer */}
+      {effectiveBgUrl && (
+        <div
+          className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none"
+          aria-hidden="true"
+        >
+          {([0, 1] as const).map((slotIdx) => {
+            const url = globalBgLayers[slotIdx];
+            if (!url) return null;
+            return (
+              <img
+                key={slotIdx}
+                src={url}
+                alt=""
+                onLoad={() => {
+                  loadedGlobalBgUrlsRef.current.add(url);
+                  if (url === effectiveBgUrl && frontGlobalBgSlot !== slotIdx) {
+                    setFrontGlobalBgSlot(slotIdx);
+                  }
+                }}
+                style={{
+                  opacity: frontGlobalBgSlot === slotIdx ? effectiveConfig.customBgOpacity : 0,
+                }}
+                className="absolute inset-0 h-full w-full scale-[1.03] object-cover blur-[6px] transition-opacity duration-500 ease-out"
+              />
+            );
+          })}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                'radial-gradient(ellipse at 50% 35%, color-mix(in srgb, var(--t-canvas) 18%, transparent), color-mix(in srgb, var(--t-canvas) 62%, transparent))',
+            }}
+          />
+        </div>
+      )}
+
       <TitleBar
         network={network}
         theme={theme}
         overlayOpen={overlayOpen}
         overlayHotkey={config?.overlayHotkey}
+        sidebarCollapsed={sidebarCollapsed}
+        activeAccentHex={activeAccentHex}
         onToggleOverlay={() => void handleToggleOverlay()}
         onChangeTheme={(t) => applyTheme(t, true)}
         onBenchmark={handleBenchmark}
         onToggleNav={() => setNavOpen((v) => !v)}
+        onToggleSidebar={toggleSidebarCollapsed}
       />
 
-      <div className="relative flex min-h-0 flex-1 overflow-hidden">
-        {/* Desktop Left Navigation Rail */}
-        <aside className="hidden w-[264px] shrink-0 border-r border-hairline bg-surface-0/85 backdrop-blur-xl lg:block">
-          <SideRail
-            target={target}
-            variant={variant}
-            activePresetId={activePresetId}
-            library={library}
-            downloads={downloads}
-            onChangeTarget={setTarget}
-            onChangeVariant={setVariant}
-            onSelectPreset={handleSelectPreset}
-            onOpenLibrarySync={() => setLibrarySyncOpen(true)}
-            onOpenDownloads={() => setDownloadsOpen(true)}
-            onOpenSettings={() => setSettingsOpen(true)}
-          />
+      <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
+        {/* Desktop Collapsible Impeccable Navigation Rail */}
+        <aside
+          className={`hidden shrink-0 overflow-hidden bg-surface-0/76 backdrop-blur-xl transition-[width,opacity] duration-250 ease-out lg:block ${
+            sidebarCollapsed
+              ? 'pointer-events-none w-0 border-r-0 opacity-0'
+              : 'w-[232px] border-r border-hairline opacity-100'
+          }`}
+        >
+          <div className="h-full w-[232px]">
+            <SideRail
+              target={target}
+              variant={variant}
+              activePresetId={activePresetId}
+              library={library}
+              downloads={downloads}
+              onChangeTarget={setTarget}
+              onChangeVariant={setVariant}
+              onSelectPreset={handleSelectPreset}
+              onOpenLibrarySync={() => setLibrarySyncOpen(true)}
+              onOpenDownloads={() => setDownloadsOpen(true)}
+              onOpenSettings={() => setSettingsOpen(true)}
+              onCollapse={toggleSidebarCollapsed}
+            />
+          </div>
         </aside>
 
         {/* Narrow Viewport Drawer Rail */}
         {navOpen && (
           <div className="modal-backdrop flex lg:hidden" onClick={() => setNavOpen(false)}>
             <aside
-              className="animate-rail-in h-full w-[264px] border-r border-hairline-strong bg-surface-0 shadow-2xl"
+              className="animate-rail-in h-full w-[232px] border-r border-hairline-strong bg-surface-0 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <SideRail
@@ -682,6 +898,8 @@ export function App() {
             <FilterPanel
               filters={filters}
               loading={loading}
+              collapsed={filterCollapsed}
+              onToggleCollapsed={toggleFilterCollapsed}
               onChange={handleFilterChange}
               onSearch={(override) => void runSearch(override || filters, false)}
               onReset={handleResetFilters}
@@ -894,6 +1112,9 @@ export function App() {
                       loadingMore={loadingMore}
                       searchError={Boolean(searchError)}
                       hasAudioDock={Boolean(playingSet)}
+                      hasGlobalBg={Boolean(effectiveBgUrl)}
+                      filterCollapsed={filterCollapsed}
+                      onActiveBeatmapsetChange={setActiveLazerSet}
                       onToggleSelect={(id) => {
                         setSelectedIds((prev) => {
                           const next = new Set(prev);
@@ -962,6 +1183,7 @@ export function App() {
         beatmapset={playingSet}
         playing={isPlaying}
         activeTarget={target}
+        sidebarCollapsed={sidebarCollapsed}
         onTogglePlay={() => setIsPlaying((p) => !p)}
         onStop={() => {
           setIsPlaying(false);
@@ -1039,7 +1261,11 @@ export function App() {
         config={config}
         network={network}
         theme={theme}
+        activeExtractedColor={extractedColor}
         onChangeTheme={(t) => applyTheme(t, true)}
+        onPreviewAppearance={handlePreviewAppearance}
+        onUploadBackground={handleUploadBackground}
+        onClearBackground={handleClearBackground}
         onClose={() => setSettingsOpen(false)}
         onSave={handleSaveConfig}
         onBenchmark={handleBenchmark}
