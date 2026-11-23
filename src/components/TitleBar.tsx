@@ -1,11 +1,14 @@
 import { useEffect, useId, useState } from 'react';
-import { Gauge, Loader2, Menu, Minus, Square, X } from 'lucide-react';
+import { Gauge, Loader2, Menu, Minus, PictureInPicture2, Square, X } from 'lucide-react';
 import { THEME_OPTIONS } from '../constants';
 import { NetworkStatus, ThemeId } from '../types';
 
 interface TitleBarProps {
   network: NetworkStatus | null;
   theme: ThemeId;
+  overlayOpen?: boolean;
+  overlayHotkey?: string;
+  onToggleOverlay: () => void;
   onChangeTheme: (t: ThemeId) => void;
   onBenchmark: () => void;
   onToggleNav: () => void;
@@ -43,6 +46,9 @@ export function LaneEmblem({ className = 'h-[22px] w-[22px]' }: { className?: st
 export function TitleBar({
   network,
   theme,
+  overlayOpen = false,
+  overlayHotkey = 'Alt+Shift+O',
+  onToggleOverlay,
   onChangeTheme,
   onBenchmark,
   onToggleNav,
@@ -103,8 +109,22 @@ export function TitleBar({
       {/* Draggable spacer */}
       <div className="h-full flex-1" />
 
-      {/* Right: theme switcher + status pills */}
+      {/* Right: overlay button + theme switcher + status pills */}
       <div className="flex h-full items-center gap-2 pr-2">
+        <button
+          type="button"
+          onClick={onToggleOverlay}
+          title={`切换游戏内磨砂浮窗模式 (全局热键 ${overlayHotkey})`}
+          className={`app-no-drag flex h-[25px] items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors ${
+            overlayOpen
+              ? 'border-osu/60 bg-osu/18 text-osu-soft shadow-[0_0_0_1px_color-mix(in_srgb,var(--t-osu)_25%,transparent)]'
+              : 'border-hairline bg-tint text-ink-2 hover:border-hairline-strong hover:bg-tint-hover hover:text-ink'
+          }`}
+        >
+          <PictureInPicture2 className="h-3.5 w-3.5 text-osu" />
+          <span className="hidden sm:inline">浮窗模式</span>
+        </button>
+
         {/* Minimalist 3-theme switcher */}
         <div
           className="app-no-drag flex h-[25px] items-center gap-1 rounded-full border border-hairline bg-tint px-1.5"

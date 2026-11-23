@@ -2,14 +2,17 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
+import { PREVIEW_OSZ_CACHE_DIR, TMP_DIR } from './config.js';
 import {
   detectRunningClients,
+  getLibraryStatus,
   libraryEvents,
   markInstalledInMemory,
+  rescanLibrary,
   scanLazerPendingFiles,
   scanStableLibrary,
-  getLibraryStatus,
 } from './library.js';
+import { logWarn } from './logger.js';
 import { AppConfig } from './types.js';
 
 export function sanitizeWindowsName(input: string, maxLen = 110): string {
@@ -68,18 +71,55 @@ export async function installToStable(
   oszPath: string,
   meta: InstallMeta,
   cfg: AppConfig,
-): Promise<{ installedPath: string; folderName: string }> {
+): Promise<{ installedPath: string; folderName: string; triggeredIpc: boolean }> {
   const songsDir = path.join(cfg.stablePath, 'Songs');
   fs.mkdirSync(songsDir, { recursive: true });
 
   const baseName = sanitizeWindowsName(`${meta.beatmapsetId} ${meta.artist} - ${meta.title}`);
+
+  const { stableRunning } = await detectRunningClients(true);
+  if (stableRunning && cfg.autoLoadWhenStableRunning) {
+    const stableExe = path.join(cfg.stablePath, 'osu!.exe');
+    if (fs.existsSync(stableExe)) {
+      fs.mkdirSync(TMP_DIR, { recursive: true });
+      const stagingPath = path.join(TMP_DIR, `stable-live-${meta.beatmapsetId}-${Date.now()}.osz`);
+      try {
+        fs.copyFileSync(oszPath, stagingPath);
+        const child = spawn(stableExe, [stagingPath], {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: false,
+        });
+        child.unref();
+        markInstalledInMemory(meta.beatmapsetId, 'stable', baseName);
+        setTimeout(() => {
+          void rescanLibrary(false);
+        }, 2500);
+        return {
+          installedPath: path.join(songsDir, baseName),
+          folderName: baseName,
+          triggeredIpc: true,
+        };
+      } catch (err) {
+        logWarn('installer', 'Failed to IPC load .osz into running osu!stable, falling back to disk install', {
+          setId: meta.beatmapsetId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        try {
+          if (fs.existsSync(stagingPath)) fs.unlinkSync(stagingPath);
+        } catch {
+          // Ignore cleanup
+        }
+      }
+    }
+  }
 
   if (cfg.stableInstallMode === 'drop_osz') {
     const oszName = `${baseName}.osz`;
     const dest = path.join(songsDir, oszName);
     fs.copyFileSync(oszPath, dest);
     markInstalledInMemory(meta.beatmapsetId, 'stable', oszName);
-    return { installedPath: dest, folderName: oszName };
+    return { installedPath: dest, folderName: oszName, triggeredIpc: false };
   }
 
   const targetDir = path.join(songsDir, baseName);
@@ -116,7 +156,7 @@ export async function installToStable(
   }
 
   markInstalledInMemory(meta.beatmapsetId, 'stable', baseName);
-  return { installedPath: targetDir, folderName: baseName };
+  return { installedPath: targetDir, folderName: baseName, triggeredIpc: false };
 }
 
 export async function installToLazer(
@@ -304,4 +344,192 @@ export function openFolderInExplorer(dirPath: string): void {
     stdio: 'ignore',
   });
   child.unref();
+}
+
+function findMatchingOszInDir(dirPath: string, setId: number): string | null {
+  if (!dirPath || !fs.existsSync(dirPath)) return null;
+  try {
+    const re = new RegExp(`^${setId}\\b.*\\.osz$`, 'i');
+    for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+      if (entry.isFile() && re.test(entry.name)) {
+        return path.join(dirPath, entry.name);
+      }
+    }
+  } catch {
+    // Ignore directory read error
+  }
+  return null;
+}
+
+function locateOrPackOszForGame(
+  setId: number,
+  cfg: AppConfig,
+): { oszPath: string; isTemp: boolean; baseName: string } | null {
+  const cachedOsz = path.join(PREVIEW_OSZ_CACHE_DIR, `${setId}.osz`);
+  if (fs.existsSync(cachedOsz)) {
+    return { oszPath: cachedOsz, isTemp: false, baseName: `${setId}` };
+  }
+
+  const lazerPending = findMatchingOszInDir(cfg.lazerImportDir, setId);
+  if (lazerPending) {
+    return {
+      oszPath: lazerPending,
+      isTemp: false,
+      baseName: path.basename(lazerPending, '.osz'),
+    };
+  }
+
+  const songsDir = path.join(cfg.stablePath, 'Songs');
+  const stableOsz = findMatchingOszInDir(songsDir, setId);
+  if (stableOsz) {
+    return {
+      oszPath: stableOsz,
+      isTemp: false,
+      baseName: path.basename(stableOsz, '.osz'),
+    };
+  }
+
+  const stableMap = scanStableLibrary(cfg.stablePath);
+  const folderName = stableMap.get(setId);
+  if (folderName) {
+    const srcPath = path.join(songsDir, folderName);
+    if (fs.existsSync(srcPath)) {
+      if (fs.statSync(srcPath).isFile() && srcPath.toLowerCase().endsWith('.osz')) {
+        return { oszPath: srcPath, isTemp: false, baseName: path.basename(srcPath, '.osz') };
+      }
+      if (fs.statSync(srcPath).isDirectory()) {
+        fs.mkdirSync(TMP_DIR, { recursive: true });
+        const cleanName = sanitizeWindowsName(folderName);
+        const tmpOsz = path.join(TMP_DIR, `live-pack-${setId}-${Date.now()}.osz`);
+        const zip = new AdmZip();
+        addDirectoryToZip(zip, srcPath, srcPath);
+        zip.writeZip(tmpOsz);
+        return { oszPath: tmpOsz, isTemp: true, baseName: cleanName };
+      }
+    }
+  }
+
+  return null;
+}
+
+export async function loadBeatmapIntoRunningGame(
+  beatmapsetId: number,
+  requestedClient: 'auto' | 'lazer' | 'stable',
+  cfg: AppConfig,
+): Promise<{ ok: boolean; client: 'lazer' | 'stable' | null; message: string }> {
+  const { stableRunning, lazerRunning } = await detectRunningClients(true);
+
+  let targetClient: 'lazer' | 'stable' | null = null;
+  if (requestedClient === 'lazer') {
+    if (!lazerRunning) {
+      return { ok: false, client: null, message: '未检测到运行中的 osu!lazer' };
+    }
+    targetClient = 'lazer';
+  } else if (requestedClient === 'stable') {
+    if (!stableRunning) {
+      return { ok: false, client: null, message: '未检测到运行中的 osu!stable' };
+    }
+    targetClient = 'stable';
+  } else {
+    if (lazerRunning && stableRunning) {
+      targetClient = cfg.defaultTarget === 'stable' ? 'stable' : 'lazer';
+    } else if (lazerRunning) {
+      targetClient = 'lazer';
+    } else if (stableRunning) {
+      targetClient = 'stable';
+    }
+  }
+
+  if (!targetClient) {
+    return {
+      ok: false,
+      client: null,
+      message: '未检测到正在运行的 osu!lazer 或 osu!stable 客户端',
+    };
+  }
+
+  const located = locateOrPackOszForGame(beatmapsetId, cfg);
+  if (!located) {
+    return {
+      ok: false,
+      client: targetClient,
+      message: `未找到谱面 #${beatmapsetId} 的本地 .osz 文件或 Songs 目录，请先下载`,
+    };
+  }
+
+  if (targetClient === 'lazer') {
+    if (!cfg.lazerExePath || !fs.existsSync(cfg.lazerExePath)) {
+      if (located.isTemp && fs.existsSync(located.oszPath)) fs.unlinkSync(located.oszPath);
+      return {
+        ok: false,
+        client: 'lazer',
+        message: `未找到 osu!lazer 可执行文件: ${cfg.lazerExePath}`,
+      };
+    }
+
+    fs.mkdirSync(cfg.lazerImportDir, { recursive: true });
+    let importPath = located.oszPath;
+    const resolvedImportDir = path.resolve(cfg.lazerImportDir);
+    if (!path.resolve(located.oszPath).startsWith(resolvedImportDir + path.sep)) {
+      const destName = `${sanitizeWindowsName(located.baseName)}.osz`;
+      importPath = path.join(cfg.lazerImportDir, destName);
+      fs.copyFileSync(located.oszPath, importPath);
+      if (located.isTemp && fs.existsSync(located.oszPath)) {
+        try {
+          fs.unlinkSync(located.oszPath);
+        } catch {
+          // Ignore cleanup
+        }
+      }
+    }
+
+    const child = spawn(cfg.lazerExePath, [importPath], {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    child.unref();
+    markInstalledInMemory(beatmapsetId, 'lazer');
+    setTimeout(() => {
+      void rescanLibrary(false);
+    }, 2500);
+    return {
+      ok: true,
+      client: 'lazer',
+      message: `已向运行中的 osu!lazer 发送导入加载请求 (#${beatmapsetId})`,
+    };
+  }
+
+  const stableExe = path.join(cfg.stablePath, 'osu!.exe');
+  if (!fs.existsSync(stableExe)) {
+    if (located.isTemp && fs.existsSync(located.oszPath)) fs.unlinkSync(located.oszPath);
+    return {
+      ok: false,
+      client: 'stable',
+      message: `未找到 osu!stable 可执行文件: ${stableExe}`,
+    };
+  }
+
+  let stagingPath = located.oszPath;
+  if (!located.isTemp) {
+    fs.mkdirSync(TMP_DIR, { recursive: true });
+    stagingPath = path.join(TMP_DIR, `stable-live-${beatmapsetId}-${Date.now()}.osz`);
+    fs.copyFileSync(located.oszPath, stagingPath);
+  }
+
+  const child = spawn(stableExe, [stagingPath], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: false,
+  });
+  child.unref();
+  markInstalledInMemory(beatmapsetId, 'stable', located.baseName);
+  setTimeout(() => {
+    void rescanLibrary(false);
+  }, 2500);
+  return {
+    ok: true,
+    client: 'stable',
+    message: `已向运行中的 osu!stable 发送导入加载请求 (#${beatmapsetId})`,
+  };
 }

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
-import { getConfig, TMP_DIR } from './config.js';
+import { getConfig, PREVIEW_OSZ_CACHE_DIR, TMP_DIR } from './config.js';
 import { installToLazer, installToStable, verifyOszFile } from './installer.js';
 import { getLibraryStatus, libraryEvents } from './library.js';
 import { logError, logInfo, logWarn } from './logger.js';
@@ -46,6 +46,54 @@ function updateTask(id: string, patch: Partial<DownloadTask>): DownloadTask | nu
   Object.assign(t, patch, { updatedAt: new Date().toISOString() });
   emitTasks();
   return t;
+}
+
+function prunePreviewOszCache(): void {
+  try {
+    if (!fs.existsSync(PREVIEW_OSZ_CACHE_DIR)) return;
+    const entries = fs
+      .readdirSync(PREVIEW_OSZ_CACHE_DIR, { withFileTypes: true })
+      .filter((e) => e.isFile() && e.name.toLowerCase().endsWith('.osz'))
+      .map((e) => {
+        const fullPath = path.join(PREVIEW_OSZ_CACHE_DIR, e.name);
+        const st = fs.statSync(fullPath);
+        return { fullPath, size: st.size, mtime: st.mtimeMs };
+      })
+      .sort((a, b) => a.mtime - b.mtime);
+
+    let totalBytes = entries.reduce((sum, e) => sum + e.size, 0);
+    let count = entries.length;
+    const maxCount = 40;
+    const maxBytes = 500 * 1024 * 1024;
+
+    for (const item of entries) {
+      if (count <= maxCount && totalBytes <= maxBytes) break;
+      try {
+        fs.unlinkSync(item.fullPath);
+        count -= 1;
+        totalBytes -= item.size;
+      } catch {
+        // Ignore locked cache file
+      }
+    }
+  } catch {
+    // Ignore preview cache cleanup failure
+  }
+}
+
+function cacheOszForPreview(partPath: string, beatmapsetId: number): void {
+  try {
+    const st = fs.statSync(partPath);
+    if (st.size > 120 * 1024 * 1024) return;
+    fs.mkdirSync(PREVIEW_OSZ_CACHE_DIR, { recursive: true });
+    const target = path.join(PREVIEW_OSZ_CACHE_DIR, `${beatmapsetId}.osz`);
+    const tmp = `${target}.part`;
+    fs.copyFileSync(partPath, tmp);
+    fs.renameSync(tmp, target);
+    setTimeout(prunePreviewOszCache, 50);
+  } catch {
+    // Non-fatal: preview cache is best-effort
+  }
 }
 
 async function downloadFromMirror(
@@ -207,6 +255,7 @@ async function processTask(taskId: string): Promise<void> {
         if (!check.valid) {
           throw new Error(check.reason || '.osz 校验失败');
         }
+        cacheOszForPreview(partPath, task.beatmapsetId);
         downloaded = true;
         break;
       } catch (err) {
@@ -245,31 +294,53 @@ async function processTask(taskId: string): Promise<void> {
     let stableResultPath: string | undefined;
     let lazerResultPath: string | undefined;
     let lazerQueuedOnly = false;
+    let stableTriggeredIpc = false;
+    let lazerTriggeredIpc = false;
 
     if (task.target === 'stable' || task.target === 'both') {
       const sRes = await installToStable(partPath, meta, cfg);
       stableResultPath = sRes.installedPath;
+      stableTriggeredIpc = sRes.triggeredIpc;
     }
 
     if (task.target === 'lazer' || task.target === 'both') {
       const lRes = await installToLazer(partPath, meta, cfg);
       lazerResultPath = lRes.oszDestPath;
       lazerQueuedOnly = !lRes.triggeredIpc;
+      lazerTriggeredIpc = lRes.triggeredIpc;
     }
+
+    const autoLoadedInGame = stableTriggeredIpc || lazerTriggeredIpc;
+    const loadTargetClient: DownloadTask['loadTargetClient'] =
+      stableTriggeredIpc && lazerTriggeredIpc
+        ? 'both'
+        : stableTriggeredIpc
+          ? 'stable'
+          : lazerTriggeredIpc
+            ? 'lazer'
+            : null;
 
     const finalStatus =
       task.target === 'lazer' && lazerQueuedOnly ? 'queued_lazer' : 'completed';
 
     const finalMsg =
       task.target === 'both'
-        ? lazerQueuedOnly
-          ? 'Stable 已解压安装；Lazer 已放入待导入队列（启动后可一键导入）'
-          : '已成功安装到 Stable 并直接导入运行中的 Lazer'
+        ? stableTriggeredIpc && lazerTriggeredIpc
+          ? '已自动导入并在运行中的 Stable 与 Lazer 加载'
+          : stableTriggeredIpc
+            ? lazerQueuedOnly
+              ? '已自动在运行中的 Stable 加载；Lazer 已放入待导入队列'
+              : '已在运行中的 Stable 加载，并直接导入运行中的 Lazer'
+            : lazerQueuedOnly
+              ? 'Stable 已解压安装；Lazer 已放入待导入队列（启动后可一键导入）'
+              : '已成功安装到 Stable 并直接导入运行中的 Lazer'
         : task.target === 'stable'
-          ? `${cfg.stableInstallMode === 'drop_osz' ? '已保存 .osz 到' : '已解压安装到'} ${path.join(cfg.stablePath, 'Songs')}`
+          ? stableTriggeredIpc
+            ? '已自动导入并在运行中的 osu!stable 加载'
+            : `${cfg.stableInstallMode === 'drop_osz' ? '已保存 .osz 到' : '已解压安装到'} ${path.join(cfg.stablePath, 'Songs')}`
           : lazerQueuedOnly
             ? '已保存至 Lazer 待导入队列（可随时一键批量导入）'
-            : '已直接导入正在运行的 osu!lazer';
+            : '已直接导入正在运行的 osu!lazer 并在游戏中加载';
 
     updateTask(taskId, {
       status: finalStatus,
@@ -277,6 +348,8 @@ async function processTask(taskId: string): Promise<void> {
       speedBps: 0,
       stableResultPath,
       lazerResultPath,
+      autoLoadedInGame,
+      loadTargetClient,
       message: finalMsg,
     });
 

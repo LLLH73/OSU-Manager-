@@ -12,10 +12,19 @@ import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource/jetbrains-mono/500.css';
 import '@fontsource/jetbrains-mono/600.css';
 import App from './App';
+import { OverlayApp } from './components/OverlayApp';
 import './index.css';
+
+const isOverlayMode =
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('mode') === 'overlay';
+
+if (isOverlayMode) {
+  document.documentElement.dataset.overlay = 'true';
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    {isOverlayMode ? <OverlayApp /> : <App />}
   </StrictMode>,
 );

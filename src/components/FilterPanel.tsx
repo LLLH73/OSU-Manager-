@@ -132,14 +132,14 @@ export function FilterPanel({
           />
         </div>
         <div className="flex items-center gap-2">
-          <button type="submit" disabled={loading} className="btn btn-primary h-[40px] rounded-[11px] px-5 text-[13px]">
+          <button type="submit" disabled={loading} className="btn btn-primary h-[40px] rounded-[8px] px-5 text-[13px]">
             <Search className="h-4 w-4" />
             <span>{loading ? '搜索中…' : '搜索谱面'}</span>
           </button>
           <button
             type="button"
             onClick={() => setAdvancedOpen((v) => !v)}
-            className={`btn h-[40px] rounded-[11px] px-3.5 ${
+            className={`btn h-[40px] rounded-[8px] px-3.5 ${
               advancedOpen || advancedCount > 0
                 ? 'border-osu/45 bg-osu/12 text-osu-soft hover:border-osu/60 hover:bg-osu/18'
                 : ''
@@ -158,7 +158,7 @@ export function FilterPanel({
             type="button"
             onClick={onReset}
             title="重置为 Mania 4K 默认筛选"
-            className="btn h-[40px] rounded-[11px] px-3 text-ink-2"
+            className="btn h-[40px] rounded-[8px] px-3 text-ink-2"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span className="hidden md:inline">重置</span>

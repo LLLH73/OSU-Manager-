@@ -10,7 +10,10 @@ interface SelectFieldProps {
   children: ReactNode;
 }
 
-function findSelectedLabel(children: ReactNode, target: string): string {
+function searchOptionLabel(
+  children: ReactNode,
+  target: string,
+): { matched: boolean; label: string; firstLabel: string } {
   let firstLabel = '';
   for (const child of Children.toArray(children)) {
     if (!isValidElement<{ value?: string | number; children?: ReactNode }>(child)) continue;
@@ -23,13 +26,14 @@ function findSelectedLabel(children: ReactNode, target: string): string {
               .map((c) => (typeof c === 'string' || typeof c === 'number' ? String(c) : ''))
               .join('');
       if (!firstLabel) firstLabel = labelText;
-      if (optVal === target) return labelText;
+      if (optVal === target) return { matched: true, label: labelText, firstLabel };
     } else if (child.props.children) {
-      const nested = findSelectedLabel(child.props.children, target);
-      if (nested) return nested;
+      const nested = searchOptionLabel(child.props.children, target);
+      if (!firstLabel && nested.firstLabel) firstLabel = nested.firstLabel;
+      if (nested.matched) return { matched: true, label: nested.label, firstLabel };
     }
   }
-  return firstLabel;
+  return { matched: false, label: '', firstLabel };
 }
 
 export function SelectField({
@@ -40,7 +44,8 @@ export function SelectField({
   title,
   children,
 }: SelectFieldProps) {
-  const selectedLabel = findSelectedLabel(children, String(value));
+  const res = searchOptionLabel(children, String(value));
+  const selectedLabel = res.matched ? res.label : res.firstLabel;
 
   return (
     <div

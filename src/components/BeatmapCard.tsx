@@ -6,6 +6,7 @@ import {
   Clock,
   Download,
   ExternalLink,
+  Eye,
   Film,
   Heart,
   ImageOff,
@@ -38,6 +39,7 @@ interface BeatmapCardProps {
   onTogglePlay: (set: NormalizedBeatmapset) => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
   onOpenDetail: (set: NormalizedBeatmapset, options?: { diffId?: number; focusPp?: boolean }) => void;
+  onPreviewBeatmap?: (set: NormalizedBeatmapset) => void;
 }
 
 export function BeatmapCard({
@@ -51,6 +53,7 @@ export function BeatmapCard({
   onTogglePlay,
   onDownload,
   onOpenDetail,
+  onPreviewBeatmap,
 }: BeatmapCardProps) {
   const [imgError, setImgError] = useState(false);
 
@@ -67,6 +70,9 @@ export function BeatmapCard({
 
   const isInstalled = beatmapset.localStatus.inStable || beatmapset.localStatus.inLazer;
   const inBoth = beatmapset.localStatus.inStable && beatmapset.localStatus.inLazer;
+  const canPreview =
+    (isInstalled || beatmapset.localStatus.inLazerPending) &&
+    beatmapset.beatmaps.some((b) => b.modeInt === 3);
 
   const isDownloading = Boolean(
     activeTask &&
@@ -181,7 +187,7 @@ export function BeatmapCard({
           title={isPlaying ? '暂停试听' : '试听音频预览'}
           className={`absolute bottom-2.5 left-2.5 flex h-[26px] items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold backdrop-blur-md transition-colors ${
             isPlaying
-              ? 'border-osu/80 bg-osu text-white shadow-[0_6px_18px_-6px_rgba(255,102,170,0.85)]'
+              ? 'border-osu bg-osu text-white'
               : 'border-white/25 bg-black/60 text-white hover:border-osu/70 hover:bg-osu/90'
           }`}
         >
@@ -345,6 +351,16 @@ export function BeatmapCard({
           >
             双
           </button>
+          {canPreview && onPreviewBeatmap && (
+            <button
+              type="button"
+              onClick={() => onPreviewBeatmap(beatmapset)}
+              title="预览 Mania 谱面下落"
+              className="btn btn-sm btn-icon border-osu/35 bg-osu/10 text-osu-soft hover:border-osu/60 hover:bg-osu/20"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </button>
+          )}
           <a
             href={beatmapset.officialUrl}
             target="_blank"

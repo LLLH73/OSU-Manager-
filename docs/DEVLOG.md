@@ -4,6 +4,81 @@
 
 ---
 
+## Session 5 — 浮窗 Acrylic 真模糊、极简扁平按钮与 Mania 16:9 皮肤/长条/光效精准还原 (`v1.3.1`)
+
+- **日期**：2026-11-23
+- **对话 ID**：`2ed8f60e-361b-469c-8008-4e0784a0cd84`
+- **版本**：`v1.3.0` → `v1.3.1`
+
+### 本次问题与根因
+1. **浮窗仅透明不模糊**：`electron/main.ts` 同时启用 `frame: false` 与 `win.setOpacity()`，在 Windows 11 下触发 `WS_EX_LAYERED` 导致 DWM `backgroundMaterial: 'acrylic'` 失效。
+2. **按钮立体渐变感偏重**：`src/index.css` 的 `.btn-primary` / `.btn-lazer` / `.btn-stable` / `.btn-both` 与卡片试听按钮存在线性渐变、顶部白色高光与彩色外阴影，需统一改为现代极简扁平化纯色风格。
+3. **部分无本地完整音频谱面预览锁死 10 秒**：`server/preview.ts` 在缺少本地完整音频时回落到官网 10s 试听片段，导致 `<audio>` `duration ≈ 10s` 强制拉回软件时钟。
+4. **音符越过判定线仍残留**：需要让普通单键与长条按时间判定立即从舞台消失，不再绘制越线残留。
+5. **球皮与雪皮（`[雪] Project CANTARELLA`）长条几何异常**：球皮未把长条身体精确截停在球头/尾圆心赤道处导致下部露出多余尾巴；CANTARELLA 省略 `NoteBodyStyle` 与 `NoteImage#T`，导致平铺与缺少头图镜像尾部失败。
+6. **画布比例、480p/768p 虚拟坐标、1.50x `stage-bottom` 比例与暂停冻结的 60 FPS 动图**：预览舞台需固定 **16:9**，按 `480p` 轨道逻辑 + `768p`/`1536p (@2x)` 纹理坐标系排版；经过 1.25x/1.40x/1.50x/1.60x 四档对比实测选定 `1.50x` 作为 `stage-bottom` 放大倍率（不拉伸最上层绘制，`36f-2` 210 帧 `2000×960 @2x` 人物占舞台高 ~94% 且双侧完整不裁边）；`stage-bottom` 强制以 `60 FPS` 播放并在暂停时使用独立 1x 播放时钟立即定格。
+7. **真实打击光效缺失**：需移除本地皮肤假渐变并按 skin.ini 与教程实现 `mania-stage-light`（`ColourLight#` 乘法着色）、`lightingN`（点击/松手触发）与 `lightingL`（长按期间循环）加法混合帧动画。
+
+### 关键改动
+1. **Windows 11 DWM Acrylic 真毛玻璃与动态底色透明度**（`electron/main.ts`, `electron/preload.cjs`, `src/electron.d.ts`, `src/components/OverlayApp.tsx`, `src/index.css`）：
+   - 浮窗改用 `titleBarStyle: 'hidden'` + `titleBarOverlay: false` + `autoHideMenuBar: true`（移除 `frame: false` 与全部 `win.setOpacity()` 调用），保留 `backgroundMaterial: 'acrylic'` 与 `roundedCorners: true`，并新增 `overlay:setNativeTheme` IPC 同步 `nativeTheme.themeSource`。
+   - `OverlayApp.tsx` 透明度滑块通过 CSS 变量 `--mac-tint-alpha`（范围 `0.16–0.84`）实时调节三主题 `.mac-glass-shell` 半透明蒙版深度，Electron 端铺满全窗无外边距冲突。
+2. **极简扁平化按钮统一改造**（`src/index.css`, `src/components/FilterPanel.tsx`, `src/components/BeatmapCard.tsx`, `src/components/BeatmapListRow.tsx`, `src/components/LazerSongSelect.tsx`, `src/components/OverlayApp.tsx`, `src/components/ManiaPreviewModal.tsx`）：
+   - 将 `.btn*` 改为纯色扁平填充（`var(--t-osu)` / `var(--t-lazer)` / `var(--t-stable)` / 纯混合色）、悬停仅轻微压暗纯色与边框变化，全部移除顶部 `inset` 高光、线性渐变与外扩霓虹阴影，并同步清理各组件试听/弹窗按钮上的渐变与重阴影。
+3. **无完整音频静音时间轴模式**（`server/preview.ts`, `server/types.ts`, `src/types.ts`, `src/components/ManiaPreviewModal.tsx`）：
+   - 新增 `ParsedManiaChart.hasFullAudio` 并在 `servePreviewAudio()` 移除 10s 官网片段回落；无完整音频时返回 `audioUrl: null` 且 `/audio/:index` 返回 `404`，前端自动以静音软件时钟完整播放全曲并在顶栏显示 `静音时间轴 · 16:9` 徽章。
+4. **皮肤解析器与 16:9 Mania 引擎精准还原**（`server/skins.ts`, `src/utils/maniaEngine.ts`, `src/components/ManiaPreviewModal.tsx`）：
+   - `server/skins.ts` 新增 `[General] AnimationFramerate`（缺省默认调整为 `60`，内置皮肤亦默认 `60 FPS`）、`[Mania] LightFramePerSecond`、`LightingNWidth`/`LightingLWidth`、`_blank` 置空、最多 600 帧的 `stageBottom`/`stageLight`/`lightingN`/`lightingL`/`noteBodies` 帧序列扫描，以及省略 `NoteBodyStyle` 时对非 PerCy 皮肤默认 `0 (Stretch)`、保留缺失 `NoteImage#T` 为 `null` 交由前端执行头图垂直翻转。
+   - `src/utils/maniaEngine.ts` 新增 `SkinAnimator`（针对 >32 帧大图如 `36f-2` 210 帧采用 240 帧 `ImageBitmap` 完整 LRU 流式缓存、`maxConcurrent = 8`、`960px` 宽下采样与 36 帧前瞻解码队列，`dispose()` 释放显存）；采用严格 16:9 画布（`ResizeObserver` 等比锁定）、`480p` 列宽与 `768p`/`1536p` 纹理缩放；单键过判定线与长条过尾瞬间消失；LN 身体截停在头尾中心赤道并支持 `flippedHead` 尾部回退（CANTARELLA）与 `<=2px` 隐藏尾（36f-2 PerCy）；真实 `stageLight` / `lightingN` / `lightingL` 渲染；`stageBottom` 以 `1.50x` 倍率按 `BottomCentre` 不拉伸绘制在最上层并强制 `60 FPS`（覆盖 `skin.ini` 30 FPS）。
+   - `ManiaPreviewModal.tsx` 新增仅在播放态以 `1x` 速率递增的独立动画时钟 `animElapsedMsRef`，暂停即瞬间定格当前帧且不受谱面倍速或进度拖拽影响。
+
+### 验证记录
+- **构建与打包**：`npm run typecheck` 与 `npm run electron:pack` 均退出码 `0` 通过，重新生成 `release\win-unpacked\osu-4k-downloader.exe`。
+- **后端实机断言**：
+  - `36f-2` 解析返回 `animationFramerate: 30`、`stageBottom.frames.length === 210`、`noteBodyStyle: 1`、`noteTails[0].height === 1`；builtin 默认返回 `60 FPS`；
+  - `-  ! [雪] Project CANTARELLA` 解析返回 `noteBodyStyle: 0`、`noteTails[0] === null`；
+  - `O2Jam UUltimate` 解析返回 `lightingN.frames.length === 12`、`lightingL.frames.length === 8`、`stageLight.width === 128`、`lightFramePerSecond: 24`；
+  - 无本地完整音频 Lazer 谱面 `#688459` (`Debug Dance`, `lazer_files`) 返回 `hasFullAudio: false, audioUrl: null`（`/audio/0` 返回 `404`）；Stable 本地谱面 `#1003217` 返回 `hasFullAudio: true`。
+- **浏览器真机验证**（`1440×900` 主界面/预览 + `460×700` 浮窗，控制台错误 `0`，网络 >=400 错误 `0`）：
+  - 确认搜索与下载按钮均为纯色扁平风格；
+  - `#688459` `[4K] VERMILION` 预览呈现严格 `16:9` 画布（实测 `944×530`，比值 `1.781`）、`静音时间轴 · 16:9` 徽章，从 `0:24.9` 播放 2.5 秒顺利推进至 `0:27.8`（突破 10s 限制）；
+  - 逐一截图核验：`36f-2` 在 `1.50x` 倍率下左右兔耳少女完整无裁切、60 FPS 动画播放中像素持续更新（500ms `canvasDiff=2631`）、暂停前（700ms 间隔 `canvasDiff=0`）与暂停后（600ms 间隔 `canvasDiff=0`）均完全定格；`CANTARELLA` 长条头尾胶囊衔接平整；`O2Jam UUltimate` 在击打长条/单键时呈现真实 `mania-stage-light` 列光效与 `lightingL`/`lightingN` 加法光束；
+  - 浮窗 `?mode=overlay` 调节透明度滑块至 `71%` 后 `--mac-tint-alpha` 动态由 `0.749` 更新至 `0.402`。
+- **Electron 打包产物冒烟与现场清理**：以 `OSU_DL_DATA_DIR=d:\Code\osumapdownloader\data` 启动 `osu-4k-downloader.exe` 验证 `/api/health` 返回 `200`，关闭后确认 `3721` 端口无 `Listen` 监听，`data/config.json` 与用户偏好完整保留。
+
+---
+
+## Session 4 — Mania 谱面预览器、PerCy 皮肤无损裁切与 macOS 磨砂游戏内浮窗 (`v1.3.0`)
+
+- **日期**：2026-11-23
+- **对话 ID**：`2ed8f60e-361b-469c-8008-4e0784a0cd84`
+- **版本**：`v1.2.0` → `v1.3.0`
+
+### 本次目标
+1. 新增本地下载后可立即演示的 **osu!mania 谱面预览器**：支持拖动进度条、暂停/继续、流速控制、谱面下落/上升、本地/内置皮肤选择、右侧可上下滑动缩略图。
+2. 新增 **macOS 风格毛玻璃浮窗模式**：支持在游戏运行时呼出、搜索下载并直接自动在运行中的 Stable / Lazer 客户端中导入加载。
+
+### 关键实现与技术方案
+1. **Mania `.osu` 解析与皮肤引擎**（`server/preview.ts`, `server/skins.ts`, `src/utils/maniaEngine.ts`, `src/components/ManiaPreviewModal.tsx`）：
+   - 对齐 osu!stable 480p 坐标与流速公式 `scrollTimeMs = (13720 / speed) * (hitPosition / 480)`，并精确还原 **Red Line BPM + Green Line SV 乘积**（保证 Dan 练习包等变速整合图流速一致）、`NoteBodyStyle` (`0` Stretch / `1` CascadeFromTop / `2` CascadeFromBottom)、`KeysUnderNotes`、`UpsideDown` 与 `WidthForNoteHeightScale`。
+   - **PerCy 超长 LN 纹理无损裁切**：针对本机激活皮肤 `36f-2` 等采用的 `150×38039` 索引色（`colorType=3` + `tRNS`）PerCy LN 贴图，在 `server/skins.ts` 实现零依赖 `cropPngTopRows(buf, 2048)`，按行切片解压后的前 2048 行扫描线并保留 `PLTE`/`tRNS`、重算 `IHDR` 与 `CRC32`（配合 LRU 缓存），完美保留 PerCy 尾端透明裁切间隔且避免浏览器 GPU 超限纹理黑块。
+   - **音频 Range 断点续播 & 本地缓存**：`server/preview.ts` 支持 Stable `Songs` 目录、`.osz` 压缩包（含 `data/cache/osz` 自动预览缓存）及 Lazer `files/` 哈希库，为磁盘文件与 ZIP 内音频均实现完整 `HTTP 206 Partial Content` 分片响应。
+   - **右侧上下滑动缩略图**：采用虚拟总高度滚动容器 + Sticky DPR `<canvas>` 视口裁剪绘制，支持 `1x/2x/4x` 缩放、自动跟随/手动脱离与「回到当前」、点击/拖拽任意位置跳转进度；底部进度条集成 120 柱 NPS 密度直方图。
+2. **macOS 毛玻璃浮窗与双端实时加载**（`electron/main.ts`, `electron/preload.cjs`, `src/components/OverlayApp.tsx`, `src/index.css`, `server/installer.ts`, `server/downloader.ts`）：
+   - 在 Electron 45 中创建独立置顶浮窗（`frame: false`, `titleBarStyle: 'hidden'`, `backgroundColor: '#00000000'`, `backgroundMaterial: 'acrylic'`, `roundedCorners: true`, `setAlwaysOnTop(true, 'screen-saver')`），配合全局热键（默认 `Alt+Shift+O`，可在设置中切换）与系统托盘菜单随时唤出。
+   - `OverlayApp.tsx` 采用适配三主题的 macOS Vibrancy 磨砂样式（`.mac-glass-shell` + 红黄绿红绿灯控制：隐藏 / 折叠 64px 极简搜索条 / 展开主窗口）、透明度实时调节、置顶切换、实时游戏进程状态指示、Spotlight 搜索下载与再次导入。
+   - `server/installer.ts` 扩展 `installToStable()` 与 `loadBeatmapIntoRunningGame()`：检测到 `osu!stable` 运行且开启选项时，将 `.osz` 复制到临时隔离文件后直接拉起 `osu!.exe [stagingPath]` 触发热导入加载（不破坏预览缓存原文件）；`osu!lazer` 保持单实例 IPC 导入。
+3. **分组下拉框修复**（`src/components/SelectField.tsx`）：
+   - 修复 `<optgroup>` 嵌套时首组未命中即提前返回 `firstLabel` 导致后续分组选项标签不刷新的 Bug，并在 `ManiaPreviewModal` 加上 `select-none` 防止拖拽进度条/缩略图误选文字。
+
+### 验证记录
+- `npm run typecheck` 与 `npm run electron:pack`（`v1.3.0`）均退出码 `0` 通过，更新 `release\win-unpacked\osu-4k-downloader.exe`。
+- **后端 API 实机验收**：`/api/skins` 返回 32 套皮肤（29 本地 + 3 内置，`activeStableSkin: '36f-2'`, `stableManiaSpeed: 31`）；`/api/skins/36f-2/asset?file=Mania%2FN%2FL.png` 返回合法 `150×2048` 索引色 PNG（`tRNS` 完整）；`/api/preview/beatmapset/1079991/chart/0` 正确解析 1355 notes；`/audio/0` 返回 `206 Partial Content`。
+- **浏览器实机验收**（主界面 `1440×900` + 浮窗 `/?mode=overlay` `460×700`）：控制台错误 `0`、HTTP >=400 错误 `0`；完整实测 `ManiaPreviewModal` 皮肤切换（`36f-2` / 内置圆珠 / `otya`）标签与渲染同步、播放/暂停、流速滑块、进度条拖拽、右侧缩略图滚轮与「回到当前」及点击跳转、三主题切换，以及浮窗红黄绿灯折叠/展开、透明度滑块与搜索。
+- **Electron 实机冒烟**：以 `OSU_DL_DATA_DIR=d:\Code\osumapdownloader\data` 启动打包产物 `osu-4k-downloader.exe`，`/api/health` 返回 `200`，关闭后确认 `3721` 端口已完全释放且 `data/config.json` 用户路径/代理配置完整保留。
+
+---
+
 ## Session 3 — 全视图滚底自动加载、Lazer 动效丝滑优化与 Ranked PP 情景计算器 (`v1.2.0`)
 
 - **日期**：2026-11-22

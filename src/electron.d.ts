@@ -3,6 +3,11 @@ export interface FileDialogFilter {
   extensions: string[];
 }
 
+export interface OpenPreviewPayload {
+  beatmapsetId: number;
+  beatmapId?: number | null;
+}
+
 export interface ElectronAPI {
   isElectron: boolean;
   platform: string;
@@ -16,6 +21,21 @@ export interface ElectronAPI {
   selectFile: (defaultPath?: string, filters?: FileDialogFilter[]) => Promise<string | null>;
   openExternal: (url: string) => Promise<void>;
   getAppVersion: () => Promise<string>;
+
+  // Overlay APIs
+  toggleOverlay: () => Promise<boolean>;
+  openOverlay: () => Promise<boolean>;
+  closeOverlay: () => Promise<boolean>;
+  isOverlayOpen: () => Promise<boolean>;
+  setOverlayOpacity: (opacity: number) => Promise<void>;
+  setOverlayNativeTheme: (theme: 'dark' | 'light' | 'latte') => Promise<void>;
+  setOverlayAlwaysOnTop: (flag: boolean) => Promise<void>;
+  setOverlayCompact: (compact: boolean) => Promise<void>;
+  setOverlayHotkey: (hotkey: string) => Promise<{ ok: boolean; error?: string }>;
+  showMainWindow: () => Promise<void>;
+  openPreviewInMain: (payload: OpenPreviewPayload) => Promise<void>;
+  onOverlayStateChange: (cb: (open: boolean) => void) => () => void;
+  onOpenPreviewInMain: (cb: (payload: OpenPreviewPayload) => void) => () => void;
 }
 
 declare global {

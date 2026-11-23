@@ -6,6 +6,7 @@ import {
   Clock,
   Download,
   ExternalLink,
+  Eye,
   Film,
   Heart,
   ImageOff,
@@ -38,6 +39,7 @@ interface BeatmapListRowProps {
   onTogglePlay: (set: NormalizedBeatmapset) => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
   onOpenDetail: (set: NormalizedBeatmapset, options?: { diffId?: number; focusPp?: boolean }) => void;
+  onPreviewBeatmap?: (set: NormalizedBeatmapset) => void;
 }
 
 export function BeatmapListRow({
@@ -51,6 +53,7 @@ export function BeatmapListRow({
   onTogglePlay,
   onDownload,
   onOpenDetail,
+  onPreviewBeatmap,
 }: BeatmapListRowProps) {
   const [imgError, setImgError] = useState(false);
 
@@ -67,6 +70,9 @@ export function BeatmapListRow({
 
   const isInstalled = beatmapset.localStatus.inStable || beatmapset.localStatus.inLazer;
   const inBoth = beatmapset.localStatus.inStable && beatmapset.localStatus.inLazer;
+  const canPreview =
+    (isInstalled || beatmapset.localStatus.inLazerPending) &&
+    beatmapset.beatmaps.some((b) => b.modeInt === 3);
 
   const isDownloading = Boolean(
     activeTask &&
@@ -148,7 +154,7 @@ export function BeatmapListRow({
             <span
               className={`flex h-7 w-7 items-center justify-center rounded-full border backdrop-blur-md transition-colors ${
                 isPlaying
-                  ? 'border-osu/90 bg-osu text-white shadow-[0_4px_14px_-4px_rgba(255,102,170,0.9)]'
+                  ? 'border-osu bg-osu text-white'
                   : 'border-white/35 bg-black/65 text-white hover:border-osu/80 hover:bg-osu/90'
               }`}
             >
@@ -333,6 +339,17 @@ export function BeatmapListRow({
           >
             双
           </button>
+          {canPreview && onPreviewBeatmap && (
+            <button
+              type="button"
+              onClick={() => onPreviewBeatmap(beatmapset)}
+              title="预览 Mania 谱面下落"
+              className="btn btn-sm px-2 border-osu/35 bg-osu/10 text-osu-soft hover:border-osu/60 hover:bg-osu/20"
+            >
+              <Eye className="h-3 w-3" />
+              <span>预览</span>
+            </button>
+          )}
           <a
             href={beatmapset.officialUrl}
             target="_blank"

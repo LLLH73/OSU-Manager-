@@ -4,6 +4,33 @@ All notable changes to **osu! 4K 谱面工坊 (`osu-4k-dual-downloader`)** will 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.3.1] - 2026-11-23
+
+### Changed
+- **极简扁平化按钮设计**（`src/index.css`, `FilterPanel.tsx`, `BeatmapCard.tsx`, `BeatmapListRow.tsx`, `LazerSongSelect.tsx`, `OverlayApp.tsx`, `ManiaPreviewModal.tsx`）：移除主按钮与卡片试听按钮的渐变底色、顶部高光内阴影及彩色光晕阴影，改为纯色扁平填充与干净的悬停状态过渡。
+- **Mania 预览舞台严格 16:9 比例与真实材质动效**（`ManiaPreviewModal.tsx`, `maniaEngine.ts`, `server/skins.ts`）：
+  - 预览主画布采用 `ResizeObserver` 锁定严格 `16:9` 比例，对齐 `osu!mania` 480p 轨道坐标系与 768p/`@2x` 1536p 纹理缩放规则。
+  - `mania-stage-bottom` 以选定的 `1.50x` 倍率按 `BottomCentre` 不拉伸绘制在最上层，强制以 `60 FPS` 播放，并使用独立 `1x` 播放态时钟（暂停时立即定格）；内置 `SkinAnimator` 支持 240 帧 `ImageBitmap` 完整 LRU 流式缓存（`36f-2` 210 帧全程丝滑不卡顿），其余光效/长条动画尊重皮肤配置（缺省默认 `60 FPS`）。
+  - 移除本地皮肤假 CSS/Canvas 渐变光效，接入真实 `mania-stage-light`（`ColourLight#` 乘法着色）、`lightingN`（点击/松手加法帧）与 `lightingL`（长按循环加法帧）渲染。
+
+### Fixed
+- **Windows 11 浮窗 Acrylic 真模糊生效**（`electron/main.ts`, `electron/preload.cjs`, `OverlayApp.tsx`, `src/index.css`）：移除破坏 DWM Acrylic 合成的 `frame: false` 与 `win.setOpacity()` 调用，改用 `titleBarStyle: 'hidden'` + `titleBarOverlay: false` + `backgroundMaterial: 'acrylic'` 与原生主题同步，并通过 `--mac-tint-alpha` CSS 变量实时控制毛玻璃底色浓度。
+- **无完整本地音频谱面预览卡死 10 秒**：不再回落到官网 10 秒试听 MP3；无完整音频时以静音软件时钟完整推进全曲并显示「静音时间轴 · 16:9」提示。
+- **音符过线残留与球皮/CANTARELLA 长条错位**：单键过判定线及长条过尾部时间立即从舞台消失；长条身体精确起止于头尾中心赤道以消除球皮底部多余凸出；对省略 `NoteBodyStyle` 的皮肤默认使用 Stretch (`0`) 并在缺省 `NoteImage#T` 时自动翻转头部作为长条尾部（修复 `[雪] Project CANTARELLA` 等胶囊长条显示）。
+
+## [1.3.0] - 2026-11-23
+
+### Added
+- **osu!mania 谱面实时预览器**（`ManiaPreviewModal.tsx`, `maniaEngine.ts`, `server/preview.ts`, `server/skins.ts`）：
+  - 完成下载后（或针对任意本地 Stable / Lazer 已装 Mania 谱面）即可打开演示预览窗口，支持 **可拖动 NPS 密度进度条**、**暂停/继续/±5s/重头**、**播放倍速 (`0.5x`–`1.5x`)**、**流速控制 (`1–40`，还原 osu!stable `13720/speed * hitPos/480` 与 BPM+SV 绿线联动)**、**下落/上升方向切换** 与 **右侧可上下滑动/缩放/跟随的缩略图**。
+  - 支持扫描并切换本机 `D:\OSU\Skins` 全量本地皮肤（自动识别游戏当前激活皮肤 `osu!.<user>.cfg`）与 3 套内置极简演示皮肤（条形/圆珠/箭头）；内建零依赖 **PerCy 超长 LN 贴图无损裁切引擎**（`cropPngTopRows`），完美还原 `36f-2` 等 38,000px+ 长条纹理。
+- **macOS 毛玻璃浮窗模式与游戏内实时加载**（`OverlayApp.tsx`, `electron/main.ts`, `server/installer.ts`）：
+  - 新增始终置顶的 **Windows 11 Acrylic + macOS Vibrancy 磨砂浮窗**（支持红黄绿红绿灯折叠为 64px 极简搜索条/隐藏/展开主窗、透明度滑块、系统托盘与可配全局热键 `Alt+Shift+O`）。
+  - 支持在 `osu!lazer` 与 `osu!stable` 运行时下载后自动触发客户端导入加载，并提供 `POST /api/game/load` 支持对已安装谱面一键「再次导入」在游戏内加载。
+
+### Fixed
+- 修复 `SelectField.tsx` 在使用 `<optgroup>` 分组选项时首组未命中即提前返回导致显示标签不随选择更新的问题，并为预览弹窗添加拖拽防误选保护。
+
 ## [1.2.0] - 2026-11-22
 
 ### Added

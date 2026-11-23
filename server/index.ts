@@ -16,14 +16,28 @@ import {
 import {
   clearLazerPendingFiles,
   launchLazerBatchImport,
+  loadBeatmapIntoRunningGame,
   openFolderInExplorer,
   syncStableToLazer,
 } from './installer.js';
-import { getLibraryDiff, getLibraryStatus, libraryEvents, rescanLibrary } from './library.js';
+import {
+  detectRunningClients,
+  getLibraryDiff,
+  getLibraryStatus,
+  libraryEvents,
+  rescanLibrary,
+} from './library.js';
 import { getLogFilePath, logError, logInfo, readRecentLogs } from './logger.js';
 import { serveCover, servePreview } from './media.js';
 import { benchmarkMirrors, getNetworkStatus, networkEvents, resetProxyCache } from './network.js';
+import {
+  getParsedManiaChart,
+  getPreviewBeatmapset,
+  servePreviewAudio,
+  servePreviewBackground,
+} from './preview.js';
 import { getBeatmapsetDetail, searchBeatmaps } from './search.js';
+import { listSkins, resolveManiaSkin, serveSkinAsset } from './skins.js';
 import { AppConfig, InstalledFilter, SearchFilters, SearchMode, SearchSource, SearchStatus } from './types.js';
 
 const app = express();
@@ -167,6 +181,91 @@ app.get('/api/media/preview/:id', async (req: Request, res: Response) => {
     return;
   }
   await servePreview(id, req, res);
+});
+
+// Beatmap Mania Preview & Skins
+app.get('/api/preview/beatmapset/:setId', (req: Request, res: Response) => {
+  const setId = Number(req.params.setId);
+  if (!Number.isFinite(setId) || setId <= 0) {
+    res.status(400).json({ error: '无效的 beatmapsetId' });
+    return;
+  }
+  const info = getPreviewBeatmapset(setId);
+  if (!info) {
+    res.status(404).json({ error: '未找到本地 Mania 谱面文件（请先下载或确认曲库目录）' });
+    return;
+  }
+  res.json(info);
+});
+
+app.get('/api/preview/beatmapset/:setId/chart/:index', (req: Request, res: Response) => {
+  const setId = Number(req.params.setId);
+  const index = Number(req.params.index);
+  if (!Number.isFinite(setId) || setId <= 0 || !Number.isFinite(index) || index < 0) {
+    res.status(400).json({ error: '参数无效' });
+    return;
+  }
+  const chart = getParsedManiaChart(setId, Math.floor(index));
+  if (!chart) {
+    res.status(404).json({ error: '未找到对应 Mania 难度谱面' });
+    return;
+  }
+  res.json(chart);
+});
+
+app.get('/api/preview/beatmapset/:setId/audio/:index', async (req: Request, res: Response) => {
+  const setId = Number(req.params.setId);
+  const index = Number(req.params.index);
+  if (!Number.isFinite(setId) || setId <= 0 || !Number.isFinite(index) || index < 0) {
+    res.status(400).end();
+    return;
+  }
+  await servePreviewAudio(setId, Math.floor(index), req, res);
+});
+
+app.get('/api/preview/beatmapset/:setId/bg/:index', async (req: Request, res: Response) => {
+  const setId = Number(req.params.setId);
+  const index = Number(req.params.index);
+  if (!Number.isFinite(setId) || setId <= 0 || !Number.isFinite(index) || index < 0) {
+    res.status(400).end();
+    return;
+  }
+  await servePreviewBackground(setId, Math.floor(index), res);
+});
+
+app.get('/api/skins', (_req: Request, res: Response) => {
+  res.json(listSkins());
+});
+
+app.get('/api/skins/:skinId/mania', (req: Request, res: Response) => {
+  const skinId = String(req.params.skinId || '');
+  const keys = parseOptNum(req.query.keys) ?? 4;
+  res.json(resolveManiaSkin(skinId, keys));
+});
+
+app.get('/api/skins/:skinId/asset', (req: Request, res: Response) => {
+  const skinId = String(req.params.skinId || '');
+  const relFile = typeof req.query.file === 'string' ? req.query.file : '';
+  serveSkinAsset(skinId, relFile, res);
+});
+
+app.post('/api/game/load', async (req: Request, res: Response) => {
+  const setId = Number(req.body?.beatmapsetId);
+  if (!Number.isFinite(setId) || setId <= 0) {
+    res.status(400).json({ ok: false, client: null, message: '无效的 beatmapsetId' });
+    return;
+  }
+  const client =
+    req.body?.client === 'lazer' || req.body?.client === 'stable' ? req.body.client : 'auto';
+  const cfg = getConfig();
+  const result = await loadBeatmapIntoRunningGame(setId, client, cfg);
+  logInfo('game', 'Load beatmap into running game requested', {
+    setId,
+    requestedClient: client,
+    ok: result.ok,
+    actualClient: result.client,
+  });
+  res.status(result.ok ? 200 : 400).json(result);
 });
 
 // Local dual-client library & sync
@@ -315,20 +414,55 @@ app.delete('/api/downloads/completed', (_req: Request, res: Response) => {
   res.json({ removed });
 });
 
-// SSE realtime events
+// SSE realtime events + lightweight running-game watcher
+let sseClientCount = 0;
+let lastKnownRunning: { stable: boolean; lazer: boolean } | null = null;
+let processWatchTimer: ReturnType<typeof setInterval> | null = null;
+
+function ensureProcessWatcher(): void {
+  if (processWatchTimer || sseClientCount <= 0) return;
+  processWatchTimer = setInterval(() => {
+    void (async () => {
+      if (sseClientCount <= 0) return;
+      const cur = await detectRunningClients(true);
+      if (
+        !lastKnownRunning ||
+        lastKnownRunning.stable !== cur.stableRunning ||
+        lastKnownRunning.lazer !== cur.lazerRunning
+      ) {
+        lastKnownRunning = { stable: cur.stableRunning, lazer: cur.lazerRunning };
+        libraryEvents.emit('update', await getLibraryStatus(false));
+      }
+    })();
+  }, 6000);
+}
+
+function stopProcessWatcherIfIdle(): void {
+  if (sseClientCount <= 0 && processWatchTimer) {
+    clearInterval(processWatchTimer);
+    processWatchTimer = null;
+  }
+}
+
 app.get('/api/events', async (req: Request, res: Response) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
 
+  sseClientCount += 1;
+  ensureProcessWatcher();
+
   const sendEvent = (event: string, data: unknown) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
+  const initialLib = await getLibraryStatus(false);
+  lastKnownRunning = { stable: initialLib.stableRunning, lazer: initialLib.lazerRunning };
+
   sendEvent('downloads', listDownloads());
   sendEvent('network', await getNetworkStatus(false));
-  sendEvent('library', await getLibraryStatus(false));
+  sendEvent('library', initialLib);
 
   const onDownloads = (data: unknown) => sendEvent('downloads', data);
   const onNetwork = (data: unknown) => sendEvent('network', data);
@@ -347,6 +481,8 @@ app.get('/api/events', async (req: Request, res: Response) => {
     downloadEvents.off('update', onDownloads);
     networkEvents.off('update', onNetwork);
     libraryEvents.off('update', onLibrary);
+    sseClientCount = Math.max(0, sseClientCount - 1);
+    stopProcessWatcherIfIdle();
   });
 });
 
@@ -394,6 +530,10 @@ export async function startServer(
   const close = () =>
     new Promise<void>((resolve) => {
       logInfo('server', 'Server shutting down', { port });
+      if (processWatchTimer) {
+        clearInterval(processWatchTimer);
+        processWatchTimer = null;
+      }
       server.closeAllConnections?.();
       server.close(() => resolve());
     });

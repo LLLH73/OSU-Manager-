@@ -10,6 +10,7 @@ import {
   Disc3,
   Download,
   ExternalLink,
+  Eye,
   Film,
   Heart,
   ImageOff,
@@ -58,6 +59,7 @@ interface LazerSongSelectProps {
   onStartPlay: (set: NormalizedBeatmapset) => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
   onOpenDetail: (set: NormalizedBeatmapset, options?: { diffId?: number; focusPp?: boolean }) => void;
+  onPreviewBeatmap?: (set: NormalizedBeatmapset, beatmapId?: number) => void;
   onLoadMore: () => void;
 }
 
@@ -452,6 +454,7 @@ export function LazerSongSelect({
   onStartPlay,
   onDownload,
   onOpenDetail,
+  onPreviewBeatmap,
   onLoadMore,
 }: LazerSongSelectProps) {
   const [activeSetId, setActiveSetId] = useState<number | null>(() => {
@@ -940,7 +943,7 @@ export function LazerSongSelect({
                   onClick={() => onTogglePlay(activeSet)}
                   className={`flex h-[28px] items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors ${
                     activePlaying
-                      ? 'border-osu/80 bg-osu text-white shadow-[0_6px_18px_-6px_rgba(255,102,170,0.85)]'
+                      ? 'border-osu bg-osu text-white'
                       : 'border-white/25 bg-black/70 text-white hover:border-osu/70 hover:bg-osu/90'
                   }`}
                 >
@@ -1272,6 +1275,23 @@ export function LazerSongSelect({
               </div>
 
               <div className="flex items-center gap-1.5">
+                {(activeInstalled || activeSet.localStatus.inLazerPending) &&
+                  activeSet.beatmaps.some((b) => b.modeInt === 3) &&
+                  onPreviewBeatmap && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onPreviewBeatmap(
+                          activeSet,
+                          activeDiff?.modeInt === 3 ? activeDiff.id : undefined,
+                        )
+                      }
+                      className="btn btn-sm border-osu/45 bg-osu/12 px-2.5 text-osu-soft hover:bg-osu/20"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>预览谱面</span>
+                    </button>
+                  )}
                 <button
                   type="button"
                   onClick={() =>

@@ -23,6 +23,7 @@ import {
   fetchLibraryStatus,
   fetchNetworkStatus,
   importLazerPending,
+  loadBeatmapIntoGame,
   openLocalFolder,
   retryDownloadTask,
   runNetworkBenchmark,
@@ -37,6 +38,7 @@ import { DownloadDrawer } from './components/DownloadDrawer';
 import { FilterPanel } from './components/FilterPanel';
 import { LazerSongSelect } from './components/LazerSongSelect';
 import { LibrarySyncModal } from './components/LibrarySyncModal';
+import { ManiaPreviewModal } from './components/ManiaPreviewModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SideRail } from './components/SideRail';
 import { TitleBar } from './components/TitleBar';
@@ -116,8 +118,20 @@ export function App() {
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   const [librarySyncOpen, setLibrarySyncOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [overlayOpen, setOverlayOpen] = useState(false);
+  const [previewState, setPreviewState] = useState<{
+    beatmapsetId: number;
+    initialBeatmapId?: number | null;
+    titleHint?: string;
+  } | null>(null);
+  const [toast, setToast] = useState<{
+    text: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  } | null>(null);
   const toastTimer = useRef<number | null>(null);
+  const notifiedDoneIdsRef = useRef<Set<string>>(new Set());
+  const initialDownloadsSyncedRef = useRef(false);
   const mainScrollRef = useRef<HTMLElement | null>(null);
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
@@ -134,11 +148,31 @@ export function App() {
     [],
   );
 
-  const notify = useCallback((msg: string) => {
-    setToast(msg);
-    if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 3500);
-  }, []);
+  const notify = useCallback(
+    (msg: string, action?: { actionLabel: string; onAction: () => void }) => {
+      setToast({
+        text: msg,
+        actionLabel: action?.actionLabel,
+        onAction: action?.onAction,
+      });
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+      toastTimer.current = window.setTimeout(() => setToast(null), action ? 5500 : 3500);
+    },
+    [],
+  );
+
+  const openManiaPreview = useCallback(
+    (beatmapsetId: number, options?: { beatmapId?: number | null; titleHint?: string }) => {
+      setIsPlaying(false);
+      setPlayingSet(null);
+      setPreviewState({
+        beatmapsetId,
+        initialBeatmapId: options?.beatmapId ?? null,
+        titleHint: options?.titleHint,
+      });
+    },
+    [],
+  );
 
   const applyTheme = useCallback((nextTheme: ThemeId, persistBackend = true) => {
     setTheme(nextTheme);
@@ -259,12 +293,36 @@ export function App() {
         }
         setNetwork(net);
         setLibrary(lib);
+        for (const t of dls) {
+          if (t.status === 'completed' || t.status === 'queued_lazer') {
+            notifiedDoneIdsRef.current.add(t.id);
+          }
+        }
+        initialDownloadsSyncedRef.current = true;
         setDownloads(dls);
       } catch {
-        // SSE or retries will recover
+        initialDownloadsSyncedRef.current = true;
       }
       void runSearch(DEFAULT_FILTERS, false);
     })();
+
+    const previewParam = Number(new URLSearchParams(window.location.search).get('previewSet'));
+    if (Number.isFinite(previewParam) && previewParam > 0) {
+      openManiaPreview(previewParam);
+    }
+
+    const api = window.electronAPI;
+    let unsubOverlay: (() => void) | undefined;
+    let unsubOpenPreview: (() => void) | undefined;
+    if (api?.isElectron) {
+      void api.isOverlayOpen?.().then((v) => setOverlayOpen(Boolean(v)));
+      unsubOverlay = api.onOverlayStateChange?.((v) => setOverlayOpen(Boolean(v)));
+      unsubOpenPreview = api.onOpenPreviewInMain?.((payload) => {
+        if (payload?.beatmapsetId) {
+          openManiaPreview(payload.beatmapsetId, { beatmapId: payload.beatmapId ?? null });
+        }
+      });
+    }
 
     const es = new EventSource('/api/events');
     es.addEventListener('downloads', (ev) => {
@@ -289,21 +347,26 @@ export function App() {
       }
     });
 
-    return () => es.close();
-  }, [applyTheme, applyViewMode, runSearch]);
+    return () => {
+      es.close();
+      unsubOverlay?.();
+      unsubOpenPreview?.();
+    };
+  }, [applyTheme, applyViewMode, openManiaPreview, runSearch]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (settingsOpen) setSettingsOpen(false);
       else if (librarySyncOpen) setLibrarySyncOpen(false);
+      else if (previewState) setPreviewState(null);
       else if (detailState) setDetailState(null);
       else if (downloadsOpen) setDownloadsOpen(false);
       else if (navOpen) setNavOpen(false);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [settingsOpen, librarySyncOpen, detailState, downloadsOpen, navOpen]);
+  }, [settingsOpen, librarySyncOpen, previewState, detailState, downloadsOpen, navOpen]);
 
   // Infinite auto-load more when scrolling near the bottom in grid / list views
   useEffect(() => {
@@ -330,6 +393,28 @@ export function App() {
     () => downloads.filter((d) => d.status === 'completed' || d.status === 'queued_lazer').length,
     [downloads],
   );
+  useEffect(() => {
+    if (!initialDownloadsSyncedRef.current) return;
+    for (const t of downloads) {
+      if (
+        (t.status === 'completed' || t.status === 'queued_lazer') &&
+        !notifiedDoneIdsRef.current.has(t.id)
+      ) {
+        notifiedDoneIdsRef.current.add(t.id);
+        notify(
+          t.autoLoadedInGame
+            ? `${t.title} 已导入并在游戏中加载`
+            : `${t.title} 下载完成，可立即预览谱面`,
+          {
+            actionLabel: '预览谱面',
+            onAction: () => openManiaPreview(t.beatmapsetId, { titleHint: t.title }),
+          },
+        );
+        break;
+      }
+    }
+  }, [downloads, notify, openManiaPreview]);
+
   useEffect(() => {
     if (completedCount === 0) return;
     setResults((prev) =>
@@ -481,14 +566,47 @@ export function App() {
   };
 
   const handleSaveConfig = async (patch: Partial<AppConfig>) => {
+    const prevHotkey = config?.overlayHotkey;
     const updated = await updateConfig(patch);
     setConfig(updated);
     setTarget(updated.defaultTarget);
     setVariant(updated.defaultVariant);
-    notify('设置已保存，正在刷新网络与本地曲库...');
+    if (
+      patch.overlayHotkey &&
+      patch.overlayHotkey !== prevHotkey &&
+      window.electronAPI?.setOverlayHotkey
+    ) {
+      const hkRes = await window.electronAPI.setOverlayHotkey(patch.overlayHotkey);
+      if (!hkRes.ok) {
+        notify(hkRes.error || '热键注册失败');
+      } else {
+        notify(`设置已保存，浮窗热键已更新为 ${patch.overlayHotkey}`);
+      }
+    } else {
+      notify('设置已保存，正在刷新网络与本地曲库...');
+    }
     const [net, lib] = await Promise.all([runNetworkBenchmark(), fetchLibraryStatus(true)]);
     setNetwork(net);
     setLibrary(lib);
+  };
+
+  const handleToggleOverlay = async () => {
+    const api = window.electronAPI;
+    if (api?.toggleOverlay) {
+      const opened = await api.toggleOverlay();
+      setOverlayOpen(opened);
+    } else {
+      window.open('/?mode=overlay', 'osu4k-overlay', 'width=440,height=660');
+    }
+  };
+
+  const handleLoadIntoGame = async (beatmapsetId: number) => {
+    try {
+      const res = await loadBeatmapIntoGame(beatmapsetId, 'auto');
+      notify(res.message);
+    } catch (err) {
+      notify(err instanceof Error ? err.message : '发送加载请求失败');
+    }
   };
 
   return (
@@ -496,6 +614,9 @@ export function App() {
       <TitleBar
         network={network}
         theme={theme}
+        overlayOpen={overlayOpen}
+        overlayHotkey={config?.overlayHotkey}
+        onToggleOverlay={() => void handleToggleOverlay()}
         onChangeTheme={(t) => applyTheme(t, true)}
         onBenchmark={handleBenchmark}
         onToggleNav={() => setNavOpen((v) => !v)}
@@ -726,6 +847,7 @@ export function App() {
                           onTogglePlay={handleTogglePlay}
                           onDownload={(s, t) => void handleDownload(s, t)}
                           onOpenDetail={openDetail}
+                          onPreviewBeatmap={(s) => openManiaPreview(s.id, { titleHint: s.title })}
                         />
                       ))}
                     </div>
@@ -753,6 +875,7 @@ export function App() {
                           onTogglePlay={handleTogglePlay}
                           onDownload={(s, t) => void handleDownload(s, t)}
                           onOpenDetail={openDetail}
+                          onPreviewBeatmap={(s) => openManiaPreview(s.id, { titleHint: s.title })}
                         />
                       ))}
                     </div>
@@ -783,6 +906,9 @@ export function App() {
                       onStartPlay={handleStartPlay}
                       onDownload={(s, t) => void handleDownload(s, t)}
                       onOpenDetail={openDetail}
+                      onPreviewBeatmap={(s, diffId) =>
+                        openManiaPreview(s.id, { beatmapId: diffId ?? null, titleHint: s.title })
+                      }
                       onLoadMore={handleLoadMore}
                     />
                   )}
@@ -860,7 +986,26 @@ export function App() {
           setFilters(next);
           void runSearch(next, false);
         }}
+        onPreviewBeatmap={(s, diffId) =>
+          openManiaPreview(s.id, { beatmapId: diffId ?? null, titleHint: s.title })
+        }
         onDownload={(s, t, v, m) => void handleDownload(s, t, v, m)}
+      />
+
+      {/* Mania Beatmap Preview Modal */}
+      <ManiaPreviewModal
+        beatmapsetId={previewState?.beatmapsetId ?? null}
+        initialBeatmapId={previewState?.initialBeatmapId ?? null}
+        titleHint={previewState?.titleHint}
+        config={config}
+        canLoadIntoGame={Boolean(library?.lazerRunning || library?.stableRunning)}
+        onLoadIntoGame={(setId) => void handleLoadIntoGame(setId)}
+        onUpdatePreviewPrefs={(patch) => {
+          void updateConfig(patch)
+            .then((cfg) => setConfig(cfg))
+            .catch(() => {});
+        }}
+        onClose={() => setPreviewState(null)}
       />
 
       {/* Download Queue & Lazer Import Drawer */}
@@ -875,6 +1020,8 @@ export function App() {
         onImportAllLazer={() => void handleImportAllLazer()}
         onClearLazerPending={() => void handleClearLazerPending()}
         onOpenLazerImportFolder={() => void openLocalFolder('lazerImport')}
+        onPreviewBeatmap={(setId, title) => openManiaPreview(setId, { titleHint: title })}
+        onLoadIntoGame={(setId) => void handleLoadIntoGame(setId)}
       />
 
       {/* Dual-Client Library Sync Modal */}
@@ -900,8 +1047,20 @@ export function App() {
 
       {/* Toast */}
       {toast && (
-        <div className="glass animate-toast-in fixed top-12 right-4 z-[60] rounded-xl border-osu/35 px-4 py-2.5 text-[12px] font-medium text-ink">
-          {toast}
+        <div className="glass animate-toast-in fixed top-12 right-4 z-[60] flex items-center gap-2.5 rounded-xl border-osu/35 px-4 py-2.5 text-[12px] font-medium text-ink">
+          <span>{toast.text}</span>
+          {toast.actionLabel && toast.onAction && (
+            <button
+              type="button"
+              onClick={() => {
+                toast.onAction?.();
+                setToast(null);
+              }}
+              className="btn btn-sm btn-primary h-6 px-2 text-[11px]"
+            >
+              {toast.actionLabel}
+            </button>
+          )}
         </div>
       )}
     </div>

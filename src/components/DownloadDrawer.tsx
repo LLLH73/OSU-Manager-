@@ -2,7 +2,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Download,
+  Eye,
   FolderOpen,
+  Gamepad2,
   Inbox,
   Loader2,
   Play,
@@ -25,6 +27,8 @@ interface DownloadDrawerProps {
   onImportAllLazer: () => void;
   onClearLazerPending: () => void;
   onOpenLazerImportFolder: () => void;
+  onPreviewBeatmap?: (beatmapsetId: number, title?: string) => void;
+  onLoadIntoGame?: (beatmapsetId: number) => void;
 }
 
 function isTaskActive(task: DownloadTask): boolean {
@@ -55,6 +59,8 @@ export function DownloadDrawer({
   onImportAllLazer,
   onClearLazerPending,
   onOpenLazerImportFolder,
+  onPreviewBeatmap,
+  onLoadIntoGame,
 }: DownloadDrawerProps) {
   if (!open) return null;
 
@@ -255,6 +261,51 @@ export function DownloadDrawer({
                         </span>
                       </div>
                     </div>
+
+                    {isDone && (
+                      <div className="mt-2 flex flex-wrap items-center justify-between gap-1.5 border-t border-hairline pt-2">
+                        <div>
+                          {task.autoLoadedInGame && (
+                            <span className="chip border-emerald-500/40 bg-emerald-500/12 text-ok">
+                              <Gamepad2 className="h-3 w-3" />
+                              已在{' '}
+                              {task.loadTargetClient === 'both'
+                                ? 'Stable & Lazer'
+                                : task.loadTargetClient === 'stable'
+                                  ? 'Stable'
+                                  : 'Lazer'}{' '}
+                              加载
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {(library?.lazerRunning || library?.stableRunning) && onLoadIntoGame && (
+                            <button
+                              type="button"
+                              onClick={() => onLoadIntoGame(task.beatmapsetId)}
+                              className="btn btn-sm h-6 px-2 text-[10.5px] text-lazer-soft"
+                              title="向运行中的游戏发送导入加载请求"
+                            >
+                              <Gamepad2 className="h-3 w-3" />
+                              <span>再次加载</span>
+                            </button>
+                          )}
+                          {onPreviewBeatmap && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                onClose();
+                                onPreviewBeatmap(task.beatmapsetId, task.title);
+                              }}
+                              className="btn btn-sm h-6 border-osu/45 bg-osu/12 px-2 text-[10.5px] text-osu-soft hover:bg-osu/20"
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span>预览谱面</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}

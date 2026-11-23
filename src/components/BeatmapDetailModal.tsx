@@ -6,6 +6,7 @@ import {
   Clock,
   Download,
   ExternalLink,
+  Eye,
   Film,
   Heart,
   ImageOff,
@@ -48,6 +49,7 @@ interface BeatmapDetailModalProps {
   onClose: () => void;
   onTogglePlay: (set: NormalizedBeatmapset) => void;
   onSearchTag: (tag: string) => void;
+  onPreviewBeatmap?: (set: NormalizedBeatmapset, beatmapId?: number) => void;
   onDownload: (
     set: NormalizedBeatmapset,
     target: DownloadTarget,
@@ -81,6 +83,7 @@ export function BeatmapDetailModal({
   onClose,
   onTogglePlay,
   onSearchTag,
+  onPreviewBeatmap,
   onDownload,
 }: BeatmapDetailModalProps) {
   const [target, setTarget] = useState<DownloadTarget>(defaultTarget);
@@ -116,6 +119,11 @@ export function BeatmapDetailModal({
   if (!beatmapset) return null;
 
   const rankedForPp = isRankedForPp(beatmapset.status);
+  const hasLocalSource =
+    beatmapset.localStatus.inStable ||
+    beatmapset.localStatus.inLazer ||
+    beatmapset.localStatus.inLazerPending;
+  const hasManiaDiff = beatmapset.beatmaps.some((b) => b.modeInt === 3);
 
   const statusBadge = getStatusBadge(beatmapset.status);
   const tags = beatmapset.tags
@@ -229,6 +237,19 @@ export function BeatmapDetailModal({
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
+              {hasLocalSource && hasManiaDiff && onPreviewBeatmap && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onPreviewBeatmap(beatmapset, selectedDiffId ?? undefined);
+                  }}
+                  className="btn border-white/25 bg-black/55 text-white backdrop-blur-md hover:border-osu/80 hover:bg-osu/90 hover:text-white"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  <span>预览谱面</span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => onTogglePlay(beatmapset)}
@@ -310,9 +331,26 @@ export function BeatmapDetailModal({
                       >
                         <td
                           title={bm.version}
-                          className="font-display max-w-[190px] truncate font-semibold text-ink"
+                          className="font-display max-w-[190px] font-semibold text-ink"
                         >
-                          {bm.version}
+                          <div className="flex items-center gap-1.5">
+                            <span className="truncate">{bm.version}</span>
+                            {hasLocalSource && bm.modeInt === 3 && onPreviewBeatmap && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onClose();
+                                  onPreviewBeatmap(beatmapset, bm.id);
+                                }}
+                                title="使用此难度打开 Mania 谱面预览"
+                                className="btn btn-sm h-[20px] shrink-0 px-1.5 text-[10px] text-osu-soft"
+                              >
+                                <Eye className="h-2.5 w-2.5" />
+                                <span>预览</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="whitespace-nowrap text-ink-2">
                           {bm.modeInt === 3 ? (

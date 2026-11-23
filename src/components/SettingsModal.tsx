@@ -504,6 +504,40 @@ export function SettingsModal({
               />
               <span>检测到 osu!lazer 正在运行时，下载完成后自动触发客户端导入</span>
             </label>
+
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-[9px] border border-hairline bg-surface-2/70 px-3 py-2.5 text-[12px] text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
+              <input
+                type="checkbox"
+                checked={form.autoLoadWhenStableRunning}
+                onChange={(e) =>
+                  setForm({ ...form, autoLoadWhenStableRunning: e.target.checked })
+                }
+                className="check"
+              />
+              <span>检测到 osu!stable 正在运行时，下载完成后自动调用客户端导入并加载</span>
+            </label>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <span className="field-label">游戏内浮窗全局热键</span>
+                <SelectField
+                  value={form.overlayHotkey}
+                  onChange={(val) => setForm({ ...form, overlayHotkey: val })}
+                >
+                  <option value="Alt+Shift+O">Alt + Shift + O (默认)</option>
+                  <option value="Ctrl+Shift+O">Ctrl + Shift + O</option>
+                  <option value="Alt+O">Alt + O</option>
+                  <option value="F9">F9</option>
+                  <option value="F10">F10</option>
+                  <option value="F11">F11</option>
+                </SelectField>
+              </div>
+              <div className="flex min-w-0 flex-col justify-end text-[11px] text-ink-3">
+                <span>
+                  提示：在游戏内使用「无边框窗口 (Borderless)」模式时，热键可一键呼出 macOS 磨砂浮窗。
+                </span>
+              </div>
+            </div>
           </Section>
 
           {/* 4. Optional Official Auth */}

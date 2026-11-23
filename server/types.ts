@@ -35,6 +35,11 @@ export interface AppConfig {
   officialCookie: string;
   theme: ThemeId;
   viewMode: SongViewMode;
+  autoLoadWhenStableRunning: boolean;
+  overlayHotkey: string;
+  overlayOpacity: number;
+  previewSkinId: string;
+  previewScrollSpeed: number;
 }
 
 export type RoutePolicy = 'cn_first' | 'global_first' | 'direct_only' | 'proxy_only';
@@ -243,6 +248,8 @@ export interface DownloadTask {
   error: string | null;
   stableResultPath?: string;
   lazerResultPath?: string;
+  autoLoadedInGame?: boolean;
+  loadTargetClient?: 'lazer' | 'stable' | 'both' | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -282,4 +289,154 @@ export interface LibraryDiffResult {
   stableOnly: LibraryDiffItem[];
   lazerOnly: LibraryDiffItem[];
   inBothCount: number;
+}
+
+export interface PreviewDifficultyItem {
+  index: number;
+  beatmapId: number | null;
+  version: string;
+  creator: string;
+  keyCount: number;
+  od: number;
+  hp: number;
+  totalLengthMs: number;
+  noteCount: number;
+  riceCount: number;
+  lnCount: number;
+  lnRatio: number;
+  baseBpm: number;
+  hasBackground: boolean;
+  hasAudio: boolean;
+}
+
+export interface PreviewBeatmapsetResponse {
+  beatmapsetId: number;
+  sourceType: 'stable_dir' | 'stable_osz' | 'lazer_pending' | 'preview_cache' | 'lazer_files';
+  title: string;
+  artist: string;
+  creator: string;
+  difficulties: PreviewDifficultyItem[];
+}
+
+export interface ManiaNote {
+  col: number;
+  time: number;
+  endTime: number;
+  isHold: boolean;
+}
+
+export interface ManiaTimingPoint {
+  time: number;
+  beatLength: number;
+  meter: number;
+  uninherited: boolean;
+  svMultiplier: number;
+}
+
+export interface ManiaBarline {
+  time: number;
+  isMeasure: boolean;
+}
+
+export interface ParsedManiaChart {
+  beatmapsetId: number;
+  index: number;
+  beatmapId: number | null;
+  title: string;
+  titleUnicode: string;
+  artist: string;
+  artistUnicode: string;
+  creator: string;
+  version: string;
+  keyCount: number;
+  od: number;
+  hp: number;
+  baseBpm: number;
+  totalLengthMs: number;
+  maxLnDurationMs: number;
+  hasFullAudio: boolean;
+  audioUrl: string | null;
+  backgroundUrl: string | null;
+  sourceType: PreviewBeatmapsetResponse['sourceType'];
+  notes: ManiaNote[];
+  timingPoints: ManiaTimingPoint[];
+  barlines: ManiaBarline[];
+  densityBins: number[];
+  stats: {
+    totalNotes: number;
+    riceCount: number;
+    lnCount: number;
+    lnRatio: number;
+    maxNps: number;
+    avgNps: number;
+  };
+}
+
+export interface SkinSummary {
+  id: string;
+  name: string;
+  author: string;
+  source: 'local' | 'builtin';
+  isActiveInStable: boolean;
+  hasManiaConfig: boolean;
+  supportedKeys: number[];
+}
+
+export interface SkinsListResponse {
+  activeStableSkin: string | null;
+  stableManiaSpeed: number | null;
+  skins: SkinSummary[];
+}
+
+export interface ManiaSkinAsset {
+  url: string;
+  width: number;
+  height: number;
+  originalHeight: number;
+  is2x: boolean;
+  isCroppedPerCy: boolean;
+  frames?: string[];
+}
+
+export interface ResolvedManiaSkin {
+  skinId: string;
+  name: string;
+  source: 'local' | 'builtin';
+  builtinStyle?: 'bar' | 'circle' | 'arrow';
+  keys: number;
+  animationFramerate: number;
+  lightFramePerSecond: number;
+  columnStart: number;
+  columnWidth: number[];
+  columnSpacing: number[];
+  columnLineWidth: number[];
+  hitPosition: number;
+  lightPosition: number;
+  widthForNoteHeightScale: number;
+  lightingNWidth: number[];
+  lightingLWidth: number[];
+  upsideDown: boolean;
+  keysUnderNotes: boolean;
+  noteBodyStyle: 0 | 1 | 2;
+  barlineHeight: number;
+  colours: string[];
+  colourLights: string[];
+  colourBarline: string;
+  colourColumnLine: string;
+  colourHold: string;
+  assets: {
+    keys: Array<ManiaSkinAsset | null>;
+    keysDown: Array<ManiaSkinAsset | null>;
+    notes: Array<ManiaSkinAsset | null>;
+    noteHeads: Array<ManiaSkinAsset | null>;
+    noteBodies: Array<ManiaSkinAsset | null>;
+    noteTails: Array<ManiaSkinAsset | null>;
+    stageLeft: ManiaSkinAsset | null;
+    stageRight: ManiaSkinAsset | null;
+    stageBottom: ManiaSkinAsset | null;
+    stageHint: ManiaSkinAsset | null;
+    stageLight: ManiaSkinAsset | null;
+    lightingN: ManiaSkinAsset | null;
+    lightingL: ManiaSkinAsset | null;
+  };
 }

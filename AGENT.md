@@ -35,8 +35,8 @@
 ## 3. 代码架构与文件地图
 
 ### 3.1 桌面壳层 (`electron/`)
-- `electron/main.ts`：单实例锁、无边框窗口 (`frame: false, titleBarStyle: 'hidden'`)、自动拉起内嵌后端 `dist-server/index.js`（默认端口 `3721`，冲突回退随机端口）、注册窗口控制/目录文件选择/外部链接 IPC。
-- `electron/preload.cjs` & `src/electron.d.ts`：通过 `contextBridge` 暴露 `window.electronAPI`（`minimize`, `toggleMaximize`, `close`, `isMaximized`, `setBackgroundColor`, `onMaximizedChange`, `selectDirectory`, `selectFile`, `openExternal`, `getAppVersion`）。
+- `electron/main.ts`：单实例锁、无边框主窗口 (`frame: false, titleBarStyle: 'hidden'`)、macOS 风格磨砂游戏内浮窗（`backgroundMaterial: 'acrylic'`, `/?mode=overlay`, 置顶 `screen-saver`）、全局快捷键 (`Alt+Shift+O`) 与系统托盘、自动拉起内嵌后端 `dist-server/index.js`（默认端口 `3721`）、注册窗口/浮窗/目录文件选择/外部链接 IPC。
+- `electron/preload.cjs` & `src/electron.d.ts`：通过 `contextBridge` 暴露 `window.electronAPI`（含主窗控制、文件弹窗及 `toggleOverlay` / `setOverlayOpacity` / `setOverlayCompact` / `setOverlayHotkey` / `openPreviewInMain` 等浮窗 IPC）。
 
 ### 3.2 后端服务 (`server/`, Node + Express v5 + TypeScript ESM)
 | 文件 | 职责 |
@@ -49,40 +49,46 @@
 | `server/network.ts` | `undici` 直连/代理路由、`6174` 端口 TCP 探测、并发镜像测速 `benchmarkMirrors()` |
 | `server/search.ts` | `osu.direct` 主搜索 + Sayobot 故障转移、官网 URL/ID 直达、LN% 估算与过滤、本地状态注入 |
 | `server/downloader.ts` | 并发下载队列、Magic Bytes (`PK\x03\x04`) 流首检测、自动切源重试、SSE 实时推送 |
-| `server/installer.ts` | `.osz` ZIP 校验 (`adm-zip`)、Stable 解压/`.osz` 安装、Lazer 运行检测/IPC 导入/待导入管理、Stable→Lazer 零流量打包 |
+| `server/installer.ts` | `.osz` ZIP 校验 (`adm-zip`)、Stable 解压/运行期临时 `.osz` IPC 加载、Lazer 运行检测/IPC 导入/待导入管理、运行中游戏一键再次导入 `loadBeatmapIntoRunningGame()` |
 | `server/library.ts` | Stable `Songs` 扫描、Lazer `client.realm`/`online.db`/`files` 哈希扫描缓存、进程检测、双端差异比对 |
 | `server/media.ts` | 封面图与 MP3 音频试听代理 + 本地磁盘 LRU 裁剪缓存 |
+| `server/preview.ts` | Mania `.osu` 解析（红线 BPM + 绿线 SV + Barline + NPS 密度）、本地/ZIP/`cache/osz` 音源查找、`206 Range` 音频流与背景图输出 |
+| `server/skins.ts` | 扫描 `D:\OSU\Skins` 与 `osu!.<user>.cfg` 激活皮肤、解析 `[Mania]` `skin.ini`、内置 3 套皮肤、PerCy 超长 LN PNG 无损前 2048 行扫描线裁切 (`cropPngTopRows`) |
 
 #### 主要 HTTP / SSE 接口
 - 健康与日志：`GET /api/health`、`GET /api/logs?lines=120`
 - 配置与网络：`GET /api/config`、`PUT /api/config`、`GET /api/network/status`、`POST /api/network/benchmark`
 - 搜索与媒体：`GET /api/search`、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`
-- 本地曲库与 Lazer：`GET /api/library/status`、`POST /api/library/rescan`、`GET /api/library/diff`、`POST /api/library/sync-to-lazer`、`POST /api/library/open-folder`、`GET /api/lazer/pending`、`POST /api/lazer/import-pending`、`DELETE /api/lazer/pending`
-- 下载与实时推送：`GET /api/downloads`、`POST /api/downloads`、`POST /api/downloads/batch`、`POST /api/downloads/:id/cancel`、`POST /api/downloads/:id/retry`、`DELETE /api/downloads/completed`、SSE `GET /api/events`（事件：`downloads`, `network`, `library`）
+- 预览与皮肤：`GET /api/preview/beatmapset/:setId`、`GET /api/preview/beatmapset/:setId/chart/:index`、`GET /api/preview/beatmapset/:setId/audio/:index`、`GET /api/preview/beatmapset/:setId/bg/:index`、`GET /api/skins`、`GET /api/skins/:skinId/mania`、`GET /api/skins/:skinId/asset`
+- 本地曲库、Lazer 与游戏加载：`GET /api/library/status`、`POST /api/library/rescan`、`GET /api/library/diff`、`POST /api/library/sync-to-lazer`、`POST /api/library/open-folder`、`GET /api/lazer/pending`、`POST /api/lazer/import-pending`、`DELETE /api/lazer/pending`、`POST /api/game/load`
+- 下载与实时推送：`GET /api/downloads`、`POST /api/downloads`、`POST /api/downloads/batch`、`POST /api/downloads/:id/cancel`、`POST /api/downloads/:id/retry`、`DELETE /api/downloads/completed`、SSE `GET /api/events`（事件：`downloads`, `network`, `library`，含 6 秒轻量级游戏进程状态感知）
 
 ### 3.3 前端界面 (`src/`, React 19 + Vite 6 + Tailwind CSS v4)
 | 文件 | 职责 |
 | :--- | :--- |
-| `src/main.tsx` | 引入离线 `@fontsource` 四字体并挂载 `App` |
-| `src/index.css` | 三套主题 CSS Token (`--t-*` 与 `--lazer-*`)、四字体工具类、卡片金框、Lazer 轮盘动效样式 |
-| `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、主题/视图模式持久化、滚底自动加载、批量选择、试听、弹窗协调） |
+| `src/main.tsx` | 引入离线 `@fontsource` 四字体，按 `?mode=overlay` 路由挂载 `OverlayApp` 或 `App` |
+| `src/index.css` | 三套主题 CSS Token (`--t-*`、`--lazer-*` 与 `--mac-*` 磨砂变量)、四字体工具类、卡片金框、Lazer 轮盘动效样式 |
+| `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、主题/视图模式持久化、滚底自动加载、批量选择、试听、Mania 预览与浮窗调度） |
 | `src/constants.ts` | 主题元信息 (`THEME_OPTIONS`)、视图选项 (`VIEW_MODE_OPTIONS`)、工作流预设 (`WORKFLOW_PRESETS`)、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()` |
 | `src/utils/pp.ts` | Ranked PP 准度制计算引擎 (`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `isRankedForPp`) |
+| `src/utils/maniaEngine.ts` | osu!mania Canvas2D 轨道渲染器（480p 坐标、BPM+SV 时间轴、PerCy `NoteBodyStyle` 0/1/2）与右侧滚动缩略图绘制引擎 |
 | `src/api.ts` | 前端 REST 封装 |
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
-| `src/components/TitleBar.tsx` | 无边框顶部栏（主题切换器、代理 6174 状态、最快镜像延迟、窗口控制） |
+| `src/components/TitleBar.tsx` | 无边框顶部栏（浮窗模式开关、主题切换器、代理 6174 状态、最快镜像延迟、窗口控制） |
 | `src/components/SideRail.tsx` | 左侧边栏（目标 `lazer/stable/both`、包体格式、Mania 4K 预设、双端曲库统计、队列与设置入口） |
 | `src/components/FilterPanel.tsx` | 搜索框、高频词条、基础筛选、折叠高级数值/LN% 筛选 |
-| `src/components/BeatmapCard.tsx` | `grid` 卡片网格单卡（含 Ranked `~XXXpp` 入口胶囊） |
-| `src/components/BeatmapListRow.tsx` | `list` 紧凑列表单行（含 Ranked `~XXXpp` 入口胶囊） |
-| `src/components/LazerSongSelect.tsx` | `lazer` osu!lazer 弧形选歌轮盘 + 左侧楔形展示（含 `HT/NM/DT` PP 速览）+ 按需交错难度列表 + 滚底自动加载 + 键盘导航 |
+| `src/components/BeatmapCard.tsx` | `grid` 卡片网格单卡（含 Ranked `~XXXpp` 入口胶囊与已装 Mania 预览入口） |
+| `src/components/BeatmapListRow.tsx` | `list` 紧凑列表单行（含 Ranked `~XXXpp` 入口胶囊与已装 Mania 预览入口） |
+| `src/components/LazerSongSelect.tsx` | `lazer` osu!lazer 弧形选歌轮盘 + 左侧楔形展示（含 `HT/NM/DT` PP 速览与预览入口）+ 按需交错难度列表 + 滚底自动加载 + 键盘导航 |
+| `src/components/ManiaPreviewModal.tsx` | Mania 谱面实时预览弹窗（皮肤切换、流速/倍速/方向、Canvas2D 轨道、右侧可滑缩放缩略图、NPS 可拖进度条） |
+| `src/components/OverlayApp.tsx` | macOS 毛玻璃游戏内浮窗（红黄绿灯折叠、Spotlight 搜索、实时下载/加载、透明度调节） |
 | `src/components/PpCalculatorPanel.tsx` | 交互式 PP 情景估算计算器（准度/Miss/倍速/Mod/MA比/未上架模拟） |
 | `src/components/AudioPlayerBar.tsx` | 底部浮动音频试听栏（带 4K 均衡器动效 `.eq`） |
-| `src/components/BeatmapDetailModal.tsx` | 谱面完整详情、全难度表（含 `大致 PP` 列）、内嵌 PP 计算器、标签搜索、单独指定源下载 |
-| `src/components/DownloadDrawer.tsx` | 下载任务队列与 Lazer 待导入队列批量导入抽屉 |
+| `src/components/BeatmapDetailModal.tsx` | 谱面完整详情、全难度表（含 `大致 PP` 列与单难度预览入口）、内嵌 PP 计算器、标签搜索、单独指定源下载 |
+| `src/components/DownloadDrawer.tsx` | 下载任务队列（含完成态预览/再加载按钮）与 Lazer 待导入队列批量导入抽屉 |
 | `src/components/LibrarySyncModal.tsx` | 双端曲库比对与 Stable→Lazer 零流量同步弹窗 |
-| `src/components/SettingsModal.tsx` | 客户端路径浏览、代理与镜像测速、主题/偏好、可选官方 Cookie 设置弹窗 |
-| `src/components/SelectField.tsx` | 统一下拉封装（解决 Chromium 原生箭头重叠问题） |
+| `src/components/SettingsModal.tsx` | 客户端路径浏览、代理与镜像测速、Stable/Lazer 自动加载与浮窗热键、主题/偏好、可选官方 Cookie 设置弹窗 |
+| `src/components/SelectField.tsx` | 统一下拉封装（支持 `<optgroup>` 嵌套匹配，解决 Chromium 原生箭头重叠问题） |
 
 ---
 
@@ -100,7 +106,10 @@
    - 官方大致 PP 徽章（`.chip-pp`）仅在 `status === 'ranked' || status === 'approved'` 时渲染在列表卡片中；未上架图仅可在计算器弹窗内手动切换「模拟上架计算」。
 6. **下拉框防双箭头**：所有 `<select>` 控件统一使用 `src/components/SelectField.tsx`，不要裸写受原生箭头干扰的下拉框。
 7. **Lazer 快捷键隔离**：`LazerSongSelect` 的全局 `keydown` 监听必须继续屏蔽 `INPUT` / `TEXTAREA` / `SELECT` / `isContentEditable` 聚焦态，以及任意 `[role="dialog"]` 弹窗打开状态。
-8. **打包交付与清理检查**：
+8. **PerCy 长条皮肤 & Windows 11 Acrylic 浮窗防坑**：
+   - 本地 PerCy 皮肤（如 `36f-2`）的长条身体图高度常达 `38039px`，切勿直接传入浏览器 `<canvas>`，必须保留 `server/skins.ts` 的 `cropPngTopRows(buf, 2048)` 无损扫描线裁切；且向运行中 `osu!stable` 传参时务必使用 `TMP_DIR` 临时副本（Stable 会吞并/移动传入的 `.osz`）。
+   - Electron 浮窗使用 `transparent: false` + `backgroundColor: '#00000000'` + `backgroundMaterial: 'acrylic'`，且 `electron/main.ts` 中的 `window:setBackgroundColor` 必须继续忽略 `overlayWindow`，避免实底色覆盖 Windows 11 亚克力毛玻璃。
+9. **打包交付与清理检查**：
    - `start-desktop.bat` 与 `start.bat` 会优先启动 `release\win-unpacked\osu-4k-downloader.exe`，**代码修改后务必执行 `npm run typecheck` 和 `npm run electron:pack` 更新打包目录**。
    - 每次通过启动桌面端/后端做完测试后，务必关闭测试进程并确认 `3721` 端口已释放。
 

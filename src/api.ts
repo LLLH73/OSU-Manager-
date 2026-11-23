@@ -7,9 +7,13 @@ import {
   LocalLibraryStatus,
   NetworkStatus,
   NormalizedBeatmapset,
+  ParsedManiaChart,
   PreferredMirror,
+  PreviewBeatmapsetResponse,
+  ResolvedManiaSkin,
   SearchFilters,
   SearchResult,
+  SkinsListResponse,
 } from './types';
 
 async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -148,4 +152,32 @@ export function retryDownloadTask(id: string): Promise<DownloadTask> {
 
 export function clearFinishedDownloadTasks(): Promise<{ removed: number }> {
   return apiJson('/api/downloads/completed', { method: 'DELETE' });
+}
+
+export function fetchPreviewBeatmapset(setId: number): Promise<PreviewBeatmapsetResponse> {
+  return apiJson<PreviewBeatmapsetResponse>(`/api/preview/beatmapset/${setId}`);
+}
+
+export function fetchParsedManiaChart(setId: number, index: number): Promise<ParsedManiaChart> {
+  return apiJson<ParsedManiaChart>(`/api/preview/beatmapset/${setId}/chart/${index}`);
+}
+
+export function fetchSkinsList(): Promise<SkinsListResponse> {
+  return apiJson<SkinsListResponse>('/api/skins');
+}
+
+export function fetchResolvedManiaSkin(skinId: string, keys: number): Promise<ResolvedManiaSkin> {
+  return apiJson<ResolvedManiaSkin>(
+    `/api/skins/${encodeURIComponent(skinId)}/mania?keys=${Math.max(1, Math.round(keys))}`,
+  );
+}
+
+export function loadBeatmapIntoGame(
+  beatmapsetId: number,
+  client: 'auto' | 'lazer' | 'stable' = 'auto',
+): Promise<{ ok: boolean; client: 'lazer' | 'stable' | null; message: string }> {
+  return apiJson('/api/game/load', {
+    method: 'POST',
+    body: JSON.stringify({ beatmapsetId, client }),
+  });
 }
