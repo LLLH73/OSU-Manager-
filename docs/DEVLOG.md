@@ -4,6 +4,89 @@
 
 ---
 
+## Session 8 — Lazer 难度平滑动效、列表详情滚动提速、120% 默认字号与快速批量下载/IPv6 加速 (`v1.5.0`)
+
+- **日期**：2026-11-23 ~ 2026-11-24
+- **对话 ID**：`eac947b0-cb17-4854-a23b-07c9a2bd0fec`
+- **版本**：`v1.4.1` → `v1.5.0`
+- **关联提交**：`b9074eb`（含 `v1.4.1`–`v1.5.0` 全量功能与修复代码）
+
+### 本次需求
+1. **Lazer 模式初始选中难度行平滑动效**：选择歌曲卡片展开默认难度列表时，首个默认选中难度行应当平滑左移进入选中态，而不是先出现在基准位置再瞬间跳移。
+2. **列表模式 + 详情弹窗滚动性能**：修复 `列表`（`list`）视图下点开 `BeatmapDetailModal` 后上下滚动明显卡顿的问题。
+3. **默认字号提升至 `120%` 并适配 `ManiaPreviewModal`**：全局默认 `fontScale` 设为 `1.2`（`120%`），并修复 `120%–125%` 缩放下谱面预览弹窗左侧 `播放倍速`（`0.5x–1.5x`）与 `谱面方向`（`跟随皮肤/下落/上升`）按钮重叠或裁切问题。
+4. **快速批量下载（「快速批量下载」）与 IPv6 / 导入加速**：新增不依赖封面/试听/详情页的跨页极简批量下载器，按当前搜索筛选条件持续翻页拉取并跳过本地已装曲目直到达到自定义数量（`1–500`）或无新曲目，配合 IPv6/双栈优先、多镜像负载均衡、异步 ZIP EOCD 校验与快速导入实现“高速”批量入库。
+
+### 关键实现
+1. **Lazer 难度行 `--diff-x` 平滑入场与选中偏移**（`src/index.css`）：
+   - 在 `.lazer-diff-row` 引入 CSS 变量 `--diff-x`（默认 `0px`，`:hover` 为 `-4px`，`[data-active="true"]` 为 `-8px`），并让 `@keyframes lazer-diff-in` 终点直接使用 `translate3d(var(--diff-x, 0px), 0, 0)` 配合 `backwards` 填充，避免入场动画结束后瞬间左跳。
+2. **列表视图与详情弹窗滚动合成层优化**（`src/index.css`, `src/components/BeatmapListRow.tsx`, `src/components/BeatmapCard.tsx`, `src/components/BeatmapDetailModal.tsx`, `src/App.tsx`）：
+   - 新增 `.song-list-row` 与 `.song-grid-card` 布局/绘制隔离规则（`contain` / `content-visibility: auto`），在自定义背景启用（`html[data-has-bg="true"]`）时移除逐行/弹窗内部多余 `backdrop-filter` 开销，并为 `.modal-surface` 设置 `isolation: isolate` 与独立合成层；对 `BeatmapListRow` / `BeatmapCard` 应用 `React.memo`，为详情滚动容器启用 `overscroll-contain` 与独立合成提示，并用 `useCallback` 稳定回调。
+3. **默认 `120%` 字号与 `ManiaPreviewModal` 响应式排版适配**（`src/constants.ts`, `server/config.ts`, `index.html`, `src/App.tsx`, `src/components/OverlayApp.tsx`, `src/components/SettingsModal.tsx`, `src/components/ManiaPreviewModal.tsx`, `src/components/FilterPanel.tsx`, `src/index.css`）：
+   - 前后端 `DEFAULT_FONT_SCALE`、`clampFontScale`、`getDefaultConfig().fontScale` 及兜底样式统一升级为 `1.2`（`120%`）。
+   - 新增 `.segmented-compact` 与 `.segmented-auto` 分段控件样式，并放宽 `ManiaPreviewModal` 难度下拉框、左侧控制栏与右侧缩略图宽度（使用 `clamp(...)`），使 `播放倍速` 与 `谱面方向` 在 `1280×720` 与 `1040×680` 下均无重叠或溢出。
+4. **IPv6/双栈网络引擎、快速安装器与快速批量下载模块**（`server/types.ts`, `src/types.ts`, `server/config.ts`, `server/network.ts`, `server/installer.ts`, `server/fastBatch.ts`, `server/index.ts`, `src/api.ts`, `src/components/FastBatchModal.tsx`, `src/components/SettingsModal.tsx`, `src/components/SideRail.tsx`, `src/App.tsx`）：
+   - `server/network.ts` 新增本地全局 IPv6 探测（`detectLocalGlobalIpv6`）、5 分钟 DNS 缓存、`IpFamilyMode`（`auto` / `ipv6_first` / `ipv4_first` / `ipv6_only` / `ipv4_only`）连接池，以及 `FastBatchRouteStrategy` 路由选择，并在 `/api/network/status` 暴露 `hasGlobalIpv6` 与 `ipFamily`。
+   - `server/installer.ts` 新增异步 ZIP EOCD 尾校验 `verifyOszFileFast()`、`fastInstallToStable()` 与 `fastStageToLazer()`，减少全量内存解压开销；`server/fastBatch.ts` 实现 `1–12` 并发、跨页补齐目标数 `1–500`、250ms 节流 `fast-batch` SSE 推送、暂停/恢复/停止控制及 15 文件合批 Lazer IPC 导入（`target: 'both'` 时前序安装保持 `moveSource: false`、末步移动清理）。
+   - `FastBatchModal` 采用纯文本设计（零 `<img>`、零音频/详情组件），直观呈现筛选标签、数量预设（`10/25/50/100/200`）、IPv6 就绪状态、并发与策略开关以及实时队列状态。
+5. **统一 `LN%` 与 `Rice` / `Hybrid` 标签语义消除歧义**（`src/constants.ts`, `src/components/LazerSongSelect.tsx`, `src/components/BeatmapCard.tsx`, `src/components/BeatmapListRow.tsx`, `src/components/BeatmapDetailModal.tsx`）：
+   - 原 `getLnCategory(lnRatio)` 将长条占比输出为 `Rice 13%` / `Hybrid 24%`，与 Lazer 属性条的 `LN% 13%` 并存时易造成数值矛盾。现扩展 `LnCategoryInfo`（`label: "LN XX%"`、`styleTag: "单键 Rice" | "综合 Hybrid" | "长条 LN"`、`fullLabel: "Rice · LN XX%" | "Hybrid · LN XX%" | "LN XX%"` 与双占比悬停 `tooltip`）。
+   - Lazer 右侧难度行、卡片/列表徽章统一使用 `LN XX%`；Lazer 左侧选中难度头部使用纯粹倾向标签（`单键 Rice` / `综合 Hybrid` / `长条 LN`），与下方 `LN%` 属性条互相印证；`BeatmapDetailModal` 放宽至 `max-w-[960px]` 并收紧表格内边距，确保 `Hybrid · LN XX%` 完整无裁切展示。
+
+### 验证记录
+- `npm run typecheck && npm run electron:pack`（`tsc --noEmit` + `tsc -p tsconfig.server.json --noEmit` + `tsc -p tsconfig.electron.json --noEmit` + `vite build` + `electron-builder --win dir`）：全部通过（退出码 `0`），产物输出至 `release\win-unpacked\osu-4k-downloader.exe`。
+- **独立快速批量下载 E2E 后端测试**（隔离目录 `scratch\fb-test`，端口 `3729`）：验证 `getDefaultConfig()` 默认 `fontScale=1.2` / `ipFamily=auto`；`/api/network/status` 返回 `hasGlobalIpv6=True`、`ipFamily=auto`；`POST /api/fast-batch/start`（`targetCount: 2, target: 'both', variant: 'novideo', concurrency: 2, ipFamily: 'ipv6_first', routeStrategy: 'auto', skipInstalled: true, stableDropOsz: true, lazerBatchImport: false`）执行至 `state=completed, completedCount=2, failedCount=0`，临时 `stable\Songs` 与 `lazer-import` 各落盘 `2` 个有效 `PK\x03\x04` `.osz` 文件且 `cache\osz` 无残留（随后清理临时目录）。
+- **实时浏览器验证**（端口 `3728`，`1280×720` & `1040×680`）：
+  - `120%` 字号适配、`ManiaPreviewModal`（`播放倍速` & `谱面方向` 无重叠无裁切）、`FastBatchModal`（`0` 张 `<img>`）、`SettingsModal`（IPv6 + `120%` 恢复默认）、`Lazer` 平滑动效与 `列表` 滚动均验收通过。
+  - `getLnCategory` 语义统一复测：`src/` 中 `Rice \$\{|Hybrid \$\{` 仅出现在 `tooltip`（对应正确的 `${riceRatio}%`）；Lazer 左侧头部展示 `单键 Rice` / `综合 Hybrid` / `长条 LN`，`LN%` 属性条与右侧行 `LN XX%`（如 `LN 5%`、`LN 29%`、`LN 41%`、`LN 45%`）完全一致，`1280×720` 与 `1040×680` 下零重叠；`列表` 视图 `24` 行及详情表分别展示 `LN XX%` 与 `Rice · LN XX%` / `Hybrid · LN XX%` / `LN XX%`（`Hybrid · LN 29%` 距表格右缘留白 `25.47px`，`tableFitsContainer = true`），浏览器控制台错误 `0` 条。
+- **打包产物冒烟与现场清理**：以 `OSU_DL_DATA_DIR=d:\Code\osumapdownloader\data` 启动 `release\win-unpacked\osu-4k-downloader.exe` 验证 `/api/health` 返回 `ok=True`，关闭测试进程后 `3721` 与 `3728` 端口监听计数归 `0`，用户 `data/config.json` 完整保留。
+
+---
+
+## Session 7 — 瓷器白默认主题、75% 背景透明度、字号缩放、Lazer 交互导航与长标题跑马灯优化 (`v1.4.1`)
+
+- **日期**：2026-11-23
+- **版本**：`v1.4.0` → `v1.4.1`
+
+### 本次需求
+1. 默认主题改为**瓷器白 (`light`)**，背景默认不透明度改为 **75%**。
+2. 左侧栏、设置、详细页等界面部分中文字体偏小偏细，适当放大并加粗，并在设置中增加**自定义字体大小**选项。
+3. 左上角已有侧栏收起/展开按钮，移除左侧栏右上角重复的收起按钮。
+4. 主界面在 Lazer 模式下仅选歌界面卡片轮盘上下滑动，主界面本身禁止上下滑动，并做好不同窗口大小的适配。
+5. 去掉左侧栏、详细页、设置与同步弹窗中的「刷PP」「日常练习」词条与对应场景预设。
+6. 添加「回到顶部」及 Lazer 模式下「回到当前选中歌曲」快捷定位按钮。
+7. 消除 Lazer 选中展开难度区底部的横向滚动条，并为超长歌名/难度名增加平滑滚动展示（跑马灯）。
+
+### 关键实现
+1. **默认瓷器白主题、75% 背景不透明度与 Electron 启动底色同步**（`server/config.ts`, `index.html`, `electron/main.ts`, `src/App.tsx`, `src/components/TitleBar.tsx`, `src/components/OverlayApp.tsx`, `src/index.css`）：
+   - 将前后端与无缓存兜底默认主题全部切换为 `'light'`（瓷器白），`electron/main.ts` 按 `config.json` 主题查表设置主窗初始 `backgroundColor`（默认 `#f3f5f9`），避免启动闪烁。
+   - `server/config.ts` 中 `customBgOpacity` 默认值改为 `0.75`，上限放开至 `1.0`（`4%–100%`）；同时增强 `light` 主题 `--t-ink-2`/`--t-ink-3` 对比度及 `html[data-has-bg="true"]` 玻璃层底色浓度（`.panel` 82% / `.lazer-set-card` 84%）以保证 75% 高透明背景下的文字可读性。
+2. **全站中文字体放大加粗与自定义字号缩放**（`src/main.tsx`, `src/constants.ts`, `server/types.ts`, `server/config.ts`, `src/types.ts`, `src/index.css`, `src/components/SettingsModal.tsx` 及全部 UI 组件）：
+   - 新增 `@fontsource/noto-sans-sc/600.css`（SemiBold）并设置全局默认 `font-weight: 500`；将全部组件 `text-[...px]` 迁移为 `rem` 单位并放大加粗左侧栏、设置弹窗、详情页与 PP 计算器等核心中文区域。
+   - 新增 `AppConfig.fontScale`（范围 `0.85–1.25`，默认 `1`），在 Tailwind v4 `@theme inline` 中固定 `--spacing: 4px` 实现“字号随 `--ui-font-scale` 缩放、间距保持紧凑”，并在设置弹窗新增实时预览的「界面字体大小」预设按钮（`90%`/`100%`/`110%`/`120%`）与连续滑块。
+3. **移除左侧栏重复折叠按钮与「刷PP」/「日常练习」词条**（`src/constants.ts`, `src/components/SideRail.tsx`, `src/components/BeatmapDetailModal.tsx`, `src/components/SettingsModal.tsx`, `src/components/LibrarySyncModal.tsx`, `src/components/BeatmapCard.tsx`, `src/components/BeatmapListRow.tsx`, `src/components/LazerSongSelect.tsx`）：
+   - 移除侧栏右上角冗余的 `PanelLeftClose` 按钮，保留标题栏左上角唯一折叠入口。
+   - 移除 `WORKFLOW_PRESETS` 中 `lazer-pp` 与 `stable-practice` 预设以及 `TargetMeta.sub` 副标题，将双客户端按钮与说明统一简化为纯粹的 `Lazer` / `Stable` / `双端同步`。
+4. **Lazer 主界面防滚动、左侧展板窄高防塌与多分辨率窗口适配**（`src/App.tsx`, `src/components/FilterPanel.tsx`, `src/components/LazerSongSelect.tsx`, `src/components/AudioPlayerBar.tsx`）：
+   - `viewMode === 'lazer'` 时 `<main>` 与选歌舞台使用视口锁定弹性列布局（`overflow-hidden`、`min-h-0 flex-1`），切回 Lazer 自动归零 `main.scrollTop`；展开「高级筛选」改为顶部悬浮毛玻璃浮层；左侧展板 `.panel` 与 `.cover-frame` 显式增加 `shrink-0` 并以 `mt-auto` 替代 `justify-between`，避免矮窗口筛选栏展开时封面高度坍塌为 `0`；Lazer 封面高度（`clamp(96px, 16vh, 156px)`）、左右分栏断点、窄屏轮盘弧度振幅与 `.lazer-diff-row` 次要信息响应不同窗口尺寸。
+5. **消除 Lazer 难度区横向滚动条与 `<MarqueeText>` 超长歌名跑马灯**（`src/components/MarqueeText.tsx`, `src/index.css`, `src/components/LazerSongSelect.tsx`, `src/components/AudioPlayerBar.tsx`, `src/components/BeatmapCard.tsx`, `src/components/BeatmapListRow.tsx`）：
+   - 难度展开滚动列表补充 `overflow-x-hidden` 与左内边距 `pl-2.5`，并将 `.lazer-diff-enter` 填充模式改为 `backwards`，彻底消除鼠标悬停/选中左移 `-8px` 引起的底部横向滚动条与左框裁切。
+   - 新增基于模块级单例 `ResizeObserver` 的 `<MarqueeText>` 组件：仅当单行文本实际溢出容器时才激活 `marquee-ping-pong` 往返平滑滚动与 `14px` 右缘渐隐（支持 `always` 与 `group-hover` 两种模式，且遵守 `prefers-reduced-motion`），并避免使用 `flex-1` 挤跑相邻的旋转 `<Disc3>` 与 LN 徽章。
+6. **「回到顶部」与 Lazer「回到选中 ↑/↓」悬浮定位**（`src/App.tsx`, `src/components/LazerSongSelect.tsx`）：
+   - 卡片/列表视图监测 `main.scrollTop > 280` 在右下角弹出悬浮「回到顶部」按钮（自动上移避让底部 `AudioPlayerBar`）。
+   - Lazer 轮盘在既有 `updateArcPositions` rAF 测量阶段一并计算当前选中卡片是否滑出上下视口及 `scrollTop > 180`，仅在状态翻转时更新浮钮显示（保持滚动过程零多余重渲染），点击「回到选中 ↑/↓」平滑居中滚动回当前激活歌曲。
+
+### 验证记录
+- **静态扫描、类型检查与打包**：`src/` 正则检查 `刷PP|日常练习|Stable · 日常|Lazer · 刷PP|lazer-pp|stable-practice` 返回 `0` 匹配；`npm run typecheck` 与 `npm run electron:pack` 均退出码 `0` 通过；`release\win-unpacked\osu-4k-downloader.exe` 已更新。
+- **浏览器实机全面验收**（`http://127.0.0.1:3721`，控制台错误 `0`，HTTP `>=400` 错误 `0`）：
+  - 确认全站可见文案、`SideRail` 4 项预设、`设置`、`双端曲库比对同步`与`完整详情`中已无任何「刷PP」「日常练习」词条；
+  - 实测多套含多难度与超长歌名的谱面在 `1280×720` 与 `1040×680` 下：展开难度列表所有 `.lazer-diff-row` 均严密位于容器左右边界内（`1040×680` 下 `rowWidth = 279.67px`，`containerWidth = 293.67px`，`leftOk: true, rightOk: true`）；超长歌名/难度名自动触发 `.marquee-viewport[data-overflowing="true"].marquee-run`（`1280×720` 下 `5` 处、`1040×680` 下 `16` 处）且不挤破容器或遮挡 `<Disc3>`；
+  - 实测 Lazer 选中第 0 首并下滚 `1400px` 同时显示「回到选中 ↑」与「回到顶部」，打开 `AudioPlayerBar` 后悬浮按钮底边 `y = 629.33`、试听条顶边 `y = 649.17`，留白 `19.83px` 零遮挡；点击「回到选中 ↑」平滑滚回卡片 0 并隐藏按钮；选中第 12 首回顶后显示「回到选中 ↓」，点击定位并再点击「回到顶部」精准归零（`deltaY = 0`）；切换`卡片`视图下滚 `900px` 点击「回到顶部」同样精准归零；
+  - 针对初版验收发现的 `1280×720` / `1040×680` 筛选栏展开时 Lazer 左侧 `.cover-frame` 弹性坍塌至 `0px` 问题，补充 `shrink-0` 与 `mt-auto` 后复检通过：`.cover-frame` 在 `1280×720`（`115.20px`）与 `1040×680`（`108.79px`）均完整展示、`试听预览` 可直接点击且左侧栏独立内部滚动，主视口始终锁定 `1040×680` 不产生外层滚动。
+- **打包产物冒烟与现场清理**：以 `OSU_DL_DATA_DIR=d:\Code\osumapdownloader\data` 启动 `release\win-unpacked\osu-4k-downloader.exe` 验证 `GET /api/health` 返回 `200 {"ok":true,...}`，关闭后确认 `3721` 端口 `Listen` 监听数为 `0`，用户 `data/config.json` 完整保留。
+
+---
+
 ## Session 6 — Impeccable 风格重构、全窗动态封面背景配色、8 主题与 Lazer 离线字体体系 (`v1.4.0`)
 
 - **日期**：2026-11-23
