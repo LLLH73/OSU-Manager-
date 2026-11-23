@@ -81,11 +81,11 @@ export function DownloadDrawer({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <Download className="h-4 w-4 text-osu" />
-              <h2 className="font-display truncate text-[15px] font-bold text-ink">
+              <h2 className="font-display truncate text-[1rem] font-bold text-ink">
                 下载队列与 Lazer 导入中心
               </h2>
             </div>
-            <div className="mt-1 flex items-center gap-2 text-[11px] text-ink-3">
+            <div className="mt-1 flex items-center gap-2 text-[0.75rem] font-medium text-ink-3">
               <span className="font-mono flex items-center gap-1.5 tabular-nums">
                 <span className={activeCount > 0 ? 'live-dot' : 'idle-dot'} />
                 <span className="font-semibold text-ink">{activeCount}</span> 进行中
@@ -115,15 +115,15 @@ export function DownloadDrawer({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-display text-[13px] font-bold text-lazer-soft">osu!lazer 待导入队列</span>
+                  <span className="font-display text-[0.875rem] font-bold text-lazer-soft">osu!lazer 待导入队列</span>
                   <span className={`chip font-mono ${TARGET_META.lazer.chipCls}`}>{pendingLazer.length} 个 .osz</span>
                   {library?.lazerRunning && (
-                    <span className="flex items-center gap-1 text-[10.5px] font-medium text-ok">
+                    <span className="flex items-center gap-1 text-[0.71875rem] font-semibold text-ok">
                       <span className="live-dot" /> 运行中
                     </span>
                   )}
                 </div>
-                <p className="mt-1 text-[11px] leading-relaxed text-ink-2">
+                <p className="mt-1 text-[0.75rem] font-medium leading-relaxed text-ink-2">
                   {library?.lazerRunning
                     ? '检测到 Lazer 正在运行，新下载谱面会自动导入；下方历史队列可一键补导入'
                     : 'Lazer 当前未启动，下载的 Lazer 谱面已保存在队列中，点击一键启动并全部导入'}
@@ -158,9 +158,9 @@ export function DownloadDrawer({
                 {pendingLazer.map((f) => (
                   <div
                     key={f.filename}
-                    className="flex items-center justify-between gap-2 rounded-md px-1.5 py-0.5 text-[11px] text-ink-2 hover:bg-tint"
+                    className="flex items-center justify-between gap-2 rounded-md px-1.5 py-0.5 text-[0.75rem] text-ink-2 hover:bg-tint"
                   >
-                    <span className="truncate font-mono text-[10.5px]">{f.filename}</span>
+                    <span className="truncate font-mono text-[0.71875rem]">{f.filename}</span>
                     <span className="font-mono shrink-0 text-ink-3 tabular-nums">{formatBytes(f.sizeBytes)}</span>
                   </div>
                 ))}
@@ -172,7 +172,7 @@ export function DownloadDrawer({
           {tasks.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 rounded-[14px] border border-dashed border-hairline-strong py-14 text-center">
               <Inbox className="h-7 w-7 text-ink-4" strokeWidth={1.5} />
-              <p className="max-w-[260px] text-[12px] text-ink-3">
+              <p className="max-w-[260px] text-[0.8125rem] font-medium text-ink-3">
                 暂无下载任务，点击任意谱面卡片的下载按钮即可开始。
               </p>
             </div>
@@ -190,8 +190,8 @@ export function DownloadDrawer({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <div className="font-display truncate text-[13px] font-semibold text-ink">{task.title}</div>
-                        <div className="truncate text-[11px] text-ink-2">
+                        <div className="font-display truncate text-[0.875rem] font-semibold text-ink">{task.title}</div>
+                        <div className="truncate text-[0.75rem] font-medium text-ink-2">
                           {task.artist}
                           <span className="mx-1 text-ink-4">·</span>
                           <span className="font-mono tabular-nums">#{task.beatmapsetId}</span>
@@ -237,7 +237,7 @@ export function DownloadDrawer({
                       />
                     </div>
 
-                    <div className="mt-1.5 flex items-center justify-between gap-2 text-[11px]">
+                    <div className="mt-1.5 flex items-center justify-between gap-2 text-[0.75rem] font-medium">
                       <div className="flex min-w-0 items-center gap-1.5">
                         {isActive && <Loader2 className={`h-3 w-3 shrink-0 animate-spin ${meta.textCls}`} />}
                         {isDone && <CheckCircle2 className="h-3 w-3 shrink-0 text-ok" />}
@@ -250,7 +250,7 @@ export function DownloadDrawer({
 
                       <div className="font-mono flex shrink-0 items-center gap-1.5 text-ink-3 tabular-nums">
                         {task.activeMirror && (
-                          <span className="chip h-[18px] px-1.5 text-[10px] font-medium">{task.activeMirror}</span>
+                          <span className="chip min-h-[19px] px-1.5 text-[0.6875rem] font-medium">{task.activeMirror}</span>
                         )}
                         <span>
                           {task.status === 'downloading' && task.speedBps > 0
@@ -283,7 +283,7 @@ export function DownloadDrawer({
                             <button
                               type="button"
                               onClick={() => onLoadIntoGame(task.beatmapsetId)}
-                              className="btn btn-sm h-6 px-2 text-[10.5px] text-lazer-soft"
+                              className="btn btn-sm min-h-[26px] px-2 text-[0.71875rem] text-lazer-soft"
                               title="向运行中的游戏发送导入加载请求"
                             >
                               <Gamepad2 className="h-3 w-3" />
@@ -297,7 +297,7 @@ export function DownloadDrawer({
                                 onClose();
                                 onPreviewBeatmap(task.beatmapsetId, task.title);
                               }}
-                              className="btn btn-sm h-6 border-osu/45 bg-osu/12 px-2 text-[10.5px] text-osu-soft hover:bg-osu/20"
+                              className="btn btn-sm min-h-[26px] border-osu/45 bg-osu/12 px-2 text-[0.71875rem] text-osu-soft hover:bg-osu/20"
                             >
                               <Eye className="h-3 w-3" />
                               <span>预览谱面</span>

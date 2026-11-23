@@ -157,11 +157,11 @@ export function LibrarySyncModal({
               <ArrowRightLeft className="h-4 w-4 text-stable" />
             </div>
             <div className="min-w-0">
-              <h2 className="font-display text-[14.5px] font-bold text-ink">
+              <h2 className="font-display text-[1rem] font-bold text-ink">
                 双端曲库扫描与零流量同步
               </h2>
               <p
-                className="truncate text-[11px] text-ink-3"
+                className="truncate text-[0.75rem] font-medium text-ink-3"
                 title={`${library?.stablePath ?? ''} · ${library?.lazerDataPath ?? ''}`}
               >
                 自动比对 Stable (<span className="font-mono text-ink-2">{library?.stablePath}</span>) 与 Lazer (
@@ -190,40 +190,40 @@ export function LibrarySyncModal({
           <div className="panel-flat relative overflow-hidden px-3.5 py-3">
             <span className="absolute inset-y-0 left-0 w-[2.5px] bg-stable" />
             <div className="flex items-center justify-between gap-2">
-              <span className="overline text-stable-soft">osu!stable · 日常练习</span>
+              <span className="overline text-stable-soft">osu!stable</span>
               <button
                 type="button"
                 onClick={() => openLocalFolder('stableSongs')}
-                className="inline-flex items-center gap-1 text-[10.5px] text-ink-2 transition-colors hover:text-stable-soft"
+                className="inline-flex items-center gap-1 text-[0.71875rem] font-medium text-ink-2 transition-colors hover:text-stable-soft"
               >
                 <FolderOpen className="h-3 w-3" /> Songs
               </button>
             </div>
             <div className="mt-1.5 flex items-baseline gap-1.5">
-              <span className="font-stat text-[24px] leading-none font-bold text-ink">
+              <span className="font-stat text-[1.5rem] leading-none font-bold text-ink">
                 {library?.stableCount ?? 0}
               </span>
-              <span className="text-[11px] text-ink-3">套</span>
+              <span className="text-[0.75rem] font-medium text-ink-3">套</span>
             </div>
           </div>
 
           <div className="panel-flat relative overflow-hidden px-3.5 py-3">
             <span className="absolute inset-y-0 left-0 w-[2.5px] bg-lazer" />
             <div className="flex items-center justify-between gap-2">
-              <span className="overline text-lazer-soft">osu!lazer · 刷PP</span>
+              <span className="overline text-lazer-soft">osu!lazer</span>
               <button
                 type="button"
                 onClick={() => openLocalFolder('lazerImport')}
-                className="inline-flex items-center gap-1 text-[10.5px] text-ink-2 transition-colors hover:text-lazer-soft"
+                className="inline-flex items-center gap-1 text-[0.71875rem] font-medium text-ink-2 transition-colors hover:text-lazer-soft"
               >
                 <FolderOpen className="h-3 w-3" /> 导入目录
               </button>
             </div>
             <div className="mt-1.5 flex items-baseline gap-1.5">
-              <span className="font-stat text-[24px] leading-none font-bold text-ink">
+              <span className="font-stat text-[1.5rem] leading-none font-bold text-ink">
                 {library?.lazerCount ?? 0}
               </span>
-              <span className="text-[11px] text-ink-3">套</span>
+              <span className="text-[0.75rem] font-medium text-ink-3">套</span>
               {library?.lazerDeepScanRunning && (
                 <span className="chip ml-auto self-center border-lazer/35 bg-lazer/12 text-lazer-soft">
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -240,10 +240,10 @@ export function LibrarySyncModal({
               <span className="overline text-ok">双端共有谱面</span>
             </div>
             <div className="mt-1.5 flex items-baseline gap-1.5">
-              <span className="font-stat text-[24px] leading-none font-bold text-ink">
+              <span className="font-stat text-[1.5rem] leading-none font-bold text-ink">
                 {diff?.inBothCount ?? '—'}
               </span>
-              <span className="text-[11px] text-ink-3">套</span>
+              <span className="text-[0.75rem] font-medium text-ink-3">套</span>
             </div>
           </div>
         </div>
@@ -290,12 +290,12 @@ export function LibrarySyncModal({
         {/* List */}
         <div className="min-h-[180px] flex-1 overflow-y-auto p-3">
           {loading ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-14 text-[12px] text-ink-2">
+            <div className="flex flex-col items-center justify-center gap-2 py-14 text-[0.8125rem] font-medium text-ink-2">
               <Loader2 className="h-5 w-5 animate-spin text-ink-3" />
               <span>正在分析双端差异...</span>
             </div>
           ) : activeItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-2 py-14 text-[12px] text-ink-3">
+            <div className="flex flex-col items-center justify-center gap-2 py-14 text-[0.8125rem] font-medium text-ink-3">
               <Check className="h-5 w-5 text-ink-4" />
               <span>没有符合条件的差异谱面</span>
             </div>
@@ -309,7 +309,7 @@ export function LibrarySyncModal({
                     type="button"
                     onClick={() => toggleId(item.beatmapsetId)}
                     aria-pressed={checked}
-                    className={`group flex h-9 items-center gap-2.5 rounded-[9px] border px-2.5 text-left text-[12px] transition-colors ${
+                    className={`group flex min-h-[36px] items-center gap-2.5 rounded-[9px] border px-2.5 py-1 text-left text-[0.8125rem] font-medium transition-colors ${
                       checked
                         ? checkedRowCls
                         : 'border-transparent bg-tint text-ink-2 hover:border-hairline hover:bg-tint-hover hover:text-ink'
@@ -325,7 +325,7 @@ export function LibrarySyncModal({
                       {checked && <Check className="h-2.5 w-2.5 stroke-[3.5]" />}
                     </span>
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
-                    <span className="font-mono shrink-0 text-[10.5px] text-ink-3 tabular-nums">
+                    <span className="font-mono shrink-0 text-[0.71875rem] text-ink-3 tabular-nums">
                       {item.beatmapsetId}
                     </span>
                   </button>
@@ -341,7 +341,7 @@ export function LibrarySyncModal({
             <button type="button" onClick={selectAllVisible} className="btn btn-sm">
               全选前 100 项
             </button>
-            <span className="text-[11.5px] text-ink-2">
+            <span className="text-[0.78125rem] font-medium text-ink-2">
               已选{' '}
               <span className={`font-mono font-semibold tabular-nums ${selectedIds.size > 0 ? destMeta.textCls : 'text-ink'}`}>
                 {selectedIds.size}

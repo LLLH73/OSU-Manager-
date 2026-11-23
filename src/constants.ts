@@ -111,6 +111,23 @@ export function isDarkTheme(id: ThemeId): boolean {
   return DARK_THEME_IDS.has(id);
 }
 
+export const FONT_SCALE_MIN = 0.85;
+export const FONT_SCALE_MAX = 1.25;
+export const DEFAULT_FONT_SCALE = 1.2;
+
+export const FONT_SCALE_PRESETS: Array<{ id: string; label: string; value: number }> = [
+  { id: 'compact', label: '紧凑', value: 0.9 },
+  { id: 'normal', label: '标准', value: 1.0 },
+  { id: 'comfortable', label: '偏大', value: 1.1 },
+  { id: 'large', label: '大号', value: 1.2 },
+];
+
+export function clampFontScale(val: unknown, fallback = DEFAULT_FONT_SCALE): number {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, Math.round(n * 100) / 100));
+}
+
 export const ACCENT_PRESETS: Array<{ id: string; label: string; hex: string }> = [
   { id: 'osu-pink', label: 'osu! 粉', hex: '#ff66aa' },
   { id: 'lazer-violet', label: 'Lazer 紫', hex: '#a855f7' },
@@ -146,34 +163,6 @@ export interface WorkflowPreset {
 }
 
 export const WORKFLOW_PRESETS: WorkflowPreset[] = [
-  {
-    id: 'lazer-pp',
-    label: 'Lazer 刷PP',
-    badge: '刷PP',
-    description: '高热度 Ranked 4K 谱面，目标自动切换至 Lazer',
-    suggestedTarget: 'lazer',
-    filters: {
-      ...DEFAULT_FILTERS,
-      mode: '3',
-      keys: '4',
-      status: 'ranked',
-      sort: 'play_count:desc',
-    },
-  },
-  {
-    id: 'stable-practice',
-    label: 'Stable 日常练习',
-    badge: '日常',
-    description: '包含 Unranked/Graveyard 练习图，目标切换至 Stable',
-    suggestedTarget: 'stable',
-    filters: {
-      ...DEFAULT_FILTERS,
-      mode: '3',
-      keys: '4',
-      status: 'any',
-      sort: 'favourite_count:desc',
-    },
-  },
   {
     id: 'rice-4k',
     label: '4K 单键 Rice',
@@ -354,7 +343,6 @@ export interface TargetMeta {
   id: DownloadTarget;
   label: string;
   short: string;
-  sub: string;
   hex: string;
   textCls: string;
   chipCls: string;
@@ -367,7 +355,6 @@ export const TARGET_META: Record<DownloadTarget, TargetMeta> = {
     id: 'lazer',
     label: 'Lazer',
     short: 'L',
-    sub: '刷PP',
     hex: '#a855f7',
     textCls: 'text-lazer-soft',
     chipCls: 'border-lazer/35 bg-lazer/12 text-lazer-soft',
@@ -378,7 +365,6 @@ export const TARGET_META: Record<DownloadTarget, TargetMeta> = {
     id: 'stable',
     label: 'Stable',
     short: 'S',
-    sub: '日常练习',
     hex: '#0284c7',
     textCls: 'text-stable-soft',
     chipCls: 'border-stable/35 bg-stable/10 text-stable-soft',
@@ -389,7 +375,6 @@ export const TARGET_META: Record<DownloadTarget, TargetMeta> = {
     id: 'both',
     label: '双端',
     short: '双',
-    sub: '同步',
     hex: '#e03a82',
     textCls: 'text-osu',
     chipCls: 'border-osu/35 bg-osu/10 text-osu-soft',
@@ -451,9 +436,45 @@ export function formatCount(n: number): string {
   return n.toLocaleString();
 }
 
-export function getLnCategory(lnRatio: number | null): { label: string; cls: string } | null {
+export interface LnCategoryInfo {
+  /** 统一的百分比标签，始终明确标示长条占比，例如 "LN 13%"（不再误写为 "Rice 13%"） */
+  label: string;
+  /** 纯谱面类型标签（不含百分比），例如 "单键 Rice" / "综合 Hybrid" / "长条 LN" */
+  styleTag: string;
+  /** 完整无歧义标签（用于详情表等宽敞区域），例如 "Rice · LN 13%" / "Hybrid · LN 24%" / "LN 50%" */
+  fullLabel: string;
+  /** 悬停说明，同时展示类型、长条占比与单键占比 */
+  tooltip: string;
+  cls: 'ln-rice' | 'ln-hybrid' | 'ln-heavy';
+}
+
+export function getLnCategory(lnRatio: number | null): LnCategoryInfo | null {
   if (lnRatio === null) return null;
-  if (lnRatio <= 15) return { label: `Rice ${lnRatio}%`, cls: 'ln-rice' };
-  if (lnRatio < 45) return { label: `Hybrid ${lnRatio}%`, cls: 'ln-hybrid' };
-  return { label: `LN ${lnRatio}%`, cls: 'ln-heavy' };
+  const clamped = Math.max(0, Math.min(100, Math.round(lnRatio)));
+  const riceRatio = 100 - clamped;
+  if (clamped <= 15) {
+    return {
+      label: `LN ${clamped}%`,
+      styleTag: '单键 Rice',
+      fullLabel: `Rice · LN ${clamped}%`,
+      tooltip: `单键向 (Rice) · 长条 LN ${clamped}% / 单键 Rice ${riceRatio}%`,
+      cls: 'ln-rice',
+    };
+  }
+  if (clamped < 45) {
+    return {
+      label: `LN ${clamped}%`,
+      styleTag: '综合 Hybrid',
+      fullLabel: `Hybrid · LN ${clamped}%`,
+      tooltip: `综合向 (Hybrid) · 长条 LN ${clamped}% / 单键 Rice ${riceRatio}%`,
+      cls: 'ln-hybrid',
+    };
+  }
+  return {
+    label: `LN ${clamped}%`,
+    styleTag: '长条 LN',
+    fullLabel: `LN ${clamped}%`,
+    tooltip: `长条向 (LN) · 长条 LN ${clamped}% / 单键 Rice ${riceRatio}%`,
+    cls: 'ln-heavy',
+  };
 }

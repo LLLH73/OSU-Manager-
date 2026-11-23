@@ -12,13 +12,23 @@ import {
   ShieldCheck,
   Sparkles,
   Trash2,
+  Type,
   X,
 } from 'lucide-react';
-import { ACCENT_PRESETS, THEME_OPTIONS } from '../constants';
+import {
+  ACCENT_PRESETS,
+  DEFAULT_FONT_SCALE,
+  FONT_SCALE_MAX,
+  FONT_SCALE_MIN,
+  FONT_SCALE_PRESETS,
+  THEME_OPTIONS,
+  clampFontScale,
+} from '../constants';
 import {
   AppConfig,
   DownloadTarget,
   DownloadVariant,
+  IpFamilyMode,
   MirrorHealth,
   NetworkStatus,
   PreferredMirror,
@@ -81,12 +91,12 @@ function Section({
     <section className="panel-flat space-y-3.5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="font-stat flex h-5 w-5 shrink-0 items-center justify-center rounded-[6px] border border-hairline bg-surface-2 text-[10.5px] font-bold text-osu-soft">
+          <span className="font-stat flex h-5.5 w-5.5 shrink-0 items-center justify-center rounded-[6px] border border-hairline bg-surface-2 text-[0.75rem] font-bold text-osu-soft">
             {index}
           </span>
           {icon}
-          <h3 className="overline text-ink-2">{title}</h3>
-          {hint && <span className="truncate text-[11px] text-ink-3">{hint}</span>}
+          <h3 className="font-display text-[0.875rem] font-bold text-ink">{title}</h3>
+          {hint && <span className="truncate text-[0.75rem] font-medium text-ink-3">{hint}</span>}
         </div>
         {action}
       </div>
@@ -131,6 +141,8 @@ export function SettingsModal({
   if (!open || !form) return null;
 
   const isElectron = !!window.electronAPI?.isElectron;
+  const currentFontScale = clampFontScale(form.fontScale, DEFAULT_FONT_SCALE);
+  const currentBgOpacity = form.customBgOpacity ?? 0.75;
 
   const handleCloseCancel = () => {
     onPreviewAppearance?.(null);
@@ -278,7 +290,7 @@ export function SettingsModal({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           spellCheck={false}
-          className="field font-mono text-[11.5px]"
+          className="field font-mono text-[0.8125rem]"
           title={value}
         />
         {isElectron && (
@@ -308,10 +320,10 @@ export function SettingsModal({
               <Settings2 className="h-4 w-4 text-osu-soft" />
             </div>
             <div className="min-w-0">
-              <h2 className="font-display text-[14.5px] font-bold text-ink">
+              <h2 className="font-display text-[1.0625rem] font-bold text-ink">
                 客户端路径、代理与主题背景设置
               </h2>
-              <p className="truncate text-[11px] text-ink-3">
+              <p className="truncate text-[0.78125rem] font-medium text-ink-3">
                 默认已自动绑定本机 Stable / Lazer 路径及 <span className="font-mono tabular-nums">6174</span> 代理端口
               </p>
             </div>
@@ -322,7 +334,7 @@ export function SettingsModal({
         </div>
 
         {/* Body */}
-        <div className="flex-1 space-y-3 overflow-y-auto p-4 text-[12px]">
+        <div className="flex-1 space-y-3 overflow-y-auto p-4 text-[0.84375rem]">
           {/* 1. Client Paths */}
           <Section index={1} title="本地客户端路径">
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -362,22 +374,35 @@ export function SettingsModal({
             index={2}
             title="智能网络与代理设置"
             action={
-              <button
-                type="button"
-                onClick={onBenchmark}
-                disabled={network?.benchmarking}
-                className="btn btn-sm border-emerald-500/35 bg-emerald-500/12 text-ok hover:border-emerald-500/55 hover:bg-emerald-500/20"
-              >
-                {network?.benchmarking ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Activity className="h-3.5 w-3.5" />
+              <div className="flex flex-wrap items-center gap-2">
+                {network && (
+                  <span
+                    className={`chip font-mono ${
+                      network.hasGlobalIpv6
+                        ? 'border-emerald-500/35 bg-emerald-500/12 text-ok'
+                        : 'border-hairline bg-surface-1 text-ink-3'
+                    }`}
+                  >
+                    {network.hasGlobalIpv6 ? 'IPv6 已就绪' : '仅 IPv4'}
+                  </span>
                 )}
-                <span>立即检测代理与全部镜像测速</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={onBenchmark}
+                  disabled={network?.benchmarking}
+                  className="btn btn-sm border-emerald-500/35 bg-emerald-500/12 text-ok hover:border-emerald-500/55 hover:bg-emerald-500/20"
+                >
+                  {network?.benchmarking ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Activity className="h-3.5 w-3.5" />
+                  )}
+                  <span>立即检测代理与全部镜像测速</span>
+                </button>
+              </div>
             }
           >
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)_minmax(0,0.7fr)]">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1.25fr)_minmax(0,0.85fr)_minmax(0,0.6fr)]">
               <div className="flex min-w-0 flex-col gap-1.5">
                 <span className="field-label">代理策略</span>
                 <SelectField
@@ -389,6 +414,19 @@ export function SettingsModal({
                   <option value="direct">强制全直连</option>
                 </SelectField>
               </div>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <span className="field-label">网络协议 (IPv6)</span>
+                <SelectField
+                  value={form.ipFamily || 'auto'}
+                  onChange={(val) => setForm({ ...form, ipFamily: val as IpFamilyMode })}
+                >
+                  <option value="auto">自动双栈 (Happy Eyeballs)</option>
+                  <option value="ipv6_first">IPv6 优先 (直连加速)</option>
+                  <option value="ipv6_only">强制仅 IPv6</option>
+                  <option value="ipv4_first">IPv4 优先</option>
+                  <option value="ipv4_only">强制仅 IPv4</option>
+                </SelectField>
+              </div>
               <label className="flex min-w-0 flex-col gap-1.5">
                 <span className="field-label">代理主机</span>
                 <input
@@ -396,7 +434,7 @@ export function SettingsModal({
                   value={form.proxyHost}
                   onChange={(e) => setForm({ ...form, proxyHost: e.target.value })}
                   spellCheck={false}
-                  className="field font-mono text-[11.5px]"
+                  className="field font-mono text-[0.8125rem]"
                 />
               </label>
               <label className="flex min-w-0 flex-col gap-1.5">
@@ -405,7 +443,7 @@ export function SettingsModal({
                   type="number"
                   value={form.proxyPort}
                   onChange={(e) => setForm({ ...form, proxyPort: Number(e.target.value) || 6174 })}
-                  className="field font-mono text-[11.5px] tabular-nums"
+                  className="field font-mono text-[0.8125rem] tabular-nums"
                 />
               </label>
             </div>
@@ -432,8 +470,8 @@ export function SettingsModal({
                             {best && <span className="absolute inset-y-1.5 left-0 w-[2.5px] rounded-full bg-osu" />}
                             <div className="flex min-w-0 items-center gap-2">
                               <div className="min-w-0">
-                                <div className="truncate font-medium text-ink">{m.name}</div>
-                                <div className="truncate font-mono text-[10px] text-ink-3">{m.shortName}</div>
+                                <div className="truncate font-semibold text-ink">{m.name}</div>
+                                <div className="truncate font-mono text-[0.71875rem] text-ink-3">{m.shortName}</div>
                               </div>
                               {best && (
                                 <span className="chip shrink-0 border-osu/40 bg-osu/12 text-osu-soft">最优</span>
@@ -457,7 +495,7 @@ export function SettingsModal({
                           <td className="text-right">
                             {m.latencyMs != null && tone ? (
                               <div className="ml-auto flex w-[92px] flex-col items-end gap-1">
-                                <span className={`font-mono text-[11.5px] tabular-nums ${tone.text}`}>
+                                <span className={`font-mono text-[0.78125rem] font-semibold tabular-nums ${tone.text}`}>
                                   {m.latencyMs} <span className="text-ink-3">ms</span>
                                 </span>
                                 <div className="meter h-[3px]">
@@ -498,9 +536,10 @@ export function SettingsModal({
           </Section>
 
           {/* 3. Theme, Custom Background & Download Preferences */}
+          {/* 3. Theme, Font Size, Custom Background & Download Preferences */}
           <Section
             index={3}
-            title="界面主题、动态配色与桌面背景"
+            title="界面主题、字体与桌面背景"
             icon={<Palette className="h-3.5 w-3.5 shrink-0 text-osu-soft" />}
           >
             {/* 8 Theme Picker */}
@@ -530,10 +569,10 @@ export function SettingsModal({
                       }}
                     />
                     <div className="min-w-0">
-                      <div className="font-display truncate text-[12px] font-bold text-ink">
+                      <div className="font-display truncate text-[0.84375rem] font-bold text-ink">
                         {opt.label}
                       </div>
-                      <div className="truncate text-[10px] text-ink-3">
+                      <div className="truncate text-[0.71875rem] font-medium text-ink-3">
                         {opt.isDark ? '暗色' : '浅色'}
                       </div>
                     </div>
@@ -542,13 +581,75 @@ export function SettingsModal({
               })}
             </div>
 
+            {/* Custom UI Font Size Scaling */}
+            <div className="space-y-2.5 rounded-[10px] border border-hairline bg-surface-2/55 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Type className="h-3.5 w-3.5 shrink-0 text-osu-soft" />
+                  <span className="field-label font-semibold text-ink">界面字体大小</span>
+                  <span className="font-mono rounded-[6px] border border-hairline bg-surface-1 px-1.5 py-0.5 text-[0.75rem] font-bold text-osu-soft tabular-nums">
+                    {Math.round(currentFontScale * 100)}%
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1">
+                  {FONT_SCALE_PRESETS.map((preset) => {
+                    const active = Math.abs(currentFontScale - preset.value) < 0.015;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => updateAppearance({ fontScale: preset.value })}
+                        className={`btn btn-sm min-h-[26px] px-2 text-[0.75rem] ${
+                          active ? 'border-osu/50 bg-osu/14 text-osu-soft' : ''
+                        }`}
+                      >
+                        {preset.label} {Math.round(preset.value * 100)}%
+                      </button>
+                    );
+                  })}
+                  {Math.abs(currentFontScale - DEFAULT_FONT_SCALE) > 0.005 && (
+                    <button
+                      type="button"
+                      onClick={() => updateAppearance({ fontScale: DEFAULT_FONT_SCALE })}
+                      className="btn btn-sm min-h-[26px] px-2 text-[0.75rem]"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      <span>恢复默认</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <input
+                type="range"
+                aria-label="界面字体大小缩放"
+                min={FONT_SCALE_MIN}
+                max={FONT_SCALE_MAX}
+                step={0.01}
+                value={currentFontScale}
+                onChange={(e) => updateAppearance({ fontScale: Number(e.target.value) })}
+                style={{
+                  '--fill': `${Math.round(((currentFontScale - FONT_SCALE_MIN) / (FONT_SCALE_MAX - FONT_SCALE_MIN)) * 100)}%`,
+                } as React.CSSProperties}
+                className="slim-range w-full"
+              />
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[0.75rem] font-medium text-ink-3">
+                <span>默认 120%，实时缩放全部中英文界面字号，取消保存将还原原设定</span>
+                <span className="truncate font-semibold text-ink-2">
+                  预览示例：双端曲库同步 · Mania 4K 谱面下载器 · 98.50% ~420pp
+                </span>
+              </div>
+            </div>
+
             {/* Custom Accent Color Picker */}
             <div className="space-y-2 rounded-[10px] border border-hairline bg-surface-2/55 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="field-label font-semibold text-ink">自定义主题强调色</span>
                 <div className="flex items-center gap-2">
                   {form.dynamicThemeFromBg && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-osu/35 bg-osu/10 px-2 py-0.5 text-[10.5px] text-osu-soft">
+                    <span className="inline-flex items-center gap-1 rounded-full border border-osu/35 bg-osu/10 px-2 py-0.5 text-[0.71875rem] font-medium text-osu-soft">
                       <Sparkles className="h-3 w-3" />
                       <span>
                         随背景变色中
@@ -559,7 +660,7 @@ export function SettingsModal({
                   <button
                     type="button"
                     onClick={() => updateAppearance({ accentColor: '' })}
-                    className={`btn btn-sm h-6 px-2 text-[10.5px] ${
+                    className={`btn btn-sm min-h-[26px] px-2 text-[0.75rem] font-semibold ${
                       !form.accentColor ? 'border-osu/45 bg-osu/12 text-osu-soft' : ''
                     }`}
                   >
@@ -587,7 +688,7 @@ export function SettingsModal({
                 })}
 
                 <label
-                  className="ml-1 inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-full border border-hairline bg-surface-1 px-2.5 text-[11px] text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink"
+                  className="ml-1 inline-flex min-h-[30px] cursor-pointer items-center gap-1.5 rounded-full border border-hairline bg-surface-1 px-2.5 text-[0.75rem] font-semibold text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink"
                   title="自由选取任意强调色"
                 >
                   <input
@@ -596,7 +697,7 @@ export function SettingsModal({
                     onChange={(e) => updateAppearance({ accentColor: e.target.value })}
                     className="h-4 w-4 cursor-pointer rounded border-none bg-transparent p-0"
                   />
-                  <span className="font-mono text-[10.5px] uppercase">
+                  <span className="font-mono text-[0.75rem] uppercase">
                     {form.accentColor || '自选颜色'}
                   </span>
                 </label>
@@ -622,7 +723,7 @@ export function SettingsModal({
                       className="h-full w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-[10.5px] text-ink-4">
+                    <div className="flex h-full w-full items-center justify-center text-[0.75rem] font-medium text-ink-4">
                       未设置壁纸
                     </div>
                   )}
@@ -663,38 +764,39 @@ export function SettingsModal({
                       value={bgUrlDraft}
                       onChange={(e) => setBgUrlDraft(e.target.value)}
                       placeholder="或粘贴网络图片链接 (https://...)"
-                      className="field h-7 flex-1 font-mono text-[11px]"
+                      className="field min-h-[30px] flex-1 font-mono text-[0.78125rem]"
                     />
                     <button
                       type="button"
                       disabled={bgUploading || !bgUrlDraft.trim()}
                       onClick={() => void handleApplyBgUrl()}
-                      className="btn btn-sm h-7 px-2.5"
+                      className="btn btn-sm min-h-[30px] px-2.5"
                     >
                       应用链接
                     </button>
                   </div>
-                  {bgError && <div className="text-[11px] text-bad">{bgError}</div>}
+                  {bgError && <div className="text-[0.78125rem] font-medium text-bad">{bgError}</div>}
                 </div>
               </div>
 
               {/* Background Opacity Slider */}
               <div className="space-y-1.5 border-t border-hairline pt-2.5">
-                <div className="flex items-center justify-between text-[11.5px]">
-                  <span className="font-medium text-ink-2">背景图不透明度（越高越清晰，建议 15%–35%）</span>
-                  <span className="font-mono font-semibold text-ink tabular-nums">
-                    {Math.round((form.customBgOpacity ?? 0.22) * 100)}%
+                <div className="flex items-center justify-between text-[0.8125rem]">
+                  <span className="font-semibold text-ink-2">背景图不透明度（默认 75%，越高背景越清晰）</span>
+                  <span className="font-mono font-bold text-ink tabular-nums">
+                    {Math.round(currentBgOpacity * 100)}%
                   </span>
                 </div>
                 <input
                   type="range"
+                  aria-label="背景图不透明度"
                   min={0.04}
-                  max={0.75}
+                  max={1}
                   step={0.01}
-                  value={form.customBgOpacity ?? 0.22}
+                  value={currentBgOpacity}
                   onChange={(e) => updateAppearance({ customBgOpacity: Number(e.target.value) })}
                   style={{
-                    '--fill': `${Math.round((((form.customBgOpacity ?? 0.22) - 0.04) / (0.75 - 0.04)) * 100)}%`,
+                    '--fill': `${Math.round(((currentBgOpacity - 0.04) / (1 - 0.04)) * 100)}%`,
                   } as React.CSSProperties}
                   className="slim-range w-full"
                 />
@@ -702,7 +804,7 @@ export function SettingsModal({
 
               {/* Dynamic Song Background & Theme-from-Bg Toggles */}
               <div className="grid grid-cols-1 gap-2 pt-1 sm:grid-cols-2">
-                <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-hairline bg-surface-1/70 px-3 py-2 text-[11.5px] text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-hairline bg-surface-1/70 px-3 py-2 text-[0.8125rem] font-medium text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
                   <input
                     type="checkbox"
                     checked={form.dynamicBgFromSong ?? true}
@@ -712,7 +814,7 @@ export function SettingsModal({
                   <span>Lazer 模式随选中歌曲更换桌面背景</span>
                 </label>
 
-                <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-hairline bg-surface-1/70 px-3 py-2 text-[11.5px] text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-hairline bg-surface-1/70 px-3 py-2 text-[0.8125rem] font-medium text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
                   <input
                     type="checkbox"
                     checked={form.dynamicThemeFromBg ?? true}
@@ -731,8 +833,8 @@ export function SettingsModal({
                   value={form.defaultTarget}
                   onChange={(val) => setForm({ ...form, defaultTarget: val as DownloadTarget })}
                 >
-                  <option value="lazer">osu!lazer (刷PP)</option>
-                  <option value="stable">osu!stable (日常练习)</option>
+                  <option value="lazer">osu!lazer</option>
+                  <option value="stable">osu!stable</option>
                   <option value="both">双端同时安装</option>
                 </SelectField>
               </div>
@@ -803,12 +905,12 @@ export function SettingsModal({
                   max={6}
                   value={form.concurrency}
                   onChange={(e) => setForm({ ...form, concurrency: Number(e.target.value) || 3 })}
-                  className="field font-mono text-[11.5px] tabular-nums"
+                  className="field font-mono text-[0.8125rem] tabular-nums"
                 />
               </label>
             </div>
 
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-[9px] border border-hairline bg-surface-2/70 px-3 py-2.5 text-[12px] text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-[9px] border border-hairline bg-surface-2/70 px-3 py-2.5 text-[0.8125rem] font-medium text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
               <input
                 type="checkbox"
                 checked={form.autoImportWhenLazerRunning}
@@ -820,7 +922,7 @@ export function SettingsModal({
               <span>检测到 osu!lazer 正在运行时，下载完成后自动触发客户端导入</span>
             </label>
 
-            <label className="flex cursor-pointer items-center gap-2.5 rounded-[9px] border border-hairline bg-surface-2/70 px-3 py-2.5 text-[12px] text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-[9px] border border-hairline bg-surface-2/70 px-3 py-2.5 text-[0.8125rem] font-medium text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
               <input
                 type="checkbox"
                 checked={form.autoLoadWhenStableRunning}
@@ -847,7 +949,7 @@ export function SettingsModal({
                   <option value="F11">F11</option>
                 </SelectField>
               </div>
-              <div className="flex min-w-0 flex-col justify-end text-[11px] text-ink-3">
+              <div className="flex min-w-0 flex-col justify-end text-[0.78125rem] font-medium text-ink-3">
                 <span>
                   提示：在游戏内使用「无边框窗口 (Borderless)」模式时，热键可一键呼出 macOS 磨砂浮窗。
                 </span>
@@ -862,9 +964,9 @@ export function SettingsModal({
             hint="(完全可选，无需登录即可使用全部镜像)"
             icon={<ShieldCheck className="h-3.5 w-3.5 shrink-0 text-ok" />}
           >
-            <p className="text-[11.5px] leading-relaxed text-ink-2">
+            <p className="text-[0.8125rem] font-medium leading-relaxed text-ink-2">
               不填任何账号信息即可通过小夜、Nekoha、osu.direct 等镜像站自由搜索与下载。仅当你明确想走官方下载通道时才需填写浏览器中的
-              <code className="mx-1 rounded-[5px] border border-hairline bg-tint px-1 py-px font-mono text-[11px] text-osu-soft">
+              <code className="mx-1 rounded-[5px] border border-hairline bg-tint px-1 py-px font-mono text-[0.78125rem] text-osu-soft">
                 osu_session
               </code>
               。

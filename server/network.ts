@@ -1,10 +1,20 @@
+import dns from 'node:dns';
 import net from 'node:net';
+import os from 'node:os';
 import { EventEmitter } from 'node:events';
-import { Agent, ProxyAgent, fetch as undiciFetch, type RequestInit as UndiciRequestInit } from 'undici';
+import {
+  Agent,
+  ProxyAgent,
+  buildConnector,
+  fetch as undiciFetch,
+  type RequestInit as UndiciRequestInit,
+} from 'undici';
 import { getConfig } from './config.js';
 import { logInfo } from './logger.js';
 import { MIRROR_DEFINITIONS, MIRROR_MAP } from './sources.js';
 import {
+  FastBatchRouteStrategy,
+  IpFamilyMode,
   MirrorDefinition,
   MirrorHealth,
   MirrorId,
@@ -18,10 +28,160 @@ export const USER_AGENT =
 
 export const networkEvents = new EventEmitter();
 
-const directAgent = new Agent({
-  connect: { timeout: 8000 },
-  keepAliveTimeout: 15000,
-});
+const DNS_CACHE_TTL_MS = 5 * 60_000;
+const dnsCache = new Map<string, { addresses: dns.LookupAddress[]; at: number }>();
+const lastHostIpFamily = new Map<string, 4 | 6>();
+const directAgents = new Map<IpFamilyMode, Agent>();
+
+export function detectLocalGlobalIpv6(): boolean {
+  try {
+    const ifaces = os.networkInterfaces();
+    for (const entries of Object.values(ifaces)) {
+      if (!entries) continue;
+      for (const info of entries) {
+        if (info.internal) continue;
+        const isV6 = info.family === 'IPv6' || (info.family as unknown) === 6;
+        if (!isV6 || !info.address) continue;
+        const addr = info.address.toLowerCase();
+        if (addr === '::1' || addr.startsWith('fe80:') || addr.startsWith('fc') || addr.startsWith('fd')) {
+          continue;
+        }
+        return true;
+      }
+    }
+  } catch {
+    // Ignore interface enumeration errors
+  }
+  return false;
+}
+
+export function getLastHostIpFamily(urlOrHost: string): 4 | 6 | null {
+  if (!urlOrHost) return null;
+  let host = urlOrHost.trim();
+  if (host.includes('://')) {
+    try {
+      host = new URL(host).hostname;
+    } catch {
+      return null;
+    }
+  }
+  return lastHostIpFamily.get(host.toLowerCase()) ?? null;
+}
+
+function selectAddresses(
+  allAddrs: dns.LookupAddress[],
+  ipFamily: IpFamilyMode,
+  requestedFamily?: number,
+): dns.LookupAddress[] {
+  const v6 = allAddrs.filter((a) => a.family === 6);
+  const v4 = allAddrs.filter((a) => a.family === 4);
+
+  if (ipFamily === 'ipv6_only') return v6;
+  if (ipFamily === 'ipv4_only') return v4;
+  if (ipFamily === 'ipv6_first') return [...v6, ...v4];
+  if (ipFamily === 'ipv4_first') return [...v4, ...v6];
+  if (requestedFamily === 6) return v6;
+  if (requestedFamily === 4) return v4;
+  return allAddrs;
+}
+
+function createIpFamilyLookup(ipFamily: IpFamilyMode) {
+  return (
+    hostname: string,
+    options: dns.LookupOptions,
+    callback: (
+      err: NodeJS.ErrnoException | null,
+      address: string | dns.LookupAddress[],
+      family?: number,
+    ) => void,
+  ): void => {
+    const cacheKey = hostname.toLowerCase();
+    const deliver = (allAddrs: dns.LookupAddress[]) => {
+      const requested = typeof options?.family === 'number' ? options.family : undefined;
+      const filtered = selectAddresses(allAddrs, ipFamily, requested);
+      if (filtered.length === 0) {
+        const err: NodeJS.ErrnoException = new Error(
+          `No matching ${ipFamily === 'ipv6_only' ? 'IPv6' : 'IPv4'} address for ${hostname}`,
+        );
+        err.code = 'ENOTFOUND';
+        callback(err, options?.all ? [] : '', 0);
+        return;
+      }
+      if (options?.all) {
+        callback(null, filtered);
+      } else {
+        callback(null, filtered[0].address, filtered[0].family);
+      }
+    };
+
+    const cached = dnsCache.get(cacheKey);
+    if (cached && Date.now() - cached.at < DNS_CACHE_TTL_MS) {
+      deliver(cached.addresses);
+      return;
+    }
+
+    dns.lookup(hostname, { all: true, verbatim: true }, (err, addresses) => {
+      if (err) {
+        callback(err, options?.all ? [] : '', 0);
+        return;
+      }
+      const normalized = Array.isArray(addresses) ? addresses : [];
+      if (normalized.length > 0) {
+        if (dnsCache.size > 256) {
+          const oldest = dnsCache.keys().next().value;
+          if (oldest !== undefined) dnsCache.delete(oldest);
+        }
+        dnsCache.set(cacheKey, { addresses: normalized, at: Date.now() });
+      }
+      deliver(normalized);
+    });
+  };
+}
+
+function getDirectAgent(ipFamily: IpFamilyMode): Agent {
+  const existing = directAgents.get(ipFamily);
+  if (existing) return existing;
+
+  const autoSelect = ipFamily !== 'ipv6_only' && ipFamily !== 'ipv4_only';
+  const baseConnector = buildConnector({
+    timeout: 8000,
+    keepAlive: true,
+    keepAliveInitialDelay: 10_000,
+    lookup: createIpFamilyLookup(ipFamily),
+    autoSelectFamily: autoSelect,
+    autoSelectFamilyAttemptTimeout: ipFamily === 'ipv6_first' ? 220 : 150,
+  });
+
+  const agent = new Agent({
+    connections: 16,
+    keepAliveTimeout: 30_000,
+    keepAliveMaxTimeout: 120_000,
+    headersTimeout: 15_000,
+    bodyTimeout: 90_000,
+    connect: (opts, cb) => {
+      baseConnector(opts, (err, socket) => {
+        if (err || !socket) {
+          cb(err || new Error('Socket connection failed'), null);
+          return;
+        }
+        if (opts.hostname) {
+          const fam = socket.remoteFamily;
+          if (fam === 'IPv6' || fam === 'IPv4') {
+            if (lastHostIpFamily.size > 512) {
+              const oldest = lastHostIpFamily.keys().next().value;
+              if (oldest !== undefined) lastHostIpFamily.delete(oldest);
+            }
+            lastHostIpFamily.set(opts.hostname.toLowerCase(), fam === 'IPv6' ? 6 : 4);
+          }
+        }
+        cb(null, socket);
+      });
+    },
+  });
+
+  directAgents.set(ipFamily, agent);
+  return agent;
+}
 
 let proxyAgentKey = '';
 let cachedProxyAgent: ProxyAgent | null = null;
@@ -32,6 +192,9 @@ function getProxyAgent(host: string, port: number): ProxyAgent {
     proxyAgentKey = key;
     cachedProxyAgent = new ProxyAgent({
       uri: `http://${host}:${port}`,
+      connections: 16,
+      keepAliveTimeout: 30_000,
+      keepAliveMaxTimeout: 120_000,
       connect: { timeout: 8000 },
     });
   }
@@ -71,8 +234,25 @@ export interface SmartFetchResult {
   routeUsed: 'direct' | 'proxy';
 }
 
-export async function resolveRoutes(policy: RoutePolicy): Promise<Array<'direct' | 'proxy'>> {
+export async function resolveRoutes(
+  policy: RoutePolicy,
+  strategyOverride?: FastBatchRouteStrategy,
+): Promise<Array<'direct' | 'proxy'>> {
   const cfg = getConfig();
+
+  if (strategyOverride === 'direct_only') {
+    return ['direct'];
+  }
+  if (strategyOverride === 'proxy_only') {
+    return ['proxy'];
+  }
+  if (strategyOverride === 'direct_first') {
+    if (cfg.proxyMode === 'direct' || policy === 'direct_only') return ['direct'];
+    if (cfg.proxyMode === 'proxy' || policy === 'proxy_only') return ['proxy'];
+    const proxyOpen = await isProxyListening();
+    return proxyOpen ? ['direct', 'proxy'] : ['direct'];
+  }
+
   if (cfg.proxyMode === 'direct' || policy === 'direct_only') {
     return ['direct'];
   }
@@ -91,11 +271,13 @@ export async function resolveRoutes(policy: RoutePolicy): Promise<Array<'direct'
 export async function fetchWithRoute(
   url: string,
   route: 'direct' | 'proxy',
-  init: Omit<UndiciRequestInit, 'dispatcher'> & { timeoutMs?: number } = {},
+  init: Omit<UndiciRequestInit, 'dispatcher'> & { timeoutMs?: number; ipFamily?: IpFamilyMode } = {},
 ): Promise<Awaited<ReturnType<typeof undiciFetch>>> {
   const cfg = getConfig();
-  const { timeoutMs = 12000, headers, signal, ...rest } = init;
-  const dispatcher = route === 'proxy' ? getProxyAgent(cfg.proxyHost, cfg.proxyPort) : directAgent;
+  const { timeoutMs = 12000, ipFamily, headers, signal, ...rest } = init;
+  const resolvedIpFamily = ipFamily ?? cfg.ipFamily ?? 'auto';
+  const dispatcher =
+    route === 'proxy' ? getProxyAgent(cfg.proxyHost, cfg.proxyPort) : getDirectAgent(resolvedIpFamily);
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
 
@@ -328,6 +510,8 @@ function getNetworkStatusSync(proxyOpen: boolean): NetworkStatus {
     lastChecked: lastBenchmarkAt,
     benchmarking,
     recommendedMirror: firstHealthy?.id ?? null,
+    hasGlobalIpv6: detectLocalGlobalIpv6(),
+    ipFamily: cfg.ipFamily ?? 'auto',
     mirrors,
   };
 }

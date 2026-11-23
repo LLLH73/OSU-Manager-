@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { AppConfig, SongViewMode, ThemeId } from './types.js';
+import { AppConfig, IpFamilyMode, SongViewMode, ThemeId } from './types.js';
 
 export const DATA_DIR = process.env.OSU_DL_DATA_DIR
   ? path.resolve(process.env.OSU_DL_DATA_DIR)
@@ -27,13 +27,31 @@ const VALID_THEME_IDS: ReadonlySet<string> = new Set([
 ]);
 
 function normalizeTheme(val: unknown): ThemeId {
-  return typeof val === 'string' && VALID_THEME_IDS.has(val) ? (val as ThemeId) : 'dark';
+  return typeof val === 'string' && VALID_THEME_IDS.has(val) ? (val as ThemeId) : 'light';
 }
 
-function clampBgOpacity(val: unknown, fallback = 0.22): number {
+function clampBgOpacity(val: unknown, fallback = 0.75): number {
   const n = Number(val);
   if (!Number.isFinite(n)) return fallback;
-  return Math.min(0.75, Math.max(0.04, Math.round(n * 100) / 100));
+  return Math.min(1, Math.max(0.04, Math.round(n * 100) / 100));
+}
+
+function clampFontScale(val: unknown, fallback = 1.2): number {
+  const n = Number(val);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(1.25, Math.max(0.85, Math.round(n * 100) / 100));
+}
+
+const VALID_IP_FAMILIES: ReadonlySet<string> = new Set([
+  'auto',
+  'ipv6_first',
+  'ipv4_first',
+  'ipv6_only',
+  'ipv4_only',
+]);
+
+function normalizeIpFamily(val: unknown): IpFamilyMode {
+  return typeof val === 'string' && VALID_IP_FAMILIES.has(val) ? (val as IpFamilyMode) : 'auto';
 }
 
 function normalizeAccentColor(val: unknown): string {
@@ -87,7 +105,7 @@ export function getDefaultConfig(): AppConfig {
     autoImportWhenLazerRunning: true,
     stableInstallMode: 'extract',
     officialCookie: '',
-    theme: 'dark',
+    theme: 'light',
     viewMode: 'lazer',
     autoLoadWhenStableRunning: true,
     overlayHotkey: 'Alt+Shift+O',
@@ -95,10 +113,12 @@ export function getDefaultConfig(): AppConfig {
     previewSkinId: '',
     previewScrollSpeed: 28,
     customBgImage: '',
-    customBgOpacity: 0.22,
+    customBgOpacity: 0.75,
     dynamicBgFromSong: true,
     dynamicThemeFromBg: true,
     accentColor: '',
+    fontScale: 1.2,
+    ipFamily: 'auto',
   };
 }
 
@@ -160,6 +180,8 @@ export function loadConfig(): AppConfig {
           ? parsed.dynamicThemeFromBg
           : defaults.dynamicThemeFromBg,
       accentColor: normalizeAccentColor(parsed.accentColor),
+      fontScale: clampFontScale(parsed.fontScale, defaults.fontScale),
+      ipFamily: normalizeIpFamily(parsed.ipFamily),
     };
   } catch {
     cachedConfig = defaults;
@@ -199,6 +221,8 @@ export function saveConfig(patch: Partial<AppConfig>): AppConfig {
     dynamicBgFromSong: Boolean(patch.dynamicBgFromSong ?? current.dynamicBgFromSong),
     dynamicThemeFromBg: Boolean(patch.dynamicThemeFromBg ?? current.dynamicThemeFromBg),
     accentColor: normalizeAccentColor(patch.accentColor ?? current.accentColor),
+    fontScale: clampFontScale(patch.fontScale, current.fontScale),
+    ipFamily: normalizeIpFamily(patch.ipFamily ?? current.ipFamily),
   };
   ensureDirs(next);
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(next, null, 2), 'utf8');

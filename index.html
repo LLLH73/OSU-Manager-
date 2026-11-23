@@ -12,10 +12,15 @@
           if (t && validThemes.indexOf(t) !== -1) {
             document.documentElement.dataset.theme = t;
           } else {
-            document.documentElement.dataset.theme = 'dark';
+            document.documentElement.dataset.theme = 'light';
           }
+          var rawFs = localStorage.getItem('osu4k-font-scale');
+          var fs = rawFs !== null && rawFs !== '' ? Number(rawFs) : 1.2;
+          if (!isFinite(fs) || fs < 0.85 || fs > 1.25) fs = 1.2;
+          document.documentElement.style.setProperty('--ui-font-scale', String(Math.round(fs * 100) / 100));
         } catch (e) {
-          document.documentElement.dataset.theme = 'dark';
+          document.documentElement.dataset.theme = 'light';
+          document.documentElement.style.setProperty('--ui-font-scale', '1.2');
         }
       })();
     </script>

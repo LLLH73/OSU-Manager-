@@ -25,7 +25,19 @@ let tray: Tray | null = null;
 let serverHandle: { port: number; close: () => Promise<void> } | null = null;
 let serverPort = Number(process.env.PORT || 3721);
 
+const THEME_ELECTRON_BG: Record<string, string> = {
+  light: '#f3f5f9',
+  dark: '#0b0c12',
+  stone: '#131312',
+  midnight: '#070d18',
+  forest: '#0a120f',
+  paper: '#f6f4ef',
+  latte: '#f2ebe1',
+  sakura: '#fbf1f5',
+};
+
 let currentHotkey = 'Alt+Shift+O';
+let initialMainBg = THEME_ELECTRON_BG.light;
 let overlayPinned = true;
 let overlayExpandedHeight = 660;
 let overlayCompact = false;
@@ -54,9 +66,13 @@ function loadInitialOverlayPrefs(): void {
   try {
     const parsed = JSON.parse(fs.readFileSync(cfgPath, 'utf8')) as {
       overlayHotkey?: string;
+      theme?: string;
     };
     if (typeof parsed.overlayHotkey === 'string' && parsed.overlayHotkey.trim()) {
       currentHotkey = parsed.overlayHotkey.trim();
+    }
+    if (typeof parsed.theme === 'string' && THEME_ELECTRON_BG[parsed.theme]) {
+      initialMainBg = THEME_ELECTRON_BG[parsed.theme];
     }
   } catch {
     // Ignore unreadable config
@@ -432,7 +448,7 @@ function createWindow(port: number): BrowserWindow {
     minHeight: 680,
     frame: false,
     titleBarStyle: 'hidden',
-    backgroundColor: '#090a10',
+    backgroundColor: initialMainBg,
     show: false,
     icon: iconPath,
     webPreferences: {

@@ -61,10 +61,190 @@ export function verifyOszFile(filePath: string): { valid: boolean; reason?: stri
   }
 }
 
+export async function verifyOszFileFast(
+  filePath: string,
+): Promise<{ valid: boolean; reason?: string }> {
+  let fh: fs.promises.FileHandle | null = null;
+  try {
+    const stat = await fs.promises.stat(filePath);
+    if (stat.size < 512) {
+      return { valid: false, reason: `文件过小 (${stat.size}B)，不是有效的 .osz 包` };
+    }
+
+    fh = await fs.promises.open(filePath, 'r');
+    const head = Buffer.allocUnsafe(4);
+    await fh.read(head, 0, 4, 0);
+    if (head[0] !== 0x50 || head[1] !== 0x4b || head[2] !== 0x03 || head[3] !== 0x04) {
+      return { valid: false, reason: '响应内容不是 ZIP/.osz 压缩包（可能镜像返回了错误页）' };
+    }
+
+    const tailLen = Math.min(stat.size, 65_558);
+    const tailOffset = stat.size - tailLen;
+    const tail = Buffer.allocUnsafe(tailLen);
+    await fh.read(tail, 0, tailLen, tailOffset);
+
+    let eocdPos = -1;
+    for (let i = tailLen - 22; i >= 0; i--) {
+      if (
+        tail[i] === 0x50 &&
+        tail[i + 1] === 0x4b &&
+        tail[i + 2] === 0x05 &&
+        tail[i + 3] === 0x06
+      ) {
+        eocdPos = i;
+        break;
+      }
+    }
+
+    if (eocdPos < 0) {
+      await fh.close();
+      fh = null;
+      const fallback = verifyOszFile(filePath);
+      return { valid: fallback.valid, reason: fallback.reason };
+    }
+
+    const totalEntries = tail.readUInt16LE(eocdPos + 10);
+    const cdSize = tail.readUInt32LE(eocdPos + 12);
+    const cdOffset = tail.readUInt32LE(eocdPos + 16);
+
+    if (
+      totalEntries === 0xffff ||
+      cdSize === 0xffffffff ||
+      cdOffset === 0xffffffff ||
+      cdSize === 0 ||
+      cdOffset + cdSize > stat.size
+    ) {
+      await fh.close();
+      fh = null;
+      const fallback = verifyOszFile(filePath);
+      return { valid: fallback.valid, reason: fallback.reason };
+    }
+
+    const readSize = Math.min(cdSize, 512 * 1024);
+    const cdBuf = Buffer.allocUnsafe(readSize);
+    await fh.read(cdBuf, 0, readSize, cdOffset);
+    const cdText = cdBuf.toString('latin1').toLowerCase();
+    if (cdText.includes('.osu')) {
+      return { valid: true };
+    }
+    return { valid: false, reason: '.osz 压缩包内未找到任何 .osu 谱面文件' };
+  } catch (err) {
+    return {
+      valid: false,
+      reason: err instanceof Error ? err.message : '校验 .osz 压缩包失败',
+    };
+  } finally {
+    if (fh) {
+      await fh.close().catch(() => {});
+    }
+  }
+}
+
+export async function moveFileFast(src: string, dest: string): Promise<void> {
+  try {
+    await fs.promises.rename(src, dest);
+  } catch (err: unknown) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === 'EXDEV' || code === 'EPERM' || code === 'EACCES') {
+      await fs.promises.copyFile(src, dest);
+      await fs.promises.unlink(src).catch(() => {});
+    } else {
+      throw err;
+    }
+  }
+}
+
 export interface InstallMeta {
   beatmapsetId: number;
   artist: string;
   title: string;
+}
+
+export async function fastInstallToStable(
+  oszPath: string,
+  meta: InstallMeta,
+  cfg: AppConfig,
+  opts: { dropOsz: boolean; moveSource: boolean },
+): Promise<{ installedPath: string; folderName: string }> {
+  const songsDir = path.join(cfg.stablePath, 'Songs');
+  await fs.promises.mkdir(songsDir, { recursive: true });
+  const baseName = sanitizeWindowsName(`${meta.beatmapsetId} ${meta.artist} - ${meta.title}`);
+
+  if (opts.dropOsz) {
+    const oszName = `${baseName}.osz`;
+    const dest = path.join(songsDir, oszName);
+    if (opts.moveSource) {
+      await moveFileFast(oszPath, dest);
+    } else {
+      await fs.promises.copyFile(oszPath, dest);
+    }
+    markInstalledInMemory(meta.beatmapsetId, 'stable', oszName);
+    return { installedPath: dest, folderName: oszName };
+  }
+
+  const targetDir = path.join(songsDir, baseName);
+  const tmpDir = path.join(songsDir, `.tmp-${meta.beatmapsetId}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
+  await fs.promises.mkdir(tmpDir, { recursive: true });
+
+  try {
+    const zip = new AdmZip(oszPath);
+    const resolvedTmp = path.resolve(tmpDir);
+    const dirsCreated = new Set<string>([resolvedTmp]);
+    const fileTasks: Array<{ destFile: string; data: Buffer }> = [];
+
+    for (const entry of zip.getEntries()) {
+      if (entry.isDirectory) continue;
+      const safeRel = entry.entryName.replace(/\\/g, '/').replace(/^\/+/, '');
+      if (!safeRel || safeRel.includes('..')) continue;
+      const destFile = path.resolve(resolvedTmp, safeRel);
+      if (!destFile.startsWith(resolvedTmp + path.sep)) {
+        throw new Error(`检测到不安全的压缩包路径: ${entry.entryName}`);
+      }
+      const parentDir = path.dirname(destFile);
+      if (!dirsCreated.has(parentDir)) {
+        dirsCreated.add(parentDir);
+        await fs.promises.mkdir(parentDir, { recursive: true });
+      }
+      fileTasks.push({ destFile, data: entry.getData() });
+    }
+
+    for (let i = 0; i < fileTasks.length; i += 8) {
+      const batch = fileTasks.slice(i, i + 8);
+      await Promise.all(batch.map((item) => fs.promises.writeFile(item.destFile, item.data)));
+    }
+
+    if (fs.existsSync(targetDir)) {
+      await fs.promises.rm(targetDir, { recursive: true, force: true });
+    }
+    await fs.promises.rename(tmpDir, targetDir);
+
+    if (opts.moveSource) {
+      await fs.promises.unlink(oszPath).catch(() => {});
+    }
+  } catch (err) {
+    await fs.promises.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+    throw err;
+  }
+
+  markInstalledInMemory(meta.beatmapsetId, 'stable', baseName);
+  return { installedPath: targetDir, folderName: baseName };
+}
+
+export async function fastStageToLazer(
+  oszPath: string,
+  meta: InstallMeta,
+  cfg: AppConfig,
+  opts: { moveSource: boolean },
+): Promise<{ oszDestPath: string; filename: string }> {
+  await fs.promises.mkdir(cfg.lazerImportDir, { recursive: true });
+  const fileName = `${sanitizeWindowsName(`${meta.beatmapsetId} ${meta.artist} - ${meta.title}`)}.osz`;
+  const destPath = path.join(cfg.lazerImportDir, fileName);
+  if (opts.moveSource) {
+    await moveFileFast(oszPath, destPath);
+  } else {
+    await fs.promises.copyFile(oszPath, destPath);
+  }
+  return { oszDestPath: destPath, filename: fileName };
 }
 
 export async function installToStable(

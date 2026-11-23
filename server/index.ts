@@ -14,6 +14,16 @@ import {
   retryDownload,
 } from './downloader.js';
 import {
+  clearFastBatch,
+  fastBatchEvents,
+  getFastBatchSnapshot,
+  pauseFastBatch,
+  resumeFastBatch,
+  startFastBatch,
+  stopFastBatch,
+  stopFastBatchOnShutdown,
+} from './fastBatch.js';
+import {
   clearLazerPendingFiles,
   launchLazerBatchImport,
   loadBeatmapIntoRunningGame,
@@ -522,6 +532,41 @@ app.delete('/api/downloads/completed', (_req: Request, res: Response) => {
   res.json({ removed });
 });
 
+// Fast Batch Bulk Download
+app.get('/api/fast-batch/status', (_req: Request, res: Response) => {
+  res.json(getFastBatchSnapshot());
+});
+
+app.post('/api/fast-batch/start', async (req: Request, res: Response) => {
+  try {
+    const snapshot = await startFastBatch(req.body || {});
+    res.json(snapshot);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : '启动快速批量下载失败';
+    res.status(409).json({ error: msg });
+  }
+});
+
+app.post('/api/fast-batch/pause', async (_req: Request, res: Response) => {
+  res.json(await pauseFastBatch());
+});
+
+app.post('/api/fast-batch/resume', (_req: Request, res: Response) => {
+  res.json(resumeFastBatch());
+});
+
+app.post('/api/fast-batch/stop', async (_req: Request, res: Response) => {
+  res.json(await stopFastBatch());
+});
+
+app.post('/api/fast-batch/clear', (_req: Request, res: Response) => {
+  try {
+    res.json(clearFastBatch());
+  } catch (err) {
+    res.status(409).json({ error: err instanceof Error ? err.message : '无法清空任务' });
+  }
+});
+
 // SSE realtime events + lightweight running-game watcher
 let sseClientCount = 0;
 let lastKnownRunning: { stable: boolean; lazer: boolean } | null = null;
@@ -571,14 +616,17 @@ app.get('/api/events', async (req: Request, res: Response) => {
   sendEvent('downloads', listDownloads());
   sendEvent('network', await getNetworkStatus(false));
   sendEvent('library', initialLib);
+  sendEvent('fast-batch', getFastBatchSnapshot());
 
   const onDownloads = (data: unknown) => sendEvent('downloads', data);
   const onNetwork = (data: unknown) => sendEvent('network', data);
   const onLibrary = (data: unknown) => sendEvent('library', data);
+  const onFastBatch = (data: unknown) => sendEvent('fast-batch', data);
 
   downloadEvents.on('update', onDownloads);
   networkEvents.on('update', onNetwork);
   libraryEvents.on('update', onLibrary);
+  fastBatchEvents.on('update', onFastBatch);
 
   const heartbeat = setInterval(() => {
     res.write(': heartbeat\n\n');
@@ -589,6 +637,7 @@ app.get('/api/events', async (req: Request, res: Response) => {
     downloadEvents.off('update', onDownloads);
     networkEvents.off('update', onNetwork);
     libraryEvents.off('update', onLibrary);
+    fastBatchEvents.off('update', onFastBatch);
     sseClientCount = Math.max(0, sseClientCount - 1);
     stopProcessWatcherIfIdle();
   });
@@ -638,6 +687,7 @@ export async function startServer(
   const close = () =>
     new Promise<void>((resolve) => {
       logInfo('server', 'Server shutting down', { port });
+      stopFastBatchOnShutdown();
       if (processWatchTimer) {
         clearInterval(processWatchTimer);
         processWatchTimer = null;

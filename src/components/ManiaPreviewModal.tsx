@@ -640,7 +640,7 @@ export function ManiaPreviewModal({
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="font-display truncate text-[14px] font-bold text-ink">
+                <h2 className="font-display truncate text-[0.9375rem] font-bold text-ink">
                   {setMeta?.title || titleHint || `Beatmapset #${beatmapsetId}`}
                 </h2>
                 {chart && (
@@ -650,14 +650,14 @@ export function ManiaPreviewModal({
                 )}
                 {chart && !chart.hasFullAudio && (
                   <span
-                    className="chip shrink-0 border-hairline bg-surface-2 text-[10px] text-ink-3"
+                    className="chip shrink-0 border-hairline bg-surface-2 text-[0.6875rem] text-ink-3"
                     title="本地未找到完整音频文件，已切换为静音时间轴演示（可完整播放全曲与拖动进度）"
                   >
                     静音时间轴 · 16:9
                   </span>
                 )}
               </div>
-              <p className="truncate text-[11px] text-ink-3">
+              <p className="truncate text-[0.75rem] font-medium text-ink-3">
                 {setMeta ? `${setMeta.artist} · 谱师 ${setMeta.creator}` : '正在读取本地谱面...'}
                 {chart && (
                   <span className="ml-2 font-mono text-ink-2">
@@ -670,11 +670,11 @@ export function ManiaPreviewModal({
 
           <div className="flex shrink-0 items-center gap-2">
             {setMeta && setMeta.difficulties.length > 0 && (
-              <div className="w-[230px]">
+              <div className="w-[clamp(220px,15rem,280px)]">
                 <SelectField
                   value={String(selectedIndex)}
                   onChange={(val) => setSelectedIndex(Number(val))}
-                  className="h-[30px] text-[11.5px]"
+                  className="min-h-[30px] text-[0.78125rem]"
                 >
                   {setMeta.difficulties.map((d) => (
                     <option key={d.index} value={String(d.index)}>
@@ -689,7 +689,7 @@ export function ManiaPreviewModal({
               <button
                 type="button"
                 onClick={() => onLoadIntoGame(beatmapsetId)}
-                className="btn btn-sm btn-lazer h-[30px] px-3"
+                className="btn btn-sm btn-lazer min-h-[30px] px-3"
                 title="将此谱面直接发送到运行中的游戏客户端加载"
               >
                 <Gamepad2 className="h-3.5 w-3.5" />
@@ -711,7 +711,7 @@ export function ManiaPreviewModal({
         {/* Main 3-Column Body */}
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
           {/* LEFT: Skin, Speed & Visual Controls */}
-          <aside className="w-full shrink-0 space-y-3.5 overflow-y-auto border-b border-hairline bg-surface-0/85 p-3.5 lg:w-[252px] lg:border-r lg:border-b-0">
+          <aside className="w-full shrink-0 space-y-3.5 overflow-x-hidden overflow-y-auto border-b border-hairline bg-surface-0/85 p-3.5 lg:w-[clamp(268px,16.75rem,320px)] lg:border-r lg:border-b-0">
             {/* Skin Picker */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -719,7 +719,7 @@ export function ManiaPreviewModal({
                   <Sparkles className="h-3 w-3 text-osu" /> 演示皮肤
                 </span>
                 {skin?.source === 'local' && (
-                  <span className="chip h-[18px] px-1.5 text-[9.5px]">
+                  <span className="chip min-h-[19px] px-1.5 text-[0.65625rem]">
                     {skin.noteBodyStyle === 0
                       ? 'Stretch'
                       : skin.noteBodyStyle === 2
@@ -766,10 +766,10 @@ export function ManiaPreviewModal({
 
             {/* Scroll Speed */}
             <div className="panel-flat space-y-2 p-2.5">
-              <div className="flex items-center justify-between text-[11.5px]">
-                <span className="font-medium text-ink-2">下落流速 (Scroll Speed)</span>
+              <div className="flex flex-wrap items-center justify-between gap-1 text-[0.78125rem]">
+                <span className="font-semibold text-ink-2">下落流速 (Scroll Speed)</span>
                 <span className="font-mono font-bold text-osu-soft tabular-nums">
-                  {scrollSpeed} <span className="text-[10px] text-ink-3">({scrollTimeMs}ms)</span>
+                  {scrollSpeed} <span className="text-[0.6875rem] text-ink-3">({scrollTimeMs}ms)</span>
                 </span>
               </div>
               <input
@@ -795,7 +795,7 @@ export function ManiaPreviewModal({
                       setScrollSpeed(preset);
                       onUpdatePreviewPrefs?.({ previewScrollSpeed: preset });
                     }}
-                    className={`font-mono rounded-[6px] border py-0.5 text-[10.5px] transition-colors ${
+                    className={`font-mono rounded-[6px] border py-0.5 text-[0.71875rem] transition-colors ${
                       scrollSpeed === preset
                         ? 'border-osu/60 bg-osu/15 font-bold text-osu-soft'
                         : 'border-hairline bg-surface-1 text-ink-3 hover:text-ink'
@@ -810,7 +810,7 @@ export function ManiaPreviewModal({
             {/* Playback Rate */}
             <div className="space-y-1.5">
               <span className="overline">播放倍速</span>
-              <div className="segmented">
+              <div className="segmented segmented-compact">
                 {RATE_OPTIONS.map((r) => (
                   <button
                     key={r}
@@ -831,7 +831,7 @@ export function ManiaPreviewModal({
             {/* Scroll Direction */}
             <div className="space-y-1.5">
               <span className="overline">谱面方向</span>
-              <div className="segmented">
+              <div className="segmented segmented-auto">
                 {(
                   [
                     { id: 'skin', label: '跟随皮肤' },
@@ -856,7 +856,7 @@ export function ManiaPreviewModal({
             </div>
 
             {/* Toggles */}
-            <div className="panel-flat space-y-2 p-2.5 text-[11.5px]">
+            <div className="panel-flat space-y-2 p-2.5 text-[0.78125rem] font-medium">
               <div className="overline flex items-center gap-1.5">
                 <Sliders className="h-3 w-3" /> 谱面与视觉开关
               </div>
@@ -890,7 +890,7 @@ export function ManiaPreviewModal({
             </div>
 
             {/* Dim / Volume / Stage Scale */}
-            <div className="panel-flat space-y-2.5 p-2.5 text-[11px]">
+            <div className="panel-flat space-y-2.5 p-2.5 text-[0.75rem] font-medium">
               <div className="space-y-1">
                 <div className="flex justify-between text-ink-2">
                   <span>背景暗化 (BG Dim)</span>
@@ -954,20 +954,20 @@ export function ManiaPreviewModal({
             </div>
 
             {chart && (
-              <div className="panel-flat grid grid-cols-3 gap-1.5 p-2 text-center text-[10px]">
-                <div>
-                  <div className="text-ink-3">单键 / 长条</div>
-                  <div className="font-mono font-semibold text-ink">
+              <div className="panel-flat grid grid-cols-3 gap-1.5 p-2 text-center text-[0.6875rem]">
+                <div className="min-w-0">
+                  <div className="truncate text-ink-3">单键 / 长条</div>
+                  <div className="font-mono truncate font-semibold text-ink">
                     {chart.stats.riceCount}/{chart.stats.lnCount}
                   </div>
                 </div>
-                <div>
-                  <div className="text-ink-3">峰值 NPS</div>
-                  <div className="font-mono font-semibold text-osu-soft">{chart.stats.maxNps}</div>
+                <div className="min-w-0">
+                  <div className="truncate text-ink-3">峰值 NPS</div>
+                  <div className="font-mono truncate font-semibold text-osu-soft">{chart.stats.maxNps}</div>
                 </div>
-                <div>
-                  <div className="text-ink-3">均速 NPS</div>
-                  <div className="font-mono font-semibold text-ink">{chart.stats.avgNps}</div>
+                <div className="min-w-0">
+                  <div className="truncate text-ink-3">均速 NPS</div>
+                  <div className="font-mono truncate font-semibold text-ink">{chart.stats.avgNps}</div>
                 </div>
               </div>
             )}
@@ -986,13 +986,13 @@ export function ManiaPreviewModal({
             {loadingSet || loadingChart ? (
               <div className="flex flex-col items-center gap-2 text-ink-2">
                 <Loader2 className="h-7 w-7 animate-spin text-osu" />
-                <span className="text-[12.5px]">正在解析 .osu 谱面与皮肤资源…</span>
+                <span className="text-[0.8125rem] font-medium">正在解析 .osu 谱面与皮肤资源…</span>
               </div>
             ) : errorMsg ? (
               <div className="flex max-w-md flex-col items-center gap-2 px-6 text-center">
                 <ImageOff className="h-8 w-8 text-ink-4" />
-                <p className="font-display text-[14px] font-semibold text-ink">{errorMsg}</p>
-                <p className="text-[11.5px] text-ink-3">
+                <p className="font-display text-[0.9375rem] font-semibold text-ink">{errorMsg}</p>
+                <p className="text-[0.78125rem] font-medium text-ink-3">
                   完成下载后（或本地 Stable Songs / Lazer 待导入队列中存在该谱面）即可离线实时预览全部 Mania 难度。
                 </p>
               </div>
@@ -1011,7 +1011,7 @@ export function ManiaPreviewModal({
                   <button
                     type="button"
                     onClick={togglePlay}
-                    className="btn btn-primary pointer-events-auto absolute gap-2 rounded-full px-5 py-2.5 text-[13px]"
+                    className="btn btn-primary pointer-events-auto absolute gap-2 rounded-full px-5 py-2.5 text-[0.875rem]"
                   >
                     <Play className="h-4 w-4 fill-current" />
                     <span>点击开始演示预览</span>
@@ -1034,7 +1034,7 @@ export function ManiaPreviewModal({
           </div>
 
           {/* RIGHT: Scrollable Timeline Minimap */}
-          <aside className="flex h-[220px] w-full shrink-0 flex-col border-t border-hairline bg-surface-0/90 lg:h-auto lg:w-[208px] lg:border-t-0 lg:border-l">
+          <aside className="flex h-[220px] w-full shrink-0 flex-col border-t border-hairline bg-surface-0/90 lg:h-auto lg:w-[clamp(212px,13.25rem,248px)] lg:border-t-0 lg:border-l">
             <div className="flex items-center justify-between border-b border-hairline px-2.5 py-2">
               <span className="overline">全曲缩略图</span>
               <div className="flex items-center gap-1">
@@ -1043,7 +1043,7 @@ export function ManiaPreviewModal({
                     key={z}
                     type="button"
                     onClick={() => setMinimapZoom(z)}
-                    className={`font-mono rounded-[5px] px-1.5 py-0.5 text-[10px] transition-colors ${
+                    className={`font-mono rounded-[5px] px-1.5 py-0.5 text-[0.6875rem] transition-colors ${
                       minimapZoom === z
                         ? 'bg-osu/20 font-bold text-osu-soft'
                         : 'text-ink-3 hover:bg-tint hover:text-ink'
@@ -1059,7 +1059,7 @@ export function ManiaPreviewModal({
                     setUserDetached(false);
                   }}
                   title="切换缩略图自动跟随当前进度"
-                  className={`rounded-[5px] border px-1.5 py-0.5 text-[10px] font-medium transition-colors ${
+                  className={`rounded-[5px] border px-1.5 py-0.5 text-[0.6875rem] font-semibold transition-colors ${
                     autoFollow && !userDetached
                       ? 'border-emerald-500/40 bg-emerald-500/15 text-ok'
                       : 'border-hairline text-ink-3 hover:text-ink'
@@ -1119,7 +1119,7 @@ export function ManiaPreviewModal({
                     setUserDetached(false);
                     setAutoFollow(true);
                   }}
-                  className="glass absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border-osu/50 px-2.5 py-1 text-[10.5px] font-semibold text-ink hover:border-osu"
+                  className="glass absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border-osu/50 px-2.5 py-1 text-[0.71875rem] font-semibold text-ink hover:border-osu"
                 >
                   <LocateFixed className="h-3 w-3 text-osu" />
                   <span>回到当前</span>
@@ -1157,7 +1157,7 @@ export function ManiaPreviewModal({
                 disabled={!chart}
                 onClick={togglePlay}
                 title={playing ? '暂停 (Space)' : '继续播放 (Space)'}
-                className="btn btn-primary h-8 px-3.5"
+                className="btn btn-primary min-h-[32px] px-3.5"
               >
                 {playing ? (
                   <>
@@ -1254,7 +1254,7 @@ export function ManiaPreviewModal({
               {/* Hover Time Bubble */}
               {hoverProgress && (
                 <div
-                  className="glass font-mono pointer-events-none absolute -top-7 -translate-x-1/2 rounded-[6px] px-1.5 py-0.5 text-[10px] font-semibold text-ink tabular-nums shadow"
+                  className="glass font-mono pointer-events-none absolute -top-7 -translate-x-1/2 rounded-[6px] px-1.5 py-0.5 text-[0.6875rem] font-semibold text-ink tabular-nums shadow"
                   style={{ left: `${hoverProgress.pct}%` }}
                 >
                   {formatTimePrecise(hoverProgress.timeMs)}
@@ -1269,14 +1269,14 @@ export function ManiaPreviewModal({
             </div>
 
             {/* Time Readout */}
-            <div className="font-mono flex shrink-0 items-center gap-1 text-[11.5px] text-ink-2 tabular-nums">
+            <div className="font-mono flex shrink-0 items-center gap-1 text-[0.78125rem] text-ink-2 tabular-nums">
               <span className="font-semibold text-ink">{formatTimePrecise(displayTimeMs)}</span>
               <span className="text-ink-4">/</span>
               <span>{chart ? formatDuration(Math.round(chart.totalLengthMs / 1000)) : '0:00'}</span>
             </div>
           </div>
 
-          <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[10px] text-ink-3">
+          <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[0.6875rem] font-medium text-ink-3">
             <span>
               快捷键：Space 播放/暂停 · ←/→ ±3s · ↑/↓ 流速 · R 重头 · 拖动进度条或右侧缩略图实时跳转
             </span>

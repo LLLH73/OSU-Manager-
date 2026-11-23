@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowUp,
   Calculator,
   Check,
   CheckCircle2,
@@ -17,6 +18,7 @@ import {
   Info,
   Keyboard,
   Loader2,
+  LocateFixed,
   Pause,
   Play,
   Sparkles,
@@ -41,6 +43,7 @@ import {
   getQuickPpSummary,
   isRankedForPp,
 } from '../utils/pp';
+import { MarqueeText } from './MarqueeText';
 
 interface LazerSongSelectProps {
   results: NormalizedBeatmapset[];
@@ -227,22 +230,25 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
             )}
 
             <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex items-center gap-1.5">
+              <div className="flex min-w-0 items-center gap-1.5">
                 <span
-                  className={`font-stat inline-flex h-[17px] shrink-0 items-center rounded-[4px] border px-1 text-[8.5px] font-bold tracking-wider uppercase ${setStatusBadge.cls}`}
+                  className={`font-stat inline-flex min-h-[18px] shrink-0 items-center rounded-[4px] border px-1 text-[0.625rem] font-bold tracking-wider uppercase ${setStatusBadge.cls}`}
                 >
                   {setStatusBadge.label}
                 </span>
                 <h3
-                  className={`font-display truncate text-[13.5px] font-bold transition-colors ${
+                  className={`font-display min-w-0 flex-1 text-[0.9375rem] font-bold transition-colors ${
                     isActive ? 'text-osu' : 'text-ink group-hover:text-osu'
                   }`}
                 >
-                  {beatmapset.title}
+                  <MarqueeText
+                    text={beatmapset.title}
+                    title={beatmapset.titleUnicode || beatmapset.title}
+                  />
                 </h3>
               </div>
 
-              <div className="flex items-center gap-1.5 truncate text-[11px] text-ink-2">
+              <div className="flex items-center gap-1.5 truncate text-[0.75rem] font-medium text-ink-2">
                 <span className="truncate">{beatmapset.artist}</span>
                 <span className="text-ink-4">//</span>
                 <span className="truncate text-ink-3">{beatmapset.creator}</span>
@@ -260,7 +266,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                         color: c.text,
                         borderColor: c.border,
                       }}
-                      className="font-stat inline-flex h-[17px] shrink-0 items-center gap-0.5 rounded-[4px] border px-1 text-[9px] leading-none font-bold whitespace-nowrap"
+                      className="font-stat inline-flex min-h-[18px] shrink-0 items-center gap-0.5 rounded-[4px] border px-1 text-[0.625rem] leading-none font-bold whitespace-nowrap"
                     >
                       <span>{keyTag}</span>
                       <span>{bm.difficultyRating.toFixed(2)}★</span>
@@ -268,7 +274,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                   );
                 })}
                 {extraDiffCount > 0 && (
-                  <span className="chip font-stat h-[17px] px-1 text-[9px]">
+                  <span className="chip font-stat min-h-[18px] px-1 text-[0.625rem]">
                     +{extraDiffCount}
                   </span>
                 )}
@@ -280,7 +286,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                       onOpenDetail(beatmapset, { diffId: ppBadge.focusDiffId, focusPp: true });
                     }}
                     title={ppBadge.tooltip}
-                    className="chip chip-pp font-stat h-[17px] px-1.5 text-[9px]"
+                    className="chip chip-pp font-stat min-h-[18px] px-1.5 text-[0.625rem]"
                   >
                     <Calculator className="h-2.5 w-2.5" />
                     <span>{ppBadge.label}</span>
@@ -294,26 +300,26 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
           <div className="relative z-10 flex shrink-0 flex-col items-end gap-1.5">
             <div className="flex items-center gap-1">
               {beatmapset.localStatus.inLazer && (
-                <span className="chip chip-gold h-[18px] px-1.5 text-[9.5px]">
+                <span className="chip chip-gold min-h-[18px] px-1.5 text-[0.65625rem]">
                   <CheckCircle2 className="h-2.5 w-2.5" />
                   Lazer
                 </span>
               )}
               {beatmapset.localStatus.inStable && (
-                <span className="chip chip-gold h-[18px] px-1.5 text-[9.5px]">
+                <span className="chip chip-gold min-h-[18px] px-1.5 text-[0.65625rem]">
                   <CheckCircle2 className="h-2.5 w-2.5" />
                   Stable
                 </span>
               )}
               {!beatmapset.localStatus.inLazer && beatmapset.localStatus.inLazerPending && (
-                <span className="chip h-[18px] border-amber-300/60 bg-amber-950/90 px-1.5 text-[9.5px] text-amber-200">
+                <span className="chip min-h-[18px] border-amber-300/60 bg-amber-950/90 px-1.5 text-[0.65625rem] text-amber-200">
                   待导入
                 </span>
               )}
             </div>
 
             <div className="flex items-center gap-1.5">
-              <span className="font-mono hidden rounded-[5px] border border-white/15 bg-black/72 px-1.5 py-0.5 text-[10px] text-white sm:inline">
+              <span className="font-mono hidden rounded-[5px] border border-white/15 bg-black/72 px-1.5 py-0.5 text-[0.6875rem] text-white xl:inline">
                 {Math.round(beatmapset.bpm)} BPM
                 {leadDiff ? ` · ${formatDuration(leadDiff.totalLength)}` : ''}
               </span>
@@ -344,10 +350,10 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                   onDownload(beatmapset, activeTarget);
                 }}
                 title={primaryBtnLabel}
-                className={`btn btn-sm h-7 px-2 ${targetMeta.btnCls}`}
+                className={`btn btn-sm min-h-[28px] px-2 ${targetMeta.btnCls}`}
               >
                 {setDownloading && activeTask ? (
-                  <span className="font-mono text-[10px] tabular-nums">
+                  <span className="font-mono text-[0.6875rem] tabular-nums">
                     {activeTask.progress}%
                   </span>
                 ) : (
@@ -371,8 +377,8 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
 
         {/* Active-Only Staggered Difficulty Fan-Out (zero offscreen accordion DOM overhead) */}
         {isActive && (
-          <div className="pt-1.5 pl-5">
-            <div className="max-h-[240px] space-y-1 overflow-y-auto pr-0.5 pb-0.5">
+          <div className="pt-1.5 pl-2.5">
+            <div className="max-h-[240px] space-y-1 overflow-x-hidden overflow-y-auto py-0.5 pr-1 pl-2.5">
               {diffs.map((bm, idx) => {
                 const diffActive = activeDiffId === bm.id;
                 const c = getStarColor(bm.difficultyRating);
@@ -388,45 +394,49 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                     data-active={diffActive ? 'true' : 'false'}
                     onClick={() => onSelectDiff(bm.id)}
                     style={{ animationDelay: `${Math.min(idx, 6) * 24}ms` }}
-                    className={`lazer-diff-row lazer-diff-enter flex w-full items-center justify-between gap-2 rounded-[9px] border px-3 py-1.5 text-left ${
+                    className={`lazer-diff-row lazer-diff-enter flex w-full min-w-0 max-w-full items-center justify-between gap-2 overflow-hidden rounded-[9px] border px-3 py-1.5 text-left ${
                       diffActive
                         ? 'border-osu/60 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--t-osu)_25%,transparent)]'
                         : 'border-hairline hover:border-hairline-strong'
                     }`}
                   >
-                    <div className="flex min-w-0 items-center gap-2">
+                    <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden">
                       <span
                         style={{
                           backgroundColor: c.bg,
                           color: c.text,
                           borderColor: c.border,
                         }}
-                        className="font-stat inline-flex h-[18px] shrink-0 items-center gap-1 rounded-[5px] border px-1.5 text-[9.5px] leading-none font-bold whitespace-nowrap"
+                        className="font-stat inline-flex min-h-[19px] shrink-0 items-center gap-1 rounded-[5px] border px-1.5 text-[0.65625rem] leading-none font-bold whitespace-nowrap"
                       >
                         <span>{keyTag}</span>
                         <span>{bm.difficultyRating.toFixed(2)}★</span>
                       </span>
-                      <span className="truncate text-[11.5px] font-semibold text-ink">
-                        {bm.version}
-                      </span>
+                      <MarqueeText
+                        text={bm.version}
+                        className="min-w-0 text-[0.78125rem] font-semibold text-ink"
+                      />
                       {diffActive && (
                         <Disc3 className="h-3 w-3 shrink-0 animate-[spin_4s_linear_infinite] text-osu" />
                       )}
                     </div>
 
-                    <div className="font-mono flex shrink-0 items-center gap-2 text-[10px] text-ink-3 tabular-nums">
+                    <div className="font-mono flex shrink-0 items-center gap-2 text-[0.6875rem] text-ink-3 tabular-nums">
                       {pp98 !== null && (
                         <span className="font-stat font-bold text-lazer-soft">
                           ~{formatPp(pp98)}pp
                         </span>
                       )}
                       {ln && (
-                        <span className={`chip h-[17px] px-1.5 text-[9px] ${ln.cls}`}>
+                        <span
+                          title={ln.tooltip}
+                          className={`chip min-h-[18px] px-1.5 text-[0.625rem] ${ln.cls}`}
+                        >
                           {ln.label}
                         </span>
                       )}
-                      <span>OD {bm.od}</span>
-                      <span>HP {bm.hp}</span>
+                      <span className="hidden xl:inline">OD {bm.od}</span>
+                      <span className="hidden xl:inline">HP {bm.hp}</span>
                       <span>{formatDuration(bm.totalLength)}</span>
                     </div>
                   </button>
@@ -453,7 +463,6 @@ export function LazerSongSelect({
   searchError = false,
   hasAudioDock,
   hasGlobalBg = false,
-  filterCollapsed = false,
   onActiveBeatmapsetChange,
   onToggleSelect,
   onTogglePlay,
@@ -471,6 +480,8 @@ export function LazerSongSelect({
   const [autoPreview, setAutoPreview] = useState<boolean>(readInitialAutoPreview);
   const [quickRate, setQuickRate] = useState<0.75 | 1 | 1.5>(1);
   const [brokenCovers, setBrokenCovers] = useState<Set<number>>(() => new Set());
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [activeOffscreenDir, setActiveOffscreenDir] = useState<'up' | 'down' | null>(null);
 
   // Double-buffered background crossfade state (avoids unmount/blur thrash when switching songs)
   const [bgLayers, setBgLayers] = useState<[string | null, string | null]>(() => [
@@ -485,6 +496,9 @@ export function LazerSongSelect({
   const rafRef = useRef<number | null>(null);
   const shouldScrollToActiveRef = useRef(false);
   const loadedBgUrlsRef = useRef<Set<string>>(new Set());
+  const activeSetIdRef = useRef<number | null>(activeSetId);
+  const prevShowTopRef = useRef(false);
+  const prevOffscreenDirRef = useRef<'up' | 'down' | null>(null);
 
   const markCoverBroken = useCallback((id: number) => {
     setBrokenCovers((prev) => {
@@ -612,6 +626,10 @@ export function LazerSongSelect({
     const minY = scrollTop - 260;
     const maxY = scrollTop + vpHeight + 260;
 
+    const nextShowTop = scrollTop > 180;
+    let nextOffscreenDir: 'up' | 'down' | null = null;
+    const activeIdStr = activeSetIdRef.current !== null ? String(activeSetIdRef.current) : null;
+
     const slots = listEl.querySelectorAll<HTMLElement>('[data-lazer-slot]');
     const updates: Array<{ el: HTMLElement; arcX: string; arcOp: string }> = [];
 
@@ -619,10 +637,19 @@ export function LazerSongSelect({
     for (const slot of slots) {
       const top = listTop + slot.offsetTop;
       const height = slot.offsetHeight;
+      if (activeIdStr !== null && slot.dataset.setId === activeIdStr) {
+        const cardBottom = top + Math.min(height, 92);
+        if (cardBottom < scrollTop + 12) {
+          nextOffscreenDir = 'up';
+        } else if (top > scrollTop + vpHeight - 12) {
+          nextOffscreenDir = 'down';
+        }
+      }
       if (top + height < minY || top > maxY) continue;
       const slotCenterY = top + height / 2;
       const ny = Math.max(-1.25, Math.min(1.25, (slotCenterY - vpCenterY) / normDenominator));
-      const arcX = `${Math.round(ny * ny * 34)}px`;
+      const arcAmp = container.clientWidth < 520 ? 18 : 34;
+      const arcX = `${Math.round(ny * ny * arcAmp)}px`;
       const arcOp = Number(Math.max(0.64, 1 - Math.abs(ny) * 0.24).toFixed(3)).toString();
       if (slot.dataset.arcX !== arcX || slot.dataset.arcOp !== arcOp) {
         updates.push({ el: slot, arcX, arcOp });
@@ -635,6 +662,15 @@ export function LazerSongSelect({
       u.el.dataset.arcOp = u.arcOp;
       u.el.style.setProperty('--arc-x', u.arcX);
       u.el.style.setProperty('--arc-opacity', u.arcOp);
+    }
+
+    if (nextShowTop !== prevShowTopRef.current) {
+      prevShowTopRef.current = nextShowTop;
+      setShowBackToTop(nextShowTop);
+    }
+    if (nextOffscreenDir !== prevOffscreenDirRef.current) {
+      prevOffscreenDirRef.current = nextOffscreenDir;
+      setActiveOffscreenDir(nextOffscreenDir);
     }
   }, []);
 
@@ -668,8 +704,35 @@ export function LazerSongSelect({
   }, [scheduleArcUpdate]);
 
   useEffect(() => {
+    activeSetIdRef.current = activeSet?.id ?? null;
     scheduleArcUpdate();
-  }, [results.length, activeSetId, scheduleArcUpdate]);
+  }, [results, activeSet?.id, scheduleArcUpdate]);
+
+  const scrollToSetById = useCallback((id: number, behavior: ScrollBehavior = 'smooth') => {
+    const container = carouselRef.current;
+    const listEl = listContentRef.current;
+    if (!container || !listEl) return;
+    const slot = listEl.querySelector<HTMLElement>(`[data-set-id="${id}"]`);
+    if (!slot) return;
+
+    const slotTop = listEl.offsetTop + slot.offsetTop;
+    const cardHeight = Math.min(slot.offsetHeight, 240);
+    const targetTop = Math.max(
+      0,
+      slotTop - Math.max(40, (container.clientHeight - cardHeight) * 0.36),
+    );
+    container.scrollTo({ top: targetTop, behavior });
+  }, []);
+
+  const handleScrollToActive = useCallback(() => {
+    if (activeSetIdRef.current !== null) {
+      scrollToSetById(activeSetIdRef.current, 'smooth');
+    }
+  }, [scrollToSetById]);
+
+  const handleScrollToTop = useCallback(() => {
+    carouselRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
 
   // Post-commit smooth scroll to newly selected beatmapset
   useEffect(() => {
@@ -677,23 +740,11 @@ export function LazerSongSelect({
     shouldScrollToActiveRef.current = false;
 
     const frame = requestAnimationFrame(() => {
-      const container = carouselRef.current;
-      const listEl = listContentRef.current;
-      if (!container || !listEl) return;
-      const slot = listEl.querySelector<HTMLElement>(`[data-set-id="${activeSetId}"]`);
-      if (!slot) return;
-
-      const slotTop = listEl.offsetTop + slot.offsetTop;
-      const cardHeight = Math.min(slot.offsetHeight, 240);
-      const targetTop = Math.max(
-        0,
-        slotTop - Math.max(40, (container.clientHeight - cardHeight) * 0.36),
-      );
-      container.scrollTo({ top: targetTop, behavior: 'smooth' });
+      scrollToSetById(activeSetId, 'smooth');
     });
 
     return () => cancelAnimationFrame(frame);
-  }, [activeSetId]);
+  }, [activeSetId, scrollToSetById]);
 
   // Infinite Auto-Load More when scrolling near the bottom of Lazer carousel
   useEffect(() => {
@@ -810,7 +861,13 @@ export function LazerSongSelect({
     ? activeDiff.countCircles + activeDiff.countSliders + activeDiff.countSpinners
     : 0;
 
-  const statMeters = activeDiff
+  const statMeters: Array<{
+    label: string;
+    display: string;
+    pct: number;
+    color: string;
+    title?: string;
+  }> = activeDiff
     ? [
         {
           label: 'SR',
@@ -835,6 +892,7 @@ export function LazerSongSelect({
           display: activeDiff.lnRatio != null ? `${activeDiff.lnRatio}%` : '—',
           pct: activeDiff.lnRatio != null ? Math.min(100, Math.max(3, activeDiff.lnRatio)) : 0,
           color: 'var(--t-osu)',
+          title: activeLnBadge?.tooltip,
         },
       ]
     : [];
@@ -844,7 +902,7 @@ export function LazerSongSelect({
   return (
     <section
       aria-label="osu!lazer 选歌轮盘视图"
-      className="lazer-stage relative overflow-hidden rounded-[18px] border border-hairline shadow-lg"
+      className="lazer-stage isolate relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[18px] border border-hairline shadow-lg"
     >
       {/* Double-buffered ambient background (skipped when global desktop background handles it) */}
       {!hasGlobalBg &&
@@ -874,14 +932,16 @@ export function LazerSongSelect({
       <div className="lazer-stage-scrim pointer-events-none absolute inset-0" />
 
       <div
-        className={`relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(360px,430px)_minmax(0,1fr)] xl:grid-cols-[minmax(390px,460px)_minmax(0,1fr)] ${
-          filterCollapsed ? 'lg:h-[calc(100vh-164px)] lg:min-h-[600px]' : 'lg:h-[670px]'
-        }`}
+        className="relative z-10 grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,44%)_minmax(0,1fr)] md:grid-cols-[minmax(290px,340px)_minmax(0,1fr)] md:grid-rows-1 lg:grid-cols-[minmax(320px,385px)_minmax(0,1fr)] xl:grid-cols-[minmax(360px,430px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(390px,460px)_minmax(0,1fr)]"
       >
         {/* LEFT: osu!lazer Wedge Showcase */}
-        <div className="flex min-h-0 flex-col justify-between gap-3 border-b border-hairline p-4 sm:p-5 lg:overflow-y-auto lg:border-r lg:border-b-0">
+        <div
+          className={`flex min-h-0 flex-col gap-2.5 overflow-x-hidden overflow-y-auto overscroll-contain border-b border-hairline p-3 md:border-r md:border-b-0 xl:p-4 ${
+            hasAudioDock ? 'pb-20' : ''
+          }`}
+        >
           <div
-            className={`panel relative flex flex-col gap-3 overflow-hidden p-3.5 transition-[border-color,box-shadow] duration-200 ${
+            className={`panel relative flex shrink-0 flex-col gap-2.5 overflow-hidden p-3 transition-[border-color,box-shadow] duration-200 ${
               activeInBoth
                 ? 'card-installed card-installed-both'
                 : activeInstalled
@@ -890,7 +950,7 @@ export function LazerSongSelect({
             }`}
           >
             {/* Cover Header */}
-            <div className="cover-frame h-[156px] w-full rounded-[11px] border border-hairline">
+            <div className="cover-frame h-[clamp(96px,16vh,156px)] w-full shrink-0 rounded-[11px] border border-hairline">
               {!brokenCovers.has(activeSet.id) ? (
                 <img
                   src={activeSet.coverUrl}
@@ -908,7 +968,7 @@ export function LazerSongSelect({
               {/* Top-left badges */}
               <div className="absolute top-2.5 left-2.5 flex flex-wrap items-center gap-1.5">
                 <span
-                  className={`font-stat inline-flex h-[20px] items-center rounded-[5px] border px-1.5 text-[9.5px] font-bold tracking-wider uppercase ${activeStatusBadge.cls}`}
+                  className={`font-stat inline-flex min-h-[20px] items-center rounded-[5px] border px-1.5 text-[0.65625rem] font-bold tracking-wider uppercase ${activeStatusBadge.cls}`}
                 >
                   {activeStatusBadge.label}
                 </span>
@@ -956,7 +1016,7 @@ export function LazerSongSelect({
                 <button
                   type="button"
                   onClick={() => onTogglePlay(activeSet)}
-                  className={`flex h-[28px] items-center gap-1.5 rounded-full border px-3 text-[11px] font-semibold transition-colors ${
+                  className={`flex min-h-[28px] items-center gap-1.5 rounded-full border px-3 text-[0.75rem] font-semibold transition-colors ${
                     activePlaying
                       ? 'border-osu bg-osu text-white'
                       : 'border-white/25 bg-black/70 text-white hover:border-osu/70 hover:bg-osu/90'
@@ -984,7 +1044,7 @@ export function LazerSongSelect({
                   type="button"
                   onClick={toggleAutoPreview}
                   title="切歌时自动播放音频预览"
-                  className={`flex h-[28px] items-center gap-1 rounded-full border px-2.5 text-[10.5px] font-medium transition-colors ${
+                  className={`flex min-h-[28px] items-center gap-1 rounded-full border px-2.5 text-[0.71875rem] font-semibold transition-colors ${
                     autoPreview
                       ? 'border-lazer/80 bg-lazer/90 text-white'
                       : 'border-white/20 bg-black/68 text-slate-200 hover:border-white/45'
@@ -996,7 +1056,7 @@ export function LazerSongSelect({
               </div>
 
               {/* Bottom-right: BPM & Duration */}
-              <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1 text-[10.5px] font-medium text-white tabular-nums">
+              <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1 text-[0.71875rem] font-semibold text-white tabular-nums">
                 <span className="font-stat rounded-[5px] border border-white/15 bg-black/72 px-1.5 py-0.5">
                   {Math.round(activeSet.bpm)} BPM
                 </span>
@@ -1010,26 +1070,28 @@ export function LazerSongSelect({
             </div>
 
             {/* Song Identity */}
-            <div className="space-y-1">
-              <h2
-                className="font-display line-clamp-2 text-[16.5px] leading-snug font-bold text-ink"
-                title={activeSet.titleUnicode || activeSet.title}
-              >
-                {activeSet.title}
+            <div className="min-w-0 space-y-1">
+              <h2 className="font-display min-w-0 text-[1.0625rem] leading-snug font-bold text-ink">
+                <MarqueeText
+                  text={activeSet.title}
+                  title={activeSet.titleUnicode || activeSet.title}
+                />
               </h2>
               {activeSet.titleUnicode && activeSet.titleUnicode !== activeSet.title && (
-                <p className="line-clamp-1 text-[11px] text-ink-3">{activeSet.titleUnicode}</p>
+                <p className="min-w-0 text-[0.75rem] font-medium text-ink-3">
+                  <MarqueeText text={activeSet.titleUnicode} />
+                </p>
               )}
-              <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[11.5px] text-ink-2">
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[0.78125rem] text-ink-2">
                 <div className="flex min-w-0 items-center gap-2">
-                  <span className="truncate font-medium">{activeSet.artist}</span>
+                  <span className="truncate font-semibold">{activeSet.artist}</span>
                   <span className="text-ink-4">·</span>
                   <span className="inline-flex min-w-0 items-center gap-1 text-ink-3">
                     <User className="h-3 w-3 shrink-0" />
-                    <span className="truncate text-ink-2">{activeSet.creator}</span>
+                    <span className="truncate font-medium text-ink-2">{activeSet.creator}</span>
                   </span>
                 </div>
-                <div className="font-mono flex shrink-0 items-center gap-2.5 text-[10.5px]">
+                <div className="font-mono flex shrink-0 items-center gap-2.5 text-[0.71875rem]">
                   <span className="flex items-center gap-1 text-osu-soft">
                     <Heart className="h-3 w-3" />
                     {formatCount(activeSet.favouriteCount)}
@@ -1060,19 +1122,23 @@ export function LazerSongSelect({
                             color: c.text,
                             borderColor: c.border,
                           }}
-                          className="font-stat inline-flex h-[20px] shrink-0 items-center gap-1 rounded-[5px] border px-1.5 text-[10.5px] font-bold"
+                          className="font-stat inline-flex min-h-[21px] shrink-0 items-center gap-1 rounded-[5px] border px-1.5 text-[0.71875rem] font-bold"
                         >
                           <span>{keyTag}</span>
                           <span>{activeDiff.difficultyRating.toFixed(2)}★</span>
                         </span>
                       );
                     })()}
-                    <span className="truncate text-[12px] font-semibold text-ink" title={activeDiff.version}>
-                      {activeDiff.version}
-                    </span>
+                    <MarqueeText
+                      text={activeDiff.version}
+                      className="min-w-0 text-[0.8125rem] font-semibold text-ink"
+                    />
                     {activeLnBadge && (
-                      <span className={`chip font-mono h-[19px] shrink-0 text-[9.5px] ${activeLnBadge.cls}`}>
-                        {activeLnBadge.label}
+                      <span
+                        title={activeLnBadge.tooltip}
+                        className={`chip font-mono min-h-[20px] shrink-0 text-[0.65625rem] ${activeLnBadge.cls}`}
+                      >
+                        {activeLnBadge.styleTag}
                       </span>
                     )}
                   </div>
@@ -1091,7 +1157,7 @@ export function LazerSongSelect({
                       >
                         <ChevronLeft className="h-3 w-3" />
                       </button>
-                      <span className="font-mono px-1 text-[10px] text-ink-3 tabular-nums">
+                      <span className="font-mono px-1 text-[0.6875rem] text-ink-3 tabular-nums">
                         {activeDiffIndex + 1}/{activeDiffs.length}
                       </span>
                       <button
@@ -1112,8 +1178,8 @@ export function LazerSongSelect({
                 {/* 4 Animated Attribute Meters */}
                 <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                   {statMeters.map((m) => (
-                    <div key={m.label} className="space-y-1">
-                      <div className="flex items-center justify-between text-[10.5px]">
+                    <div key={m.label} title={m.title} className="space-y-1">
+                      <div className="flex items-center justify-between text-[0.71875rem]">
                         <span className="font-stat font-semibold text-ink-3">{m.label}</span>
                         <span className="font-stat font-bold text-ink tabular-nums">
                           {m.display}
@@ -1137,7 +1203,7 @@ export function LazerSongSelect({
                   <div className="space-y-1.5 border-t border-hairline pt-2">
                     <div className="flex items-center justify-between gap-1.5">
                       <div className="flex items-center gap-1">
-                        <span className="font-stat text-[10px] font-bold text-lazer-soft uppercase">
+                        <span className="font-stat text-[0.6875rem] font-bold text-lazer-soft uppercase">
                           PP 速览
                         </span>
                         <div className="inline-flex rounded-[6px] border border-hairline bg-surface-1 p-0.5">
@@ -1152,7 +1218,7 @@ export function LazerSongSelect({
                               key={r.label}
                               type="button"
                               onClick={() => setQuickRate(r.id)}
-                              className={`font-stat rounded-[4px] px-1.5 py-px text-[9.5px] font-bold transition-colors ${
+                              className={`font-stat rounded-[4px] px-1.5 py-px text-[0.65625rem] font-bold transition-colors ${
                                 quickRate === r.id
                                   ? 'bg-lazer/22 text-lazer-soft'
                                   : 'text-ink-3 hover:text-ink'
@@ -1169,7 +1235,7 @@ export function LazerSongSelect({
                         onClick={() =>
                           onOpenDetail(activeSet, { diffId: activeDiff.id, focusPp: true })
                         }
-                        className="chip chip-pp font-stat h-[20px] px-2 text-[9.5px]"
+                        className="chip chip-pp font-stat min-h-[22px] px-2 text-[0.65625rem]"
                       >
                         <Calculator className="h-2.5 w-2.5" />
                         <span>PP 计算器</span>
@@ -1189,8 +1255,8 @@ export function LazerSongSelect({
                           key={item.label}
                           className="rounded-[6px] border border-hairline bg-surface-2/75 px-1.5 py-1"
                         >
-                          <div className="font-stat text-[9px] text-ink-3">{item.label}</div>
-                          <div className="font-stat text-[11px] font-bold text-ink tabular-nums">
+                          <div className="font-stat text-[0.65625rem] text-ink-3">{item.label}</div>
+                          <div className="font-stat text-[0.75rem] font-bold text-ink tabular-nums">
                             ~{formatPp(item.val)}
                           </div>
                         </div>
@@ -1198,14 +1264,14 @@ export function LazerSongSelect({
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between gap-2 border-t border-hairline pt-2 text-[10.5px] text-ink-3">
+                  <div className="flex items-center justify-between gap-2 border-t border-hairline pt-2 text-[0.75rem] font-medium text-ink-3">
                     <span>未上架谱面不计官方 PP</span>
                     <button
                       type="button"
                       onClick={() =>
                         onOpenDetail(activeSet, { diffId: activeDiff.id, focusPp: true })
                       }
-                      className="btn btn-sm h-[21px] px-2 text-[10px]"
+                      className="btn btn-sm min-h-[24px] px-2 text-[0.6875rem]"
                     >
                       <Calculator className="h-3 w-3 text-lazer-soft" />
                       <span>模拟计算 PP</span>
@@ -1214,7 +1280,7 @@ export function LazerSongSelect({
                 )}
 
                 {/* Note Breakdown Strip */}
-                <div className="font-mono grid grid-cols-5 gap-1 border-t border-hairline pt-2 text-center text-[10px] tabular-nums">
+                <div className="font-mono grid grid-cols-5 gap-1 border-t border-hairline pt-2 text-center text-[0.6875rem] tabular-nums">
                   <div>
                     <div className="text-ink-3">总物件</div>
                     <div className="font-semibold text-ink">{activeTotalObjects}</div>
@@ -1266,7 +1332,7 @@ export function LazerSongSelect({
                 <button
                   type="button"
                   onClick={() => onDownload(activeSet, 'stable')}
-                  title="单独下载到 Stable (日常练习)"
+                  title="单独下载到 Stable"
                   className="font-stat btn px-2.5 text-stable-soft hover:border-stable/50 hover:bg-stable/12 hover:text-stable"
                 >
                   S
@@ -1274,7 +1340,7 @@ export function LazerSongSelect({
                 <button
                   type="button"
                   onClick={() => onDownload(activeSet, 'lazer')}
-                  title="单独下载到 Lazer (刷PP)"
+                  title="单独下载到 Lazer"
                   className="font-stat btn px-2.5 text-lazer-soft hover:border-lazer/50 hover:bg-lazer/12 hover:text-lazer"
                 >
                   L
@@ -1344,12 +1410,12 @@ export function LazerSongSelect({
           </div>
 
           {/* Keyboard Hints Footer */}
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-hairline bg-surface-0/85 px-3 py-1.5 text-[10.5px] text-ink-3">
-            <span className="inline-flex items-center gap-1.5 font-medium text-ink-2">
+          <div className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-[10px] border border-hairline bg-surface-0/85 px-3 py-1.5 text-[0.71875rem] text-ink-3 [@media(max-height:740px)]:hidden">
+            <span className="inline-flex items-center gap-1.5 font-semibold text-ink-2">
               <Keyboard className="h-3.5 w-3.5 text-lazer-soft" />
               <span>快捷键导航</span>
             </span>
-            <span className="font-mono flex flex-wrap items-center gap-2 text-[10px]">
+            <span className="font-mono flex flex-wrap items-center gap-2 text-[0.6875rem]">
               <span>↑↓/WS 切歌</span>
               <span>←→ 切难度</span>
               <span>Space 试听</span>
@@ -1359,74 +1425,113 @@ export function LazerSongSelect({
         </div>
 
         {/* RIGHT: Curved osu!lazer Carousel */}
-        <div
-          ref={carouselRef}
-          className={`relative min-h-0 max-h-[560px] overflow-x-hidden overflow-y-auto py-5 pr-3 pl-8 sm:pr-4 sm:pl-10 lg:max-h-none ${
-            hasAudioDock ? 'pb-24' : 'pb-6'
-          }`}
-        >
-          <div ref={listContentRef} className="relative space-y-2.5">
-            {results.map((set) => {
-              const isActive = activeSet.id === set.id;
-              return (
-                <LazerCarouselSlot
-                  key={set.id}
-                  beatmapset={set}
-                  diffs={sortedDiffsMap.get(set.id) ?? []}
-                  isActive={isActive}
-                  activeDiffId={isActive ? activeDiff?.id ?? null : null}
-                  activeTarget={activeTarget}
-                  isPlayingSet={isPlaying && playingSetId === set.id}
-                  activeTask={activeTaskBySet.get(set.id)}
-                  batchMode={batchMode}
-                  selected={selectedIds.has(set.id)}
-                  coverBroken={brokenCovers.has(set.id)}
-                  onMarkCoverBroken={markCoverBroken}
-                  onSelectBeatmapset={selectBeatmapset}
-                  onSelectDiff={setActiveDiffId}
-                  onToggleSelect={onToggleSelect}
-                  onTogglePlay={onTogglePlay}
-                  onDownload={onDownload}
-                  onOpenDetail={onOpenDetail}
-                />
-              );
-            })}
+        <div className="relative h-full min-h-0 overflow-hidden">
+          <div
+            ref={carouselRef}
+            className={`relative h-full min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain py-4 pr-3 pl-6 sm:pr-4 sm:pl-9 ${
+              hasAudioDock ? 'pb-24' : 'pb-16'
+            }`}
+          >
+            <div ref={listContentRef} className="relative space-y-2.5">
+              {results.map((set) => {
+                const isActive = activeSet.id === set.id;
+                return (
+                  <LazerCarouselSlot
+                    key={set.id}
+                    beatmapset={set}
+                    diffs={sortedDiffsMap.get(set.id) ?? []}
+                    isActive={isActive}
+                    activeDiffId={isActive ? activeDiff?.id ?? null : null}
+                    activeTarget={activeTarget}
+                    isPlayingSet={isPlaying && playingSetId === set.id}
+                    activeTask={activeTaskBySet.get(set.id)}
+                    batchMode={batchMode}
+                    selected={selectedIds.has(set.id)}
+                    coverBroken={brokenCovers.has(set.id)}
+                    onMarkCoverBroken={markCoverBroken}
+                    onSelectBeatmapset={selectBeatmapset}
+                    onSelectDiff={setActiveDiffId}
+                    onToggleSelect={onToggleSelect}
+                    onTogglePlay={onTogglePlay}
+                    onDownload={onDownload}
+                    onOpenDetail={onOpenDetail}
+                  />
+                );
+              })}
+            </div>
+
+            {/* Bottom Auto-Load Sentinel + Status / Fallback Controls */}
+            <div ref={sentinelRef} className="h-4" aria-hidden="true" />
+            <div className="flex justify-center pt-2">
+              {loadingMore ? (
+                <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-surface-2/90 px-4 py-1.5 text-[0.78125rem] font-medium text-ink-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-osu" />
+                  <span>正在自动加载更多谱面…</span>
+                </div>
+              ) : searchError && hasMore ? (
+                <button
+                  type="button"
+                  onClick={onLoadMore}
+                  className="btn min-h-[36px] border-amber-500/45 bg-surface-2/90 px-5 text-[0.8125rem] text-warn"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  <span>加载失败，点击重试加载更多</span>
+                </button>
+              ) : hasMore ? (
+                <button
+                  type="button"
+                  onClick={onLoadMore}
+                  className="btn min-h-[36px] bg-surface-2/90 px-6 text-[0.84375rem]"
+                >
+                  <ChevronDown className="h-4 w-4 text-osu" />
+                  <span>加载更多谱面</span>
+                </button>
+              ) : (
+                results.length > 0 && (
+                  <span className="text-[0.75rem] font-medium text-ink-3">
+                    已加载全部 {results.length} 套谱面
+                  </span>
+                )
+              )}
+            </div>
           </div>
 
-          {/* Bottom Auto-Load Sentinel + Status / Fallback Controls */}
-          <div ref={sentinelRef} className="h-4" aria-hidden="true" />
-          <div className="flex justify-center pt-2">
-            {loadingMore ? (
-              <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-surface-2/90 px-4 py-1.5 text-[12px] text-ink-2">
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-osu" />
-                <span>正在自动加载更多谱面…</span>
-              </div>
-            ) : searchError && hasMore ? (
-              <button
-                type="button"
-                onClick={onLoadMore}
-                className="btn h-9 border-amber-500/45 bg-surface-2/90 px-5 text-[12.5px] text-warn"
-              >
-                <ChevronDown className="h-4 w-4" />
-                <span>加载失败，点击重试加载更多</span>
-              </button>
-            ) : hasMore ? (
-              <button
-                type="button"
-                onClick={onLoadMore}
-                className="btn h-9 bg-surface-2/90 px-6 text-[13px]"
-              >
-                <ChevronDown className="h-4 w-4 text-osu" />
-                <span>加载更多谱面</span>
-              </button>
-            ) : (
-              results.length > 0 && (
-                <span className="text-[11.5px] text-ink-3">
-                  已加载全部 {results.length} 套谱面
-                </span>
-              )
-            )}
-          </div>
+          {/* Floating Carousel Quick-Navigation (Locate Selected + Back to Top) */}
+          {(activeOffscreenDir !== null || showBackToTop) && (
+            <div
+              className={`pointer-events-none absolute right-4 z-20 flex flex-col items-end gap-2 transition-[bottom] duration-200 ${
+                hasAudioDock ? 'bottom-24 sm:bottom-[76px]' : 'bottom-4'
+              }`}
+            >
+              {activeOffscreenDir !== null && (
+                <button
+                  type="button"
+                  onClick={handleScrollToActive}
+                  title={`回到当前选中歌曲：${activeSet.title}`}
+                  aria-label="回到当前选中歌曲"
+                  className="glass animate-fade-in pointer-events-auto inline-flex min-h-[34px] items-center gap-1.5 rounded-full border-osu/45 px-3.5 text-[0.78125rem] font-semibold text-ink transition-all duration-150 hover:border-osu hover:text-osu"
+                >
+                  <LocateFixed className="h-3.5 w-3.5 text-osu" />
+                  <span>回到选中</span>
+                  <span className="font-mono text-[0.71875rem] text-osu-soft">
+                    {activeOffscreenDir === 'up' ? '↑' : '↓'}
+                  </span>
+                </button>
+              )}
+              {showBackToTop && (
+                <button
+                  type="button"
+                  onClick={handleScrollToTop}
+                  title="回到列表顶部"
+                  aria-label="回到顶部"
+                  className="glass animate-fade-in pointer-events-auto inline-flex min-h-[34px] items-center gap-1.5 rounded-full px-3.5 text-[0.78125rem] font-semibold text-ink transition-all duration-150 hover:border-osu/60 hover:text-osu"
+                >
+                  <ArrowUp className="h-3.5 w-3.5 text-ink-2" />
+                  <span>回到顶部</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </section>

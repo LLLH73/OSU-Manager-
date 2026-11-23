@@ -26,7 +26,15 @@ import {
   searchBeatmapsets,
   updateConfig,
 } from '../api';
-import { DEFAULT_FILTERS, THEME_OPTIONS, formatBytes, getStarColor, isValidTheme } from '../constants';
+import {
+  DEFAULT_FILTERS,
+  DEFAULT_FONT_SCALE,
+  THEME_OPTIONS,
+  clampFontScale,
+  formatBytes,
+  getStarColor,
+  isValidTheme,
+} from '../constants';
 import {
   AppConfig,
   DownloadTarget,
@@ -56,7 +64,7 @@ function readInitialTheme(): ThemeId {
   } catch {
     // Ignore storage error
   }
-  return 'dark';
+  return 'light';
 }
 
 function readHintDismissed(): boolean {
@@ -158,6 +166,13 @@ export function OverlayApp() {
         ]);
         setConfig(cfg);
         setVariant(cfg.defaultVariant);
+        const fs = clampFontScale(cfg.fontScale, DEFAULT_FONT_SCALE);
+        document.documentElement.style.setProperty('--ui-font-scale', String(fs));
+        try {
+          localStorage.setItem('osu4k-font-scale', String(fs));
+        } catch {
+          // Ignore storage error
+        }
         if (typeof cfg.overlayOpacity === 'number') {
           setOpacity(cfg.overlayOpacity);
           void window.electronAPI?.setOverlayOpacity?.(cfg.overlayOpacity);
@@ -406,10 +421,10 @@ export function OverlayApp() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="搜歌 / ID / 链接，回车展开下载..."
-                className="h-7 min-w-0 flex-1 bg-transparent text-[12px] text-ink outline-none placeholder:text-ink-3"
+                className="h-7 min-w-0 flex-1 bg-transparent text-[0.78125rem] text-ink outline-none placeholder:text-ink-3"
               />
               {activeTaskCount > 0 && (
-                <span className="chip font-mono h-[20px] border-osu/40 bg-osu/20 text-osu-soft">
+                <span className="chip font-mono min-h-[20px] border-osu/40 bg-osu/20 text-osu-soft">
                   <Loader2 className="h-2.5 w-2.5 animate-spin" />
                   {activeTaskCount}
                 </span>
@@ -417,11 +432,11 @@ export function OverlayApp() {
             </form>
           ) : (
             <div className="flex min-w-0 items-center gap-2">
-              <span className="font-display truncate text-[12px] font-bold text-ink">
+              <span className="font-display truncate text-[0.8125rem] font-bold text-ink">
                 osu! 浮窗助手
               </span>
               <span
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.6875rem] font-semibold ${
                   anyGameRunning
                     ? 'border-emerald-500/40 bg-emerald-500/15 text-ok'
                     : 'border-hairline bg-tint text-ink-3'
@@ -481,8 +496,8 @@ export function OverlayApp() {
 
         {/* Opacity Popover */}
         {showOpacitySlider && !compact && (
-          <div className="mac-glass-bar flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-3.5 py-2 text-[11px]">
-            <span className="text-ink-2">浮窗透明度</span>
+          <div className="mac-glass-bar flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-3.5 py-2 text-[0.75rem]">
+            <span className="font-medium text-ink-2">浮窗透明度</span>
             <input
               type="range"
               min={0.55}
@@ -517,7 +532,7 @@ export function OverlayApp() {
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     placeholder="搜索歌名、谱师、Beatmapset ID 或官网链接…"
-                    className="field h-8 pl-8 pr-7 text-[12px]"
+                    className="field min-h-[32px] pl-8 pr-7 text-[0.78125rem]"
                   />
                   {query && (
                     <button
@@ -535,14 +550,14 @@ export function OverlayApp() {
                 <button
                   type="submit"
                   disabled={searching}
-                  className="btn btn-primary h-8 px-3 text-[12px]"
+                  className="btn btn-primary min-h-[32px] px-3 text-[0.78125rem]"
                 >
                   {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '搜索'}
                 </button>
               </form>
 
               {/* Quick Mania 4K Filters */}
-              <div className="flex flex-wrap items-center justify-between gap-1.5 text-[10.5px]">
+              <div className="flex flex-wrap items-center justify-between gap-1.5 text-[0.71875rem]">
                 <div className="flex items-center gap-1 rounded-[7px] border border-hairline bg-tint p-0.5">
                   <button
                     type="button"
@@ -596,7 +611,7 @@ export function OverlayApp() {
               </div>
 
               {/* Smart Target + Variant */}
-              <div className="flex items-center justify-between gap-2 text-[11px]">
+              <div className="flex items-center justify-between gap-2 text-[0.75rem]">
                 <div className="segmented flex-1">
                   {(
                     [
@@ -610,7 +625,7 @@ export function OverlayApp() {
                       key={opt.id}
                       type="button"
                       onClick={() => setSmartTarget(opt.id)}
-                      className={`!h-6 !text-[10.5px] ${
+                      className={`!min-h-[24px] !text-[0.71875rem] ${
                         smartTarget === opt.id
                           ? '!bg-surface-2 !text-ink shadow-[inset_0_0_0_1px_var(--t-hairline-strong)]'
                           : ''
@@ -627,14 +642,14 @@ export function OverlayApp() {
                     setVariant((v) => (v === 'novideo' ? 'full' : v === 'full' ? 'mini' : 'novideo'))
                   }
                   title="点击切换下载包体类型"
-                  className="btn btn-sm h-[30px] px-2 text-[10.5px]"
+                  className="btn btn-sm min-h-[30px] px-2 text-[0.71875rem]"
                 >
                   {variant === 'novideo' ? '无视频' : variant === 'full' ? '含视频' : 'Mini'}
                 </button>
               </div>
 
               {!hintDismissed && (
-                <div className="flex items-center justify-between gap-2 rounded-[8px] border border-hairline bg-tint px-2.5 py-1 text-[10px] text-ink-2">
+                <div className="flex items-center justify-between gap-2 rounded-[8px] border border-hairline bg-tint px-2.5 py-1 text-[0.6875rem] font-medium text-ink-2">
                   <span>游戏全屏下如看不见浮窗，请在游戏内设为「无边框窗口」模式</span>
                   <button
                     type="button"
@@ -657,7 +672,7 @@ export function OverlayApp() {
             {/* Results Scroll List */}
             <div className="flex-1 space-y-2 overflow-y-auto p-3">
               {searchError && (
-                <div className="mac-glass-card rounded-[11px] border-rose-500/40 p-2.5 text-[11.5px] text-bad">
+                <div className="mac-glass-card rounded-[11px] border-rose-500/40 p-2.5 text-[0.78125rem] font-medium text-bad">
                   {searchError}
                 </div>
               )}
@@ -665,10 +680,10 @@ export function OverlayApp() {
               {searching && results.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-ink-3">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin text-osu" />
-                  <span className="text-[12px]">搜索中…</span>
+                  <span className="text-[0.8125rem] font-medium">搜索中…</span>
                 </div>
               ) : results.length === 0 ? (
-                <div className="py-12 text-center text-[12px] text-ink-3">
+                <div className="py-12 text-center text-[0.8125rem] font-medium text-ink-3">
                   没有找到匹配的谱面，试试放宽关键词或切换「全部状态」
                 </div>
               ) : (
@@ -721,11 +736,11 @@ export function OverlayApp() {
                       {/* Metadata */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
-                          <h3 className="font-display truncate text-[12.5px] font-bold text-ink">
+                          <h3 className="font-display truncate text-[0.84375rem] font-bold text-ink">
                             {set.title}
                           </h3>
                         </div>
-                        <p className="truncate text-[10.5px] text-ink-2">
+                        <p className="truncate text-[0.71875rem] font-medium text-ink-2">
                           {set.artist} · {set.creator}
                         </p>
                         <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -739,7 +754,7 @@ export function OverlayApp() {
                                   color: c.text,
                                   borderColor: c.border,
                                 }}
-                                className="font-stat inline-flex h-[16px] items-center rounded-[4px] border px-1 text-[9px] leading-none font-bold whitespace-nowrap"
+                                className="font-stat inline-flex min-h-[16px] items-center rounded-[4px] border px-1 text-[0.625rem] leading-none font-bold whitespace-nowrap"
                               >
                                 {bm.modeInt === 3 ? `${Math.round(bm.cs)}K ` : ''}
                                 {bm.difficultyRating.toFixed(2)}★
@@ -747,10 +762,10 @@ export function OverlayApp() {
                             );
                           })}
                           {set.localStatus.inLazer && (
-                            <span className="chip chip-gold h-[16px] px-1 text-[9px]">Lazer</span>
+                            <span className="chip chip-gold min-h-[16px] px-1 text-[0.625rem]">Lazer</span>
                           )}
                           {set.localStatus.inStable && (
-                            <span className="chip chip-gold h-[16px] px-1 text-[9px]">Stable</span>
+                            <span className="chip chip-gold min-h-[16px] px-1 text-[0.625rem]">Stable</span>
                           )}
                         </div>
                       </div>
@@ -758,7 +773,7 @@ export function OverlayApp() {
                       {/* Right Action Stack */}
                       <div className="flex shrink-0 flex-col items-end gap-1">
                         {isDownloading && activeTask ? (
-                          <span className="btn btn-sm h-7 border-osu/40 bg-osu/15 px-2 font-mono text-[10.5px] text-osu-soft">
+                          <span className="btn btn-sm min-h-[28px] border-osu/40 bg-osu/15 px-2 font-mono text-[0.71875rem] text-osu-soft">
                             <Loader2 className="h-3 w-3 animate-spin" />
                             {activeTask.progress}%
                           </span>
@@ -767,7 +782,7 @@ export function OverlayApp() {
                             <button
                               type="button"
                               onClick={() => void handleLoadAgain(set.id)}
-                              className="btn btn-sm btn-lazer h-7 px-2 text-[10.5px]"
+                              className="btn btn-sm btn-lazer min-h-[28px] px-2 text-[0.71875rem]"
                               title="向运行中的游戏发送加载请求"
                             >
                               <Gamepad2 className="h-3 w-3" />
@@ -777,7 +792,7 @@ export function OverlayApp() {
                               type="button"
                               onClick={() => void handleDownloadAndLoad(set)}
                               title="重新下载"
-                              className="btn btn-sm btn-icon h-7 w-7"
+                              className="btn btn-sm btn-icon min-h-[28px] w-7"
                             >
                               <RefreshCw className="h-3 w-3" />
                             </button>
@@ -786,7 +801,7 @@ export function OverlayApp() {
                           <button
                             type="button"
                             onClick={() => void handleDownloadAndLoad(set)}
-                            className="btn btn-sm btn-primary h-7 px-2.5 text-[10.5px]"
+                            className="btn btn-sm btn-primary min-h-[28px] px-2.5 text-[0.71875rem]"
                           >
                             {anyGameRunning ? (
                               <Zap className="h-3 w-3" />
@@ -801,7 +816,7 @@ export function OverlayApp() {
                           <button
                             type="button"
                             onClick={() => handleOpenPreview(set.id)}
-                            className="btn btn-sm h-6 px-2 text-[10px] text-ink-2 hover:text-ink"
+                            className="btn btn-sm min-h-[24px] px-2 text-[0.6875rem] text-ink-2 hover:text-ink"
                           >
                             <Eye className="h-3 w-3 text-osu" />
                             <span>预览</span>
@@ -825,7 +840,7 @@ export function OverlayApp() {
             {/* Bottom Live Download / Auto-Load Dock */}
             {recentTasks.length > 0 && (
               <footer className="mac-glass-bar shrink-0 space-y-1.5 border-t border-hairline px-3 py-2">
-                <div className="flex items-center justify-between text-[10px] text-ink-3">
+                <div className="flex items-center justify-between text-[0.6875rem] text-ink-3">
                   <span className="overline">最近下载与加载状态</span>
                   <button
                     type="button"
@@ -840,7 +855,7 @@ export function OverlayApp() {
                   return (
                     <div
                       key={t.id}
-                      className="flex items-center justify-between gap-2 rounded-[8px] border border-hairline bg-tint px-2 py-1 text-[10.5px]"
+                      className="flex items-center justify-between gap-2 rounded-[8px] border border-hairline bg-tint px-2 py-1 text-[0.71875rem]"
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-1.5">
                         {done ? (
@@ -850,18 +865,18 @@ export function OverlayApp() {
                         ) : (
                           <Loader2 className="h-3 w-3 shrink-0 animate-spin text-osu" />
                         )}
-                        <span className="truncate font-medium text-ink">{t.title}</span>
+                        <span className="truncate font-semibold text-ink">{t.title}</span>
                       </div>
 
                       <div className="flex shrink-0 items-center gap-1.5">
                         {t.autoLoadedInGame ? (
-                          <span className="rounded bg-emerald-500/18 px-1.5 py-px text-[9.5px] font-semibold text-ok">
+                          <span className="rounded bg-emerald-500/18 px-1.5 py-px text-[0.65625rem] font-semibold text-ok">
                             已游戏加载
                           </span>
                         ) : done ? (
-                          <span className="text-[9.5px] text-ok">已完成</span>
+                          <span className="text-[0.65625rem] font-semibold text-ok">已完成</span>
                         ) : (
-                          <span className="font-mono text-[10px] text-ink-2 tabular-nums">
+                          <span className="font-mono text-[0.6875rem] text-ink-2 tabular-nums">
                             {t.speedBps > 0 ? `${formatBytes(t.speedBps)}/s` : `${t.progress}%`}
                           </span>
                         )}
@@ -869,7 +884,7 @@ export function OverlayApp() {
                           <button
                             type="button"
                             onClick={() => handleOpenPreview(t.beatmapsetId)}
-                            className="rounded border border-hairline bg-surface-2 px-1.5 py-px text-[9.5px] font-medium text-ink hover:border-osu/50"
+                            className="rounded border border-hairline bg-surface-2 px-1.5 py-px text-[0.65625rem] font-semibold text-ink hover:border-osu/50"
                           >
                             预览
                           </button>
@@ -890,7 +905,7 @@ export function OverlayApp() {
         />
 
         {toast && (
-          <div className="glass animate-toast-in pointer-events-none fixed right-3 bottom-3 left-3 z-50 rounded-[10px] border-osu/40 px-3 py-2 text-center text-[11px] font-medium text-ink shadow-xl">
+          <div className="glass animate-toast-in pointer-events-none fixed right-3 bottom-3 left-3 z-50 rounded-[10px] border-osu/40 px-3 py-2 text-center text-[0.75rem] font-semibold text-ink shadow-xl">
             {toast}
           </div>
         )}

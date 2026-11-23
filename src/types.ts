@@ -1,4 +1,6 @@
 export type ProxyMode = 'auto' | 'proxy' | 'direct';
+export type IpFamilyMode = 'auto' | 'ipv6_first' | 'ipv4_first' | 'ipv6_only' | 'ipv4_only';
+export type FastBatchRouteStrategy = 'auto' | 'direct_first' | 'direct_only' | 'proxy_only';
 export type DownloadTarget = 'lazer' | 'stable' | 'both';
 export type DownloadVariant = 'novideo' | 'full' | 'mini';
 export type SearchSource = 'auto' | 'osudirect' | 'sayobot';
@@ -53,6 +55,8 @@ export interface AppConfig {
   dynamicBgFromSong: boolean;
   dynamicThemeFromBg: boolean;
   accentColor: string;
+  fontScale: number;
+  ipFamily: IpFamilyMode;
 }
 
 export interface MirrorHealth {
@@ -80,7 +84,80 @@ export interface NetworkStatus {
   lastChecked: string | null;
   benchmarking: boolean;
   recommendedMirror: MirrorId | null;
+  hasGlobalIpv6: boolean;
+  ipFamily: IpFamilyMode;
   mirrors: MirrorHealth[];
+}
+
+export type FastBatchJobState = 'idle' | 'running' | 'paused' | 'completed' | 'stopped' | 'error';
+
+export type FastBatchItemState =
+  | 'queued'
+  | 'downloading'
+  | 'verifying'
+  | 'installing'
+  | 'completed'
+  | 'queued_lazer'
+  | 'failed'
+  | 'cancelled';
+
+export interface FastBatchStartOptions {
+  filters: SearchFilters;
+  targetCount: number;
+  target: DownloadTarget;
+  variant: DownloadVariant;
+  preferredMirror: PreferredMirror;
+  concurrency: number;
+  ipFamily: IpFamilyMode;
+  routeStrategy: FastBatchRouteStrategy;
+  skipInstalled: boolean;
+  stableDropOsz: boolean;
+  lazerBatchImport: boolean;
+}
+
+export interface FastBatchItem {
+  beatmapsetId: number;
+  title: string;
+  artist: string;
+  creator: string;
+  status: string;
+  bpm: number;
+  diffs: string[];
+  state: FastBatchItemState;
+  progress: number;
+  downloadedBytes: number;
+  totalBytes: number | null;
+  speedBps: number;
+  mirror: MirrorId | null;
+  routeUsed: 'direct' | 'proxy' | null;
+  ipVersion: 4 | 6 | null;
+  error: string | null;
+}
+
+export interface FastBatchSnapshot {
+  jobId: string | null;
+  state: FastBatchJobState;
+  options: FastBatchStartOptions | null;
+  targetCount: number;
+  completedCount: number;
+  failedCount: number;
+  skippedInstalledCount: number;
+  inFlightCount: number;
+  queuedCount: number;
+  scannedPages: number;
+  upstreamOffset: number;
+  hasMore: boolean;
+  totalBytesDownloaded: number;
+  aggregateSpeedBps: number;
+  ipv6Hits: number;
+  ipv4Hits: number;
+  proxyHits: number;
+  lazerBatchImportedCount: number;
+  lazerPendingCreated: string[];
+  startedAt: string | null;
+  finishedAt: string | null;
+  message: string;
+  items: FastBatchItem[];
 }
 
 export type SearchMode = 'any' | '0' | '1' | '2' | '3';

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import {
   Calculator,
   Check,
@@ -27,6 +27,7 @@ import {
 } from '../constants';
 import { DownloadTarget, DownloadTask, NormalizedBeatmapset } from '../types';
 import { formatPp, getBeatmapsetPpBadge, getQuickPpSummary, isRankedForPp } from '../utils/pp';
+import { MarqueeText } from './MarqueeText';
 
 interface BeatmapCardProps {
   beatmapset: NormalizedBeatmapset;
@@ -42,7 +43,7 @@ interface BeatmapCardProps {
   onPreviewBeatmap?: (set: NormalizedBeatmapset) => void;
 }
 
-export function BeatmapCard({
+export const BeatmapCard = memo(function BeatmapCard({
   beatmapset,
   activeTarget,
   isPlaying,
@@ -100,7 +101,7 @@ export function BeatmapCard({
 
   return (
     <article
-      className={`panel group relative flex flex-col overflow-hidden transition-[border-color,box-shadow,background-color] duration-200 ${cardFrameClass}`}
+      className={`panel song-grid-card group relative flex flex-col overflow-hidden transition-[border-color,box-shadow,background-color] duration-200 ${cardFrameClass}`}
     >
       {/* Cover Banner (isolated layer + -1px bleed avoids subpixel seam line on hover zoom) */}
       <div className="cover-frame h-[134px] w-full">
@@ -110,7 +111,7 @@ export function BeatmapCard({
             alt={beatmapset.title}
             loading="lazy"
             onError={() => setImgError(true)}
-            className="absolute -inset-[1px] h-[calc(100%+2px)] w-[calc(100%+2px)] object-cover will-change-transform transition-transform duration-500 ease-out group-hover:scale-[1.035]"
+            className="absolute -inset-[1px] h-[calc(100%+2px)] w-[calc(100%+2px)] object-cover transition-transform duration-500 ease-out group-hover:scale-[1.035]"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-surface-1 text-ink-4">
@@ -137,7 +138,7 @@ export function BeatmapCard({
             </button>
           )}
           <span
-            className={`font-stat inline-flex h-[19px] items-center rounded-[5px] border px-1.5 text-[9.5px] font-bold tracking-wider uppercase ${statusBadge.cls}`}
+            className={`font-stat inline-flex min-h-[19px] items-center rounded-[5px] border px-1.5 text-[0.65625rem] font-bold tracking-wider uppercase ${statusBadge.cls}`}
           >
             {statusBadge.label}
           </span>
@@ -185,7 +186,7 @@ export function BeatmapCard({
           type="button"
           onClick={() => onTogglePlay(beatmapset)}
           title={isPlaying ? '暂停试听' : '试听音频预览'}
-          className={`absolute bottom-2.5 left-2.5 flex h-[26px] items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-semibold backdrop-blur-md transition-colors ${
+          className={`absolute bottom-2.5 left-2.5 flex min-h-[26px] items-center gap-1.5 rounded-full border px-2.5 text-[0.75rem] font-semibold backdrop-blur-md transition-colors ${
             isPlaying
               ? 'border-osu bg-osu text-white'
               : 'border-white/25 bg-black/60 text-white hover:border-osu/70 hover:bg-osu/90'
@@ -210,7 +211,7 @@ export function BeatmapCard({
         </button>
 
         {/* Bottom-right: BPM & Duration */}
-        <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1 text-[10.5px] font-medium text-white tabular-nums">
+        <div className="absolute right-2.5 bottom-2.5 flex items-center gap-1 text-[0.71875rem] font-semibold text-white tabular-nums">
           <span className="font-stat rounded-[5px] border border-white/15 bg-black/60 px-1.5 py-0.5 backdrop-blur-sm">
             {Math.round(beatmapset.bpm)} BPM
           </span>
@@ -232,23 +233,26 @@ export function BeatmapCard({
             className="w-full text-left"
           >
             <h3
-              className="font-display line-clamp-1 text-[14px] font-bold text-ink transition-colors group-hover:text-osu"
-              title={beatmapset.titleUnicode || beatmapset.title}
+              className="font-display min-w-0 text-[0.9375rem] font-bold text-ink transition-colors group-hover:text-osu"
             >
-              {beatmapset.title}
+              <MarqueeText
+                text={beatmapset.title}
+                mode="group-hover"
+                title={beatmapset.titleUnicode || beatmapset.title}
+              />
             </h3>
-            <p className="mt-0.5 line-clamp-1 text-[11.5px] text-ink-2" title={beatmapset.artistUnicode}>
+            <p className="mt-0.5 line-clamp-1 text-[0.78125rem] font-medium text-ink-2" title={beatmapset.artistUnicode}>
               {beatmapset.artist}
             </p>
           </button>
 
           {/* Mapper & Engagement */}
-          <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-ink-3">
+          <div className="mt-2 flex items-center justify-between gap-2 text-[0.75rem] text-ink-3">
             <span className="flex min-w-0 items-center gap-1">
               <User className="h-3 w-3 shrink-0" />
-              <span className="truncate font-medium text-ink-2">{beatmapset.creator}</span>
+              <span className="truncate font-semibold text-ink-2">{beatmapset.creator}</span>
             </span>
-            <div className="font-mono flex shrink-0 items-center gap-2.5 text-[10.5px]">
+            <div className="font-mono flex shrink-0 items-center gap-2.5 text-[0.71875rem]">
               <span className="flex items-center gap-1 text-osu-soft">
                 <Heart className="h-3 w-3" />
                 {formatCount(beatmapset.favouriteCount)}
@@ -275,7 +279,7 @@ export function BeatmapCard({
                     borderColor: color.border,
                   }}
                   title={`${bm.version} | ${keyTag} | ${bm.difficultyRating.toFixed(2)}★ | OD ${bm.od} | HP ${bm.hp} | ${formatDuration(bm.totalLength)}${bm.lnRatio != null ? ` | LN ${bm.lnRatio}%` : ''}${ppQuick ? ` | ~${formatPp(ppQuick.pp98)}pp(98%) / ~${formatPp(ppQuick.pp100)}pp(SS)` : ''}`}
-                  className="font-stat inline-flex h-[19px] shrink-0 items-center gap-1 rounded-[5px] border px-1.5 text-[10px] leading-none font-bold whitespace-nowrap"
+                  className="font-stat inline-flex min-h-[20px] shrink-0 items-center gap-1 rounded-[5px] border px-1.5 text-[0.6875rem] leading-none font-bold whitespace-nowrap"
                 >
                   <span>{keyTag}</span>
                   <span>{bm.difficultyRating.toFixed(2)}★</span>
@@ -283,10 +287,13 @@ export function BeatmapCard({
               );
             })}
             {hiddenDiffCount > 0 && (
-              <span className="chip font-stat h-[19px] text-[10px]">+{hiddenDiffCount}</span>
+              <span className="chip font-stat min-h-[20px] text-[0.6875rem]">+{hiddenDiffCount}</span>
             )}
             {lnBadge && (
-              <span className={`chip font-mono h-[19px] text-[10px] ${lnBadge.cls}`}>
+              <span
+                title={lnBadge.tooltip}
+                className={`chip font-mono min-h-[20px] text-[0.6875rem] ${lnBadge.cls}`}
+              >
                 {lnBadge.label}
               </span>
             )}
@@ -297,7 +304,7 @@ export function BeatmapCard({
                   onOpenDetail(beatmapset, { diffId: ppBadge.focusDiffId, focusPp: true })
                 }
                 title={ppBadge.tooltip}
-                className="chip chip-pp font-stat h-[19px] text-[10px]"
+                className="chip chip-pp font-stat min-h-[20px] text-[0.6875rem]"
               >
                 <Calculator className="h-2.5 w-2.5" />
                 <span>{ppBadge.label}</span>
@@ -330,7 +337,7 @@ export function BeatmapCard({
           <button
             type="button"
             onClick={() => onDownload(beatmapset, 'stable')}
-            title="单独下载到 Stable (日常练习)"
+            title="单独下载到 Stable"
             className="font-stat btn btn-sm px-2 text-stable-soft hover:border-stable/50 hover:bg-stable/12 hover:text-stable"
           >
             S
@@ -338,7 +345,7 @@ export function BeatmapCard({
           <button
             type="button"
             onClick={() => onDownload(beatmapset, 'lazer')}
-            title="单独下载到 Lazer (刷PP)"
+            title="单独下载到 Lazer"
             className="font-stat btn btn-sm px-2 text-lazer-soft hover:border-lazer/50 hover:bg-lazer/12 hover:text-lazer"
           >
             L
@@ -387,4 +394,4 @@ export function BeatmapCard({
       )}
     </article>
   );
-}
+});

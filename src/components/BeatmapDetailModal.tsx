@@ -61,14 +61,14 @@ interface BeatmapDetailModalProps {
 const TARGET_ORDER: DownloadTarget[] = ['lazer', 'stable', 'both'];
 
 const TARGET_SEG_LABEL: Record<DownloadTarget, string> = {
-  lazer: 'Lazer · 刷PP',
-  stable: 'Stable · 日常',
+  lazer: 'Lazer',
+  stable: 'Stable',
   both: '双端同步',
 };
 
 const TARGET_TITLE: Record<DownloadTarget, string> = {
-  lazer: '安装到 Lazer (刷PP)',
-  stable: '安装到 Stable (日常)',
+  lazer: '安装到 Lazer',
+  stable: '安装到 Stable',
   both: '同时安装到 Stable + Lazer',
 };
 
@@ -163,7 +163,7 @@ export function BeatmapDetailModal({
         role="dialog"
         aria-modal="true"
         aria-label={beatmapset.title}
-        className="modal-surface flex max-h-[88vh] w-full max-w-4xl flex-col overflow-hidden"
+        className="modal-surface flex max-h-[88vh] w-full max-w-[960px] flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cover Banner (always photo scrim -> white text) */}
@@ -226,10 +226,10 @@ export function BeatmapDetailModal({
                   </span>
                 )}
               </div>
-              <h2 className="font-display truncate text-xl font-bold text-white drop-shadow-sm">
+              <h2 className="font-display truncate text-[1.25rem] font-bold text-white drop-shadow-sm">
                 {beatmapset.title}
               </h2>
-              <p className="mt-0.5 truncate text-[13px] text-slate-200 drop-shadow-sm">
+              <p className="mt-0.5 truncate text-[0.875rem] font-medium text-slate-200 drop-shadow-sm">
                 {beatmapset.artist}
                 <span className="mx-1.5 text-slate-400">·</span>
                 谱师 <span className="font-semibold text-pink-300">{beatmapset.creator}</span>
@@ -277,7 +277,10 @@ export function BeatmapDetailModal({
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 space-y-5 overflow-y-auto p-5">
+        <div
+          className="flex-1 space-y-5 overflow-y-auto overscroll-contain p-5"
+          style={{ transform: 'translateZ(0)', willChange: 'scroll-position' }}
+        >
           {/* Quick Stats */}
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             {stats.map(({ label, value, icon: Icon, cls }) => (
@@ -286,10 +289,10 @@ export function BeatmapDetailModal({
                   <Icon className="h-3 w-3" />
                   {label}
                 </div>
-                <div className={`font-stat mt-1 text-xl font-bold tracking-tight ${cls}`}>
+                <div className={`font-stat mt-1 text-[1.25rem] font-bold tracking-tight ${cls}`}>
                   {value}
                   {label === '难度数量' && (
-                    <span className="ml-1 font-sans text-xs font-medium text-ink-3">个难度</span>
+                    <span className="ml-1 font-sans text-[0.8125rem] font-semibold text-ink-3">个难度</span>
                   )}
                 </div>
               </div>
@@ -300,10 +303,10 @@ export function BeatmapDetailModal({
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="overline">难度列表</span>
-              <span className="text-[11px] text-ink-3">点击任意难度行可在下方模拟多情景 PP</span>
+              <span className="text-[0.78125rem] font-medium text-ink-3">点击任意难度行可在下方模拟多情景 PP</span>
             </div>
             <div className="panel-flat overflow-x-auto">
-              <table className="data-table">
+              <table className="data-table [&_th]:!px-2.5 [&_td]:!px-2.5">
                 <thead>
                   <tr>
                     <th>难度名</th>
@@ -331,7 +334,7 @@ export function BeatmapDetailModal({
                       >
                         <td
                           title={bm.version}
-                          className="font-display max-w-[190px] font-semibold text-ink"
+                          className="font-display max-w-[170px] font-semibold text-ink"
                         >
                           <div className="flex items-center gap-1.5">
                             <span className="truncate">{bm.version}</span>
@@ -344,7 +347,7 @@ export function BeatmapDetailModal({
                                   onPreviewBeatmap(beatmapset, bm.id);
                                 }}
                                 title="使用此难度打开 Mania 谱面预览"
-                                className="btn btn-sm h-[20px] shrink-0 px-1.5 text-[10px] text-osu-soft"
+                                className="btn btn-sm min-h-[22px] shrink-0 px-1.5 text-[0.71875rem] font-semibold text-osu-soft"
                               >
                                 <Eye className="h-2.5 w-2.5" />
                                 <span>预览</span>
@@ -352,7 +355,7 @@ export function BeatmapDetailModal({
                             )}
                           </div>
                         </td>
-                        <td className="whitespace-nowrap text-ink-2">
+                        <td className="whitespace-nowrap font-medium text-ink-2">
                           {bm.modeInt === 3 ? (
                             <span className="chip font-stat">Mania {Math.round(bm.cs)}K</span>
                           ) : (
@@ -366,7 +369,7 @@ export function BeatmapDetailModal({
                               color: color.text,
                               borderColor: color.border,
                             }}
-                            className="font-stat inline-flex h-[22px] shrink-0 items-center gap-1 rounded-full border px-2 text-[11px] leading-none font-bold whitespace-nowrap"
+                            className="font-stat inline-flex min-h-[24px] shrink-0 items-center gap-1 rounded-full border px-2 text-[0.75rem] leading-none font-bold whitespace-nowrap"
                           >
                             <span>★</span>
                             <span>{bm.difficultyRating.toFixed(2)}</span>
@@ -374,12 +377,12 @@ export function BeatmapDetailModal({
                         </td>
                         <td className="font-stat whitespace-nowrap tabular-nums">
                           {ppQuick ? (
-                            <span className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-lazer-soft">
+                            <span className="inline-flex items-center gap-1 text-[0.8125rem] font-bold text-lazer-soft">
                               <Calculator className="h-3 w-3 opacity-80" />
                               ~{formatPp(ppQuick.pp98)} / {formatPp(ppQuick.pp100)}pp
                             </span>
                           ) : (
-                            <span className="text-[11px] text-ink-3">未上架</span>
+                            <span className="text-[0.78125rem] font-medium text-ink-3">未上架</span>
                           )}
                         </td>
                         <td className="font-mono whitespace-nowrap text-ink-2">
@@ -392,11 +395,15 @@ export function BeatmapDetailModal({
                         </td>
                         <td>
                           {bm.modeInt === 3 ? (
-                            <div className="flex items-center gap-2 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 whitespace-nowrap">
                               <span className="font-mono text-ink-2">
                                 {bm.countCircles} / {bm.countSliders}
                               </span>
-                              {lnInfo && <span className={`chip font-mono ${lnInfo.cls}`}>{lnInfo.label}</span>}
+                              {lnInfo && (
+                                <span title={lnInfo.tooltip} className={`chip font-mono ${lnInfo.cls}`}>
+                                  {lnInfo.fullLabel}
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <span className="font-mono whitespace-nowrap text-ink-3">
@@ -468,7 +475,7 @@ export function BeatmapDetailModal({
               </div>
             </div>
 
-            <div className="w-[140px]">
+            <div className="min-w-[148px]">
               <div className="field-label mb-1">包类型</div>
               <SelectField
                 value={variant}
@@ -480,7 +487,7 @@ export function BeatmapDetailModal({
               </SelectField>
             </div>
 
-            <div className="w-[200px]">
+            <div className="min-w-[210px]">
               <div className="field-label mb-1">下载源</div>
               <SelectField
                 value={mirror}
@@ -504,7 +511,7 @@ export function BeatmapDetailModal({
               onDownload(beatmapset, target, variant, mirror);
               onClose();
             }}
-            className={`btn h-9 px-4 text-[13px] ${TARGET_META[target].btnCls}`}
+            className={`btn min-h-[38px] px-4 text-[0.875rem] font-semibold ${TARGET_META[target].btnCls}`}
           >
             <Download className="h-4 w-4" />
             <span>立即下载并安装</span>

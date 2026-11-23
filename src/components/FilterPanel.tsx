@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
@@ -22,6 +22,7 @@ interface FilterPanelProps {
   filters: SearchFilters;
   loading: boolean;
   collapsed?: boolean;
+  floatingAdvanced?: boolean;
   onToggleCollapsed?: () => void;
   onChange: (next: SearchFilters, autoSearch?: boolean) => void;
   onSearch: (overrideFilters?: SearchFilters) => void;
@@ -62,16 +63,16 @@ function RangeInput({
           value={minVal ?? ''}
           placeholder={minPlaceholder}
           onChange={(e) => onChangeMin(parse(e.target.value))}
-          className="field font-mono text-[11.5px] tabular-nums"
+          className="field font-mono text-[0.78125rem] tabular-nums"
         />
-        <span className="text-[11px] text-ink-4">–</span>
+        <span className="text-[0.75rem] text-ink-4">–</span>
         <input
           type="number"
           step={step}
           value={maxVal ?? ''}
           placeholder={maxPlaceholder}
           onChange={(e) => onChangeMax(parse(e.target.value))}
-          className="field font-mono text-[11.5px] tabular-nums"
+          className="field font-mono text-[0.78125rem] tabular-nums"
         />
       </div>
     </div>
@@ -82,12 +83,34 @@ export function FilterPanel({
   filters,
   loading,
   collapsed = false,
+  floatingAdvanced = false,
   onToggleCollapsed,
   onChange,
   onSearch,
   onReset,
 }: FilterPanelProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const panelRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!floatingAdvanced || !advancedOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setAdvancedOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('[role="dialog"]')) {
+        setAdvancedOpen(false);
+      }
+    };
+    window.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [floatingAdvanced, advancedOpen]);
 
   const [sortField, sortDir] = (filters.sort || 'ranked_date:desc').split(':');
 
@@ -132,7 +155,7 @@ export function FilterPanel({
 
   if (collapsed) {
     return (
-      <section className="panel px-3 py-2">
+      <section className="panel shrink-0 px-3 py-2">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -147,7 +170,7 @@ export function FilterPanel({
               value={filters.q || ''}
               onChange={(e) => onChange({ ...filters, q: e.target.value, offset: 0 }, false)}
               placeholder="快速搜索曲名、艺术家、谱师或粘贴谱面链接..."
-              className="field h-8 pl-8.5 pr-3 text-[12px]"
+              className="field min-h-[32px] pl-8.5 pr-3 text-[0.8125rem]"
             />
           </div>
 
@@ -165,7 +188,7 @@ export function FilterPanel({
           <button
             type="submit"
             disabled={loading}
-            className="btn btn-primary btn-sm h-8 rounded-[8px] px-3"
+            className="btn btn-primary btn-sm min-h-[32px] rounded-[8px] px-3"
           >
             <Search className="h-3.5 w-3.5" />
             <span>{loading ? '搜索中' : '搜索'}</span>
@@ -176,7 +199,7 @@ export function FilterPanel({
               type="button"
               onClick={onToggleCollapsed}
               title="展开完整搜索与筛选面板"
-              className="btn btn-sm h-8 rounded-[8px] px-3"
+              className="btn btn-sm min-h-[32px] rounded-[8px] px-3"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 text-osu" />
               <span>展开筛选</span>
@@ -189,7 +212,7 @@ export function FilterPanel({
   }
 
   return (
-    <section className="panel p-3.5 sm:p-4">
+    <section ref={panelRef} className="panel relative z-30 shrink-0 p-3 sm:p-3.5">
       {/* Row 1: Search Bar */}
       <form
         onSubmit={(e) => {
@@ -209,14 +232,14 @@ export function FilterPanel({
           />
         </div>
         <div className="flex items-center gap-2">
-          <button type="submit" disabled={loading} className="btn btn-primary h-[40px] rounded-[8px] px-5 text-[13px]">
+          <button type="submit" disabled={loading} className="btn btn-primary min-h-[40px] rounded-[8px] px-5 text-[0.84375rem]">
             <Search className="h-4 w-4" />
             <span>{loading ? '搜索中…' : '搜索谱面'}</span>
           </button>
           <button
             type="button"
             onClick={() => setAdvancedOpen((v) => !v)}
-            className={`btn h-[40px] rounded-[8px] px-3.5 ${
+            className={`btn min-h-[40px] rounded-[8px] px-3.5 ${
               advancedOpen || advancedCount > 0
                 ? 'border-osu/45 bg-osu/12 text-osu-soft hover:border-osu/60 hover:bg-osu/18'
                 : ''
@@ -225,7 +248,7 @@ export function FilterPanel({
             <SlidersHorizontal className="h-4 w-4" />
             <span>高级筛选</span>
             {advancedCount > 0 && (
-              <span className="font-stat flex h-4 min-w-[16px] items-center justify-center rounded-full bg-osu px-1 text-[10px] font-bold text-white">
+              <span className="font-stat flex h-4 min-w-[16px] items-center justify-center rounded-full bg-osu px-1 text-[0.6875rem] font-bold text-white">
                 {advancedCount}
               </span>
             )}
@@ -235,7 +258,7 @@ export function FilterPanel({
             type="button"
             onClick={onReset}
             title="重置为 Mania 4K 默认筛选"
-            className="btn h-[40px] rounded-[8px] px-3 text-ink-2"
+            className="btn min-h-[40px] rounded-[8px] px-3 text-ink-2"
           >
             <RotateCcw className="h-3.5 w-3.5" />
             <span className="hidden md:inline">重置</span>
@@ -245,7 +268,7 @@ export function FilterPanel({
               type="button"
               onClick={onToggleCollapsed}
               title="收起搜索与筛选栏"
-              className="btn h-[40px] rounded-[8px] px-2.5 text-ink-2"
+              className="btn min-h-[40px] rounded-[8px] px-2.5 text-ink-2"
             >
               <ChevronUp className="h-4 w-4" />
               <span className="hidden lg:inline">收起</span>
@@ -387,8 +410,14 @@ export function FilterPanel({
 
       {/* Collapsible Full Official + Mania 4K Advanced Filters */}
       {advancedOpen && (
-        <div className="panel-flat animate-fade-in mt-3 space-y-3.5 p-3.5">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div
+          className={
+            floatingAdvanced
+              ? 'panel-flat animate-fade-in absolute top-full right-0 left-0 z-30 mt-2 max-h-[calc(100vh-220px)] space-y-3.5 overflow-y-auto rounded-[14px] border border-hairline-strong bg-surface-2/95 p-3.5 shadow-2xl backdrop-blur-xl'
+              : 'panel-flat animate-fade-in mt-3 space-y-3.5 p-3.5'
+          }
+        >
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="flex min-w-0 flex-col gap-1">
               <label className="field-label">曲风 (Genre)</label>
               <SelectField
@@ -430,7 +459,7 @@ export function FilterPanel({
 
             <div className="flex min-w-0 flex-col gap-1">
               <label className="field-label">LN 长条占比速选 (4K)</label>
-              <div className="segmented">
+              <div className="segmented segmented-auto">
                 <button
                   type="button"
                   onClick={() => update({ minLn: undefined, maxLn: 15 })}
@@ -468,7 +497,7 @@ export function FilterPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-7">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
             <RangeInput
               label="星数 (Stars)"
               minVal={filters.minStars}
@@ -542,7 +571,7 @@ export function FilterPanel({
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-hairline pt-3">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[11.5px] text-ink-2">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[0.78125rem] font-medium text-ink-2">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
@@ -601,7 +630,10 @@ export function FilterPanel({
 
             <button
               type="button"
-              onClick={() => onSearch()}
+              onClick={() => {
+                onSearch();
+                if (floatingAdvanced) setAdvancedOpen(false);
+              }}
               className="btn btn-primary btn-sm px-4"
             >
               应用高级筛选

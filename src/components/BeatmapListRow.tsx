@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import {
   Calculator,
   Check,
@@ -27,6 +27,7 @@ import {
 } from '../constants';
 import { DownloadTarget, DownloadTask, NormalizedBeatmapset } from '../types';
 import { formatPp, getBeatmapsetPpBadge, getQuickPpSummary, isRankedForPp } from '../utils/pp';
+import { MarqueeText } from './MarqueeText';
 
 interface BeatmapListRowProps {
   beatmapset: NormalizedBeatmapset;
@@ -42,7 +43,7 @@ interface BeatmapListRowProps {
   onPreviewBeatmap?: (set: NormalizedBeatmapset) => void;
 }
 
-export function BeatmapListRow({
+export const BeatmapListRow = memo(function BeatmapListRow({
   beatmapset,
   activeTarget,
   isPlaying,
@@ -100,7 +101,7 @@ export function BeatmapListRow({
 
   return (
     <article
-      className={`panel group relative flex flex-col gap-2.5 overflow-hidden px-3 py-2.5 transition-[border-color,box-shadow,background-color] duration-200 md:flex-row md:items-center md:gap-3.5 ${rowFrameClass}`}
+      className={`song-list-row group relative flex flex-col gap-2.5 overflow-hidden px-3 py-2.5 transition-[border-color,box-shadow,background-color] duration-200 md:flex-row md:items-center md:gap-3.5 ${rowFrameClass}`}
     >
       {/* Left: optional batch checkbox + Cover thumbnail */}
       <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -126,7 +127,7 @@ export function BeatmapListRow({
               alt={beatmapset.title}
               loading="lazy"
               onError={() => setImgError(true)}
-              className="absolute -inset-[1px] h-[calc(100%+2px)] w-[calc(100%+2px)] object-cover will-change-transform transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+              className="absolute -inset-[1px] h-[calc(100%+2px)] w-[calc(100%+2px)] object-cover transition-transform duration-500 ease-out group-hover:scale-[1.04]"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-surface-1 text-ink-4">
@@ -136,7 +137,7 @@ export function BeatmapListRow({
           <div className="cover-vignette" />
 
           <span
-            className={`font-stat absolute top-1 left-1 inline-flex h-[16px] items-center rounded-[4px] border px-1 text-[8.5px] font-bold tracking-wider uppercase ${statusBadge.cls}`}
+            className={`font-stat absolute top-1 left-1 inline-flex min-h-[16px] items-center rounded-[4px] border px-1 text-[0.625rem] font-bold tracking-wider uppercase ${statusBadge.cls}`}
           >
             {statusBadge.label}
           </span>
@@ -152,10 +153,10 @@ export function BeatmapListRow({
             }`}
           >
             <span
-              className={`flex h-7 w-7 items-center justify-center rounded-full border backdrop-blur-md transition-colors ${
+              className={`flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${
                 isPlaying
                   ? 'border-osu bg-osu text-white'
-                  : 'border-white/35 bg-black/65 text-white hover:border-osu/80 hover:bg-osu/90'
+                  : 'border-white/35 bg-black/75 text-white hover:border-osu/80 hover:bg-osu/90'
               }`}
             >
               {isPlaying ? (
@@ -175,19 +176,19 @@ export function BeatmapListRow({
               onClick={() => onOpenDetail(beatmapset)}
               className="min-w-0 max-w-full text-left"
             >
-              <span
-                className="font-display block truncate text-[13.5px] font-bold text-ink transition-colors group-hover:text-osu"
+              <MarqueeText
+                text={beatmapset.title}
+                mode="group-hover"
                 title={beatmapset.titleUnicode || beatmapset.title}
-              >
-                {beatmapset.title}
-              </span>
+                className="font-display text-[0.9375rem] font-bold text-ink transition-colors group-hover:text-osu"
+              />
             </button>
-            <span className="truncate text-[11.5px] text-ink-2" title={beatmapset.artistUnicode}>
+            <span className="truncate text-[0.78125rem] font-medium text-ink-2" title={beatmapset.artistUnicode}>
               {beatmapset.artist}
             </span>
-            <span className="inline-flex items-center gap-1 text-[11px] text-ink-3">
+            <span className="inline-flex items-center gap-1 text-[0.75rem] text-ink-3">
               <User className="h-3 w-3 shrink-0" />
-              <span className="max-w-[120px] truncate text-ink-2">{beatmapset.creator}</span>
+              <span className="max-w-[120px] truncate font-medium text-ink-2">{beatmapset.creator}</span>
             </span>
             {beatmapset.video && (
               <span title="包含视频" className="text-ink-3">
@@ -216,7 +217,7 @@ export function BeatmapListRow({
                       borderColor: color.border,
                     }}
                     title={`${bm.version} | ${keyTag} | ${bm.difficultyRating.toFixed(2)}★ | OD ${bm.od} | HP ${bm.hp} | ${formatDuration(bm.totalLength)}${bm.lnRatio != null ? ` | LN ${bm.lnRatio}%` : ''}${ppQuick ? ` | ~${formatPp(ppQuick.pp98)}pp(98%) / ~${formatPp(ppQuick.pp100)}pp(SS)` : ''}`}
-                    className="font-stat inline-flex h-[18px] shrink-0 items-center gap-0.5 rounded-[5px] border px-1.5 text-[9.5px] leading-none font-bold whitespace-nowrap"
+                    className="font-stat inline-flex min-h-[19px] shrink-0 items-center gap-0.5 rounded-[5px] border px-1.5 text-[0.65625rem] leading-none font-bold whitespace-nowrap"
                   >
                     <span>{keyTag}</span>
                     <span>{bm.difficultyRating.toFixed(2)}★</span>
@@ -224,10 +225,13 @@ export function BeatmapListRow({
                 );
               })}
               {hiddenDiffCount > 0 && (
-                <span className="chip font-stat h-[18px] text-[9.5px]">+{hiddenDiffCount}</span>
+                <span className="chip font-stat min-h-[19px] text-[0.65625rem]">+{hiddenDiffCount}</span>
               )}
               {lnBadge && (
-                <span className={`chip font-mono h-[18px] text-[9.5px] ${lnBadge.cls}`}>
+                <span
+                  title={lnBadge.tooltip}
+                  className={`chip font-mono min-h-[19px] text-[0.65625rem] ${lnBadge.cls}`}
+                >
                   {lnBadge.label}
                 </span>
               )}
@@ -238,7 +242,7 @@ export function BeatmapListRow({
                     onOpenDetail(beatmapset, { diffId: ppBadge.focusDiffId, focusPp: true })
                   }
                   title={ppBadge.tooltip}
-                  className="chip chip-pp font-stat h-[18px] text-[9.5px]"
+                  className="chip chip-pp font-stat min-h-[19px] text-[0.65625rem]"
                 >
                   <Calculator className="h-2.5 w-2.5" />
                   <span>{ppBadge.label}</span>
@@ -246,7 +250,7 @@ export function BeatmapListRow({
               )}
             </div>
 
-            <div className="ml-auto flex flex-wrap items-center gap-2.5 text-[10.5px] text-ink-3">
+            <div className="ml-auto flex flex-wrap items-center gap-2.5 text-[0.71875rem] text-ink-3">
               <span className="font-stat font-semibold text-ink-2 tabular-nums">
                 {Math.round(beatmapset.bpm)} BPM
               </span>
@@ -318,7 +322,7 @@ export function BeatmapListRow({
           <button
             type="button"
             onClick={() => onDownload(beatmapset, 'stable')}
-            title="单独下载到 Stable (日常练习)"
+            title="单独下载到 Stable"
             className="font-stat btn btn-sm px-2 text-stable-soft hover:border-stable/50 hover:bg-stable/12 hover:text-stable"
           >
             S
@@ -326,7 +330,7 @@ export function BeatmapListRow({
           <button
             type="button"
             onClick={() => onDownload(beatmapset, 'lazer')}
-            title="单独下载到 Lazer (刷PP)"
+            title="单独下载到 Lazer"
             className="font-stat btn btn-sm px-2 text-lazer-soft hover:border-lazer/50 hover:bg-lazer/12 hover:text-lazer"
           >
             L
@@ -376,4 +380,4 @@ export function BeatmapListRow({
       )}
     </article>
   );
-}
+});

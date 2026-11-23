@@ -100,7 +100,10 @@ export function TitleBar({
     };
   }, [themeMenuOpen]);
 
-  const currentThemeMeta = THEME_OPTIONS.find((t) => t.id === theme) ?? THEME_OPTIONS[0];
+  const currentThemeMeta =
+    THEME_OPTIONS.find((t) => t.id === theme) ??
+    THEME_OPTIONS.find((t) => t.id === 'light') ??
+    THEME_OPTIONS[0];
   const darkThemes = THEME_OPTIONS.filter((t) => t.isDark);
   const lightThemes = THEME_OPTIONS.filter((t) => !t.isDark);
 
@@ -118,7 +121,7 @@ export function TitleBar({
           : 'text-bad';
 
   return (
-    <header className="app-drag relative z-40 flex h-[40px] shrink-0 items-center border-b border-hairline bg-surface-0/78 backdrop-blur-xl">
+    <header className="app-drag relative z-40 flex h-[40px] shrink-0 items-center border-b border-hairline bg-surface-0/82 backdrop-blur-xl">
       {/* Left: sidebar toggle + monochrome emblem + OSU!Downloader! */}
       <div className="flex h-full min-w-0 items-center gap-2 pl-2.5 lg:pl-3">
         <button
@@ -146,7 +149,7 @@ export function TitleBar({
         )}
 
         <LaneEmblem />
-        <span className="font-display truncate text-[13.5px] font-bold tracking-tight text-ink">
+        <span className="font-display truncate text-[0.875rem] font-bold tracking-tight text-ink">
           OSU!Downloader!
         </span>
       </div>
@@ -160,7 +163,7 @@ export function TitleBar({
           type="button"
           onClick={onToggleOverlay}
           title={`切换游戏内磨砂浮窗模式 (全局热键 ${overlayHotkey})`}
-          className={`app-no-drag flex h-[25px] items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors ${
+          className={`app-no-drag flex min-h-[26px] items-center gap-1.5 rounded-full border px-2.5 text-[0.75rem] font-semibold transition-colors ${
             overlayOpen
               ? 'border-osu/60 bg-osu/18 text-osu-soft shadow-[0_0_0_1px_color-mix(in_srgb,var(--t-osu)_25%,transparent)]'
               : 'border-hairline bg-tint text-ink-2 hover:border-hairline-strong hover:bg-tint-hover hover:text-ink'
@@ -176,7 +179,7 @@ export function TitleBar({
             type="button"
             onClick={() => setThemeMenuOpen((v) => !v)}
             title="切换界面主题（共 8 套配色，可在设置中开启随封面变色）"
-            className={`flex h-[25px] items-center gap-1.5 rounded-full border px-2.5 text-[11px] font-medium transition-colors ${
+            className={`flex min-h-[26px] items-center gap-1.5 rounded-full border px-2.5 text-[0.75rem] font-semibold transition-colors ${
               themeMenuOpen
                 ? 'border-hairline-strong bg-surface-2 text-ink'
                 : 'border-hairline bg-tint text-ink-2 hover:border-hairline-strong hover:bg-tint-hover hover:text-ink'
@@ -199,7 +202,7 @@ export function TitleBar({
                 <span className="overline">暗色主题</span>
                 {activeAccentHex && (
                   <span
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-ink-3"
+                    className="inline-flex items-center gap-1 text-[0.6875rem] font-medium text-ink-3"
                     title="当前强调色正随背景或自定义强调色联动"
                   >
                     <span
@@ -222,7 +225,7 @@ export function TitleBar({
                         setThemeMenuOpen(false);
                       }}
                       title={opt.desc}
-                      className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-colors ${
+                      className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[0.75rem] font-medium transition-colors ${
                         active
                           ? 'border-osu/45 bg-surface-3 font-semibold text-ink'
                           : 'border-transparent text-ink-2 hover:bg-tint-hover hover:text-ink'
@@ -257,7 +260,7 @@ export function TitleBar({
                         setThemeMenuOpen(false);
                       }}
                       title={opt.desc}
-                      className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[11px] transition-colors ${
+                      className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-left text-[0.75rem] font-medium transition-colors ${
                         active
                           ? 'border-osu/45 bg-surface-3 font-semibold text-ink'
                           : 'border-transparent text-ink-2 hover:bg-tint-hover hover:text-ink'
@@ -284,7 +287,7 @@ export function TitleBar({
           type="button"
           onClick={onBenchmark}
           title={`本地代理 ${network?.proxyHost ?? '127.0.0.1'}:${proxyPort} · 点击重新检测代理与镜像测速`}
-          className="app-no-drag flex h-[25px] items-center gap-1.5 rounded-full border border-hairline bg-tint px-2.5 text-[11px] text-ink-2 transition-colors hover:border-hairline-strong hover:bg-tint-hover"
+          className="app-no-drag flex min-h-[26px] items-center gap-1.5 rounded-full border border-hairline bg-tint px-2.5 text-[0.75rem] font-medium text-ink-2 transition-colors hover:border-hairline-strong hover:bg-tint-hover"
         >
           {network?.benchmarking ? (
             <Loader2 className="h-3 w-3 animate-spin text-warn" />
@@ -295,7 +298,7 @@ export function TitleBar({
           )}
           <span className="text-ink-3">Proxy</span>
           <span className="font-mono text-ink">{proxyPort}</span>
-          <span className={proxyOpen ? 'font-medium text-ok' : 'text-ink-3'}>
+          <span className={proxyOpen ? 'font-semibold text-ok' : 'text-ink-3'}>
             {proxyOpen ? '在线' : '离线'}
           </span>
         </button>
@@ -305,7 +308,7 @@ export function TitleBar({
           onClick={onBenchmark}
           disabled={network?.benchmarking}
           title="当前最快镜像 · 点击立即测速"
-          className="app-no-drag hidden h-[25px] items-center gap-1.5 rounded-full border border-hairline bg-tint px-2.5 text-[11px] text-ink-2 transition-colors hover:border-osu/40 hover:bg-osu/10 disabled:opacity-60 sm:flex"
+          className="app-no-drag hidden min-h-[26px] items-center gap-1.5 rounded-full border border-hairline bg-tint px-2.5 text-[0.75rem] font-medium text-ink-2 transition-colors hover:border-osu/40 hover:bg-osu/10 disabled:opacity-60 sm:flex"
         >
           <Gauge className={`h-3 w-3 ${network?.benchmarking ? 'animate-pulse text-warn' : 'text-osu'}`} />
           <span className="max-w-[120px] truncate text-ink">

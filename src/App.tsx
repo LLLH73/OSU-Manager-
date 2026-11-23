@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  ArrowUp,
   CheckSquare,
   ChevronDown,
   Disc3,
@@ -11,6 +12,7 @@ import {
   Loader2,
   Music,
   Square,
+  Zap,
 } from 'lucide-react';
 import {
   cancelDownloadTask,
@@ -21,6 +23,7 @@ import {
   enqueueDownload,
   fetchConfig,
   fetchDownloads,
+  fetchFastBatchStatus,
   fetchLibraryStatus,
   fetchNetworkStatus,
   importLazerPending,
@@ -37,6 +40,7 @@ import { BeatmapCard } from './components/BeatmapCard';
 import { BeatmapDetailModal } from './components/BeatmapDetailModal';
 import { BeatmapListRow } from './components/BeatmapListRow';
 import { DownloadDrawer } from './components/DownloadDrawer';
+import { FastBatchModal } from './components/FastBatchModal';
 import { FilterPanel } from './components/FilterPanel';
 import { LazerSongSelect } from './components/LazerSongSelect';
 import { LibrarySyncModal } from './components/LibrarySyncModal';
@@ -46,9 +50,11 @@ import { SideRail } from './components/SideRail';
 import { TitleBar } from './components/TitleBar';
 import {
   DEFAULT_FILTERS,
+  DEFAULT_FONT_SCALE,
   THEME_OPTIONS,
   VIEW_MODE_OPTIONS,
   WorkflowPreset,
+  clampFontScale,
   isDarkTheme,
   isValidTheme,
 } from './constants';
@@ -62,6 +68,7 @@ import {
   DownloadTarget,
   DownloadTask,
   DownloadVariant,
+  FastBatchSnapshot,
   LocalLibraryStatus,
   NetworkStatus,
   NormalizedBeatmapset,
@@ -79,7 +86,17 @@ function readInitialTheme(): ThemeId {
   } catch {
     // Ignore storage error
   }
-  return 'dark';
+  return 'light';
+}
+
+function readInitialFontScale(): number {
+  try {
+    const stored = localStorage.getItem('osu4k-font-scale');
+    if (stored !== null && stored !== '') return clampFontScale(stored, DEFAULT_FONT_SCALE);
+  } catch {
+    // Ignore storage error
+  }
+  return DEFAULT_FONT_SCALE;
 }
 
 function readInitialViewMode(): SongViewMode {
@@ -142,6 +159,8 @@ export function App() {
     readBoolStorage('osu4k-filter-collapsed', false),
   );
   const [activeLazerSet, setActiveLazerSet] = useState<NormalizedBeatmapset | null>(null);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const [initialFontScale] = useState<number>(readInitialFontScale);
   const [appearancePreview, setAppearancePreview] = useState<Partial<AppConfig> | null>(null);
   const [extractedColor, setExtractedColor] = useState<string | null>(null);
   const [globalBgLayers, setGlobalBgLayers] = useState<[string | null, string | null]>([null, null]);
@@ -153,6 +172,8 @@ export function App() {
     focusPp?: boolean;
   } | null>(null);
   const [downloadsOpen, setDownloadsOpen] = useState(false);
+  const [fastBatchOpen, setFastBatchOpen] = useState(false);
+  const [fastBatch, setFastBatch] = useState<FastBatchSnapshot | null>(null);
   const [librarySyncOpen, setLibrarySyncOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
@@ -268,17 +289,33 @@ export function App() {
     });
   }, []);
 
-  const effectiveConfig = useMemo(
-    () => ({
+  const effectiveConfig = useMemo(() => {
+    const merged = {
       customBgImage: config?.customBgImage ?? '',
-      customBgOpacity: config?.customBgOpacity ?? 0.22,
+      customBgOpacity: config?.customBgOpacity ?? 0.75,
       dynamicBgFromSong: config?.dynamicBgFromSong ?? true,
       dynamicThemeFromBg: config?.dynamicThemeFromBg ?? true,
       accentColor: config?.accentColor ?? '',
       ...appearancePreview,
-    }),
-    [config, appearancePreview],
-  );
+    };
+    return {
+      ...merged,
+      fontScale: clampFontScale(
+        appearancePreview?.fontScale ?? config?.fontScale ?? initialFontScale,
+        DEFAULT_FONT_SCALE,
+      ),
+    };
+  }, [config, appearancePreview, initialFontScale]);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--ui-font-scale', String(effectiveConfig.fontScale));
+  }, [effectiveConfig.fontScale]);
+
+  useEffect(() => {
+    if (viewMode === 'lazer' && mainScrollRef.current) {
+      mainScrollRef.current.scrollTop = 0;
+    }
+  }, [viewMode]);
 
   const effectiveBgUrl = useMemo(() => {
     if (viewMode === 'lazer' && effectiveConfig.dynamicBgFromSong && activeLazerSet?.coverUrl) {
@@ -402,13 +439,23 @@ export function App() {
   useEffect(() => {
     void (async () => {
       try {
-        const [cfg, net, lib, dls] = await Promise.all([
+        const [cfg, net, lib, dls, fb] = await Promise.all([
           fetchConfig(),
           fetchNetworkStatus(false),
           fetchLibraryStatus(false),
           fetchDownloads(),
+          fetchFastBatchStatus().catch(() => null),
         ]);
         setConfig(cfg);
+        if (fb) setFastBatch(fb);
+        try {
+          localStorage.setItem(
+            'osu4k-font-scale',
+            String(clampFontScale(cfg.fontScale, DEFAULT_FONT_SCALE)),
+          );
+        } catch {
+          // Ignore storage error
+        }
         setTarget(cfg.defaultTarget);
         setVariant(cfg.defaultVariant);
         if (isValidTheme(cfg.theme)) {
@@ -487,6 +534,13 @@ export function App() {
         // Ignore
       }
     });
+    es.addEventListener('fast-batch', (ev) => {
+      try {
+        setFastBatch(JSON.parse(ev.data) as FastBatchSnapshot);
+      } catch {
+        // Ignore
+      }
+    });
 
     return () => {
       es.close();
@@ -502,6 +556,7 @@ export function App() {
         setAppearancePreview(null);
         setSettingsOpen(false);
       }
+      else if (fastBatchOpen) setFastBatchOpen(false);
       else if (librarySyncOpen) setLibrarySyncOpen(false);
       else if (previewState) setPreviewState(null);
       else if (detailState) setDetailState(null);
@@ -510,7 +565,24 @@ export function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [settingsOpen, librarySyncOpen, previewState, detailState, downloadsOpen, navOpen]);
+  }, [settingsOpen, fastBatchOpen, librarySyncOpen, previewState, detailState, downloadsOpen, navOpen]);
+
+  // Track outer scroll offset in Grid / List views for floating Back-to-Top button
+  useEffect(() => {
+    if (viewMode === 'lazer' || results.length === 0) {
+      setShowBackToTop(false);
+      return;
+    }
+    const root = mainScrollRef.current;
+    if (!root) return;
+    const syncTopState = () => {
+      const next = root.scrollTop > 280;
+      setShowBackToTop((prev) => (prev === next ? prev : next));
+    };
+    syncTopState();
+    root.addEventListener('scroll', syncTopState, { passive: true });
+    return () => root.removeEventListener('scroll', syncTopState);
+  }, [viewMode, results.length]);
 
   // Infinite auto-load more when scrolling near the bottom in grid / list views
   useEffect(() => {
@@ -657,25 +729,51 @@ export function App() {
     setIsPlaying(true);
   }, []);
 
-  const handleDownload = async (
-    set: NormalizedBeatmapset,
-    chosenTarget: DownloadTarget,
-    chosenVariant: DownloadVariant = variant,
-    chosenMirror: PreferredMirror = config?.preferredDownloadSource || 'auto',
-  ) => {
-    await enqueueDownload({
-      beatmapsetId: set.id,
-      title: set.title,
-      artist: set.artist,
-      creator: set.creator,
-      target: chosenTarget,
-      variant: chosenVariant,
-      preferredMirror: chosenMirror,
+  const handleToggleSelectId = useCallback((id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
-    const label =
-      chosenTarget === 'lazer' ? 'Lazer' : chosenTarget === 'stable' ? 'Stable' : '双端';
-    notify(`已加入下载队列 (${label}): ${set.title}`);
-  };
+  }, []);
+
+  const handleDownload = useCallback(
+    async (
+      set: NormalizedBeatmapset,
+      chosenTarget: DownloadTarget,
+      chosenVariant: DownloadVariant = variant,
+      chosenMirror: PreferredMirror = config?.preferredDownloadSource || 'auto',
+    ) => {
+      await enqueueDownload({
+        beatmapsetId: set.id,
+        title: set.title,
+        artist: set.artist,
+        creator: set.creator,
+        target: chosenTarget,
+        variant: chosenVariant,
+        preferredMirror: chosenMirror,
+      });
+      const label =
+        chosenTarget === 'lazer' ? 'Lazer' : chosenTarget === 'stable' ? 'Stable' : '双端';
+      notify(`已加入下载队列 (${label}): ${set.title}`);
+    },
+    [variant, config?.preferredDownloadSource, notify],
+  );
+
+  const handleQuickDownload = useCallback(
+    (s: NormalizedBeatmapset, t: DownloadTarget) => {
+      void handleDownload(s, t);
+    },
+    [handleDownload],
+  );
+
+  const handleCardPreviewBeatmap = useCallback(
+    (s: NormalizedBeatmapset, diffId?: number) => {
+      openManiaPreview(s.id, { beatmapId: diffId ?? null, titleHint: s.title });
+    },
+    [openManiaPreview],
+  );
 
   const handleBatchDownload = async () => {
     const picked = results.filter((r) => selectedIds.has(r.id));
@@ -713,6 +811,14 @@ export function App() {
     const prevHotkey = config?.overlayHotkey;
     const updated = await updateConfig(patch);
     setConfig(updated);
+    try {
+      localStorage.setItem(
+        'osu4k-font-scale',
+        String(clampFontScale(updated.fontScale, DEFAULT_FONT_SCALE)),
+      );
+    } catch {
+      // Ignore storage error
+    }
     setTarget(updated.defaultTarget);
     setVariant(updated.defaultVariant);
     if (
@@ -832,26 +938,27 @@ export function App() {
       <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
         {/* Desktop Collapsible Impeccable Navigation Rail */}
         <aside
-          className={`hidden shrink-0 overflow-hidden bg-surface-0/76 backdrop-blur-xl transition-[width,opacity] duration-250 ease-out lg:block ${
+          className={`hidden shrink-0 overflow-hidden bg-surface-0/82 backdrop-blur-xl transition-[width,opacity] duration-250 ease-out lg:block ${
             sidebarCollapsed
               ? 'pointer-events-none w-0 border-r-0 opacity-0'
-              : 'w-[232px] border-r border-hairline opacity-100'
+              : 'w-[var(--sidebar-w)] border-r border-hairline opacity-100'
           }`}
         >
-          <div className="h-full w-[232px]">
+          <div className="h-full w-[var(--sidebar-w)]">
             <SideRail
               target={target}
               variant={variant}
               activePresetId={activePresetId}
               library={library}
               downloads={downloads}
+              fastBatch={fastBatch}
               onChangeTarget={setTarget}
               onChangeVariant={setVariant}
               onSelectPreset={handleSelectPreset}
               onOpenLibrarySync={() => setLibrarySyncOpen(true)}
+              onOpenFastBatch={() => setFastBatchOpen(true)}
               onOpenDownloads={() => setDownloadsOpen(true)}
               onOpenSettings={() => setSettingsOpen(true)}
-              onCollapse={toggleSidebarCollapsed}
             />
           </div>
         </aside>
@@ -860,7 +967,7 @@ export function App() {
         {navOpen && (
           <div className="modal-backdrop flex lg:hidden" onClick={() => setNavOpen(false)}>
             <aside
-              className="animate-rail-in h-full w-[232px] border-r border-hairline-strong bg-surface-0 shadow-2xl"
+              className="animate-rail-in h-full w-[var(--sidebar-w)] border-r border-hairline-strong bg-surface-0 shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
               <SideRail
@@ -869,12 +976,17 @@ export function App() {
                 activePresetId={activePresetId}
                 library={library}
                 downloads={downloads}
+                fastBatch={fastBatch}
                 onChangeTarget={setTarget}
                 onChangeVariant={setVariant}
                 onSelectPreset={handleSelectPreset}
                 onOpenLibrarySync={() => {
                   setNavOpen(false);
                   setLibrarySyncOpen(true);
+                }}
+                onOpenFastBatch={() => {
+                  setNavOpen(false);
+                  setFastBatchOpen(true);
                 }}
                 onOpenDownloads={() => {
                   setNavOpen(false);
@@ -892,13 +1004,24 @@ export function App() {
         {/* Main Workspace */}
         <main
           ref={mainScrollRef}
-          className={`flex-1 overflow-y-auto px-4 pt-4 sm:px-5 ${playingSet ? 'pb-28' : 'pb-8'}`}
+          className={
+            viewMode === 'lazer'
+              ? 'flex min-h-0 flex-1 flex-col overflow-hidden px-3.5 pt-3 pb-3 sm:px-5 sm:pt-3.5 sm:pb-3.5'
+              : `flex-1 overflow-x-hidden overflow-y-auto px-4 pt-4 sm:px-5 ${playingSet ? 'pb-28' : 'pb-8'}`
+          }
         >
-          <div className="mx-auto max-w-[1440px] space-y-4">
+          <div
+            className={
+              viewMode === 'lazer'
+                ? 'mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-2.5 sm:gap-3'
+                : 'mx-auto max-w-[1440px] space-y-4'
+            }
+          >
             <FilterPanel
               filters={filters}
               loading={loading}
               collapsed={filterCollapsed}
+              floatingAdvanced={viewMode === 'lazer'}
               onToggleCollapsed={toggleFilterCollapsed}
               onChange={handleFilterChange}
               onSearch={(override) => void runSearch(override || filters, false)}
@@ -906,8 +1029,14 @@ export function App() {
             />
 
             {/* Status & Batch Controls Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-2 px-0.5 text-[12px] text-ink-2">
-              <div className="flex flex-wrap items-center gap-2">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 px-0.5 text-[0.78125rem] font-medium text-ink-2">
+              <div
+                className={`flex flex-wrap items-center gap-2 ${
+                  effectiveBgUrl
+                    ? 'rounded-lg border border-hairline bg-surface-1/78 px-2.5 py-1 backdrop-blur-md'
+                    : ''
+                }`}
+              >
                 <span>
                   当前显示 <strong className="font-stat font-bold text-ink">{results.length}</strong> 套谱面
                 </span>
@@ -930,7 +1059,7 @@ export function App() {
                 <div
                   role="group"
                   aria-label="谱面呈现形式"
-                  className="inline-flex h-[28px] items-center gap-0.5 rounded-[9px] border border-hairline bg-surface-1 p-0.5"
+                  className="inline-flex min-h-[30px] items-center gap-0.5 rounded-[9px] border border-hairline bg-surface-1 p-0.5"
                 >
                   {VIEW_MODE_OPTIONS.map((opt) => {
                     const active = viewMode === opt.id;
@@ -942,7 +1071,7 @@ export function App() {
                         onClick={() => applyViewMode(opt.id, true)}
                         title={opt.desc}
                         aria-pressed={active}
-                        className={`inline-flex h-[22px] items-center gap-1 rounded-[7px] px-2 text-[11px] font-medium transition-colors ${
+                        className={`inline-flex min-h-[24px] items-center gap-1 rounded-[7px] px-2 py-0.5 text-[0.75rem] font-semibold transition-colors ${
                           active
                             ? opt.id === 'lazer'
                               ? 'bg-lazer/18 text-lazer-soft shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--t-lazer)_48%,transparent)]'
@@ -956,6 +1085,27 @@ export function App() {
                     );
                   })}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={() => setFastBatchOpen(true)}
+                  className={`btn btn-sm ${
+                    fastBatch?.state === 'running'
+                      ? 'border-osu/50 bg-osu/14 text-osu-soft'
+                      : 'border-lazer/40 bg-lazer/10 text-lazer-soft hover:border-lazer/65 hover:bg-lazer/16'
+                  }`}
+                >
+                  {fastBatch?.state === 'running' ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Zap className="h-3.5 w-3.5" />
+                  )}
+                  <span>
+                    {fastBatch?.state === 'running' || fastBatch?.state === 'paused'
+                      ? `快速批量 ${fastBatch.completedCount}/${fastBatch.targetCount}`
+                      : '快速批量下载'}
+                  </span>
+                </button>
 
                 <button
                   type="button"
@@ -1012,7 +1162,7 @@ export function App() {
                   ))}
                 </div>
               ) : viewMode === 'lazer' ? (
-                <div className="panel grid h-[670px] grid-cols-1 gap-4 p-4 opacity-70 lg:grid-cols-[minmax(360px,430px)_minmax(0,1fr)]">
+                <div className="panel grid min-h-0 flex-1 grid-cols-1 gap-4 p-4 opacity-70 md:grid-cols-[minmax(290px,340px)_minmax(0,1fr)] lg:grid-cols-[minmax(320px,385px)_minmax(0,1fr)] xl:grid-cols-[minmax(360px,430px)_minmax(0,1fr)]">
                   <div className="panel-flat h-full animate-pulse" />
                   <div className="space-y-3 py-2">
                     {Array.from({ length: 6 }).map((_, i) => (
@@ -1031,18 +1181,31 @@ export function App() {
                 </div>
               )
             ) : results.length === 0 ? (
-              <div className="panel-flat flex flex-col items-center justify-center py-20 text-center">
+              <div
+                className={
+                  viewMode === 'lazer'
+                    ? 'panel-flat flex min-h-0 flex-1 flex-col items-center justify-center p-6 text-center'
+                    : 'panel-flat flex flex-col items-center justify-center py-20 text-center'
+                }
+              >
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-hairline bg-surface-2 text-ink-3">
                   <Music className="h-6 w-6" />
                 </div>
-                <p className="font-display text-[14px] font-semibold text-ink">没有找到符合当前筛选条件的谱面</p>
-                <p className="mt-1 text-[12px] text-ink-3">
+                <p className="font-display text-[0.9375rem] font-semibold text-ink">没有找到符合当前筛选条件的谱面</p>
+                <p className="mt-1 text-[0.8125rem] font-medium text-ink-3">
                   可以放宽星数 / LN% / 状态限制，或切换至「全部状态 (Any)」搜索更多练习图
                 </p>
               </div>
             ) : (
               <>
-                <div key={viewMode} className="animate-view-in">
+                <div
+                  key={viewMode}
+                  className={
+                    viewMode === 'lazer'
+                      ? 'animate-view-in flex min-h-0 flex-1 flex-col overflow-hidden'
+                      : 'animate-view-in'
+                  }
+                >
                   {viewMode === 'grid' && (
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                       {results.map((set) => (
@@ -1054,18 +1217,11 @@ export function App() {
                           activeTask={activeTaskBySet.get(set.id)}
                           batchMode={batchMode}
                           selected={selectedIds.has(set.id)}
-                          onToggleSelect={(id) => {
-                            setSelectedIds((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(id)) next.delete(id);
-                              else next.add(id);
-                              return next;
-                            });
-                          }}
+                          onToggleSelect={handleToggleSelectId}
                           onTogglePlay={handleTogglePlay}
-                          onDownload={(s, t) => void handleDownload(s, t)}
+                          onDownload={handleQuickDownload}
                           onOpenDetail={openDetail}
-                          onPreviewBeatmap={(s) => openManiaPreview(s.id, { titleHint: s.title })}
+                          onPreviewBeatmap={handleCardPreviewBeatmap}
                         />
                       ))}
                     </div>
@@ -1082,18 +1238,11 @@ export function App() {
                           activeTask={activeTaskBySet.get(set.id)}
                           batchMode={batchMode}
                           selected={selectedIds.has(set.id)}
-                          onToggleSelect={(id) => {
-                            setSelectedIds((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(id)) next.delete(id);
-                              else next.add(id);
-                              return next;
-                            });
-                          }}
+                          onToggleSelect={handleToggleSelectId}
                           onTogglePlay={handleTogglePlay}
-                          onDownload={(s, t) => void handleDownload(s, t)}
+                          onDownload={handleQuickDownload}
                           onOpenDetail={openDetail}
-                          onPreviewBeatmap={(s) => openManiaPreview(s.id, { titleHint: s.title })}
+                          onPreviewBeatmap={handleCardPreviewBeatmap}
                         />
                       ))}
                     </div>
@@ -1115,21 +1264,12 @@ export function App() {
                       hasGlobalBg={Boolean(effectiveBgUrl)}
                       filterCollapsed={filterCollapsed}
                       onActiveBeatmapsetChange={setActiveLazerSet}
-                      onToggleSelect={(id) => {
-                        setSelectedIds((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(id)) next.delete(id);
-                          else next.add(id);
-                          return next;
-                        });
-                      }}
+                      onToggleSelect={handleToggleSelectId}
                       onTogglePlay={handleTogglePlay}
                       onStartPlay={handleStartPlay}
-                      onDownload={(s, t) => void handleDownload(s, t)}
+                      onDownload={handleQuickDownload}
                       onOpenDetail={openDetail}
-                      onPreviewBeatmap={(s, diffId) =>
-                        openManiaPreview(s.id, { beatmapId: diffId ?? null, titleHint: s.title })
-                      }
+                      onPreviewBeatmap={handleCardPreviewBeatmap}
                       onLoadMore={handleLoadMore}
                     />
                   )}
@@ -1140,7 +1280,7 @@ export function App() {
                     <div ref={loadMoreSentinelRef} className="h-2" aria-hidden="true" />
                     <div className="flex justify-center pt-2">
                       {loadingMore ? (
-                        <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-surface-1 px-4 py-1.5 text-[12px] text-ink-2">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-surface-1 px-4 py-1.5 text-[0.78125rem] font-medium text-ink-2">
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-osu" />
                           <span>正在自动加载更多谱面…</span>
                         </div>
@@ -1148,7 +1288,7 @@ export function App() {
                         <button
                           type="button"
                           onClick={handleLoadMore}
-                          className="btn h-9 border-amber-500/45 px-5 text-[12.5px] text-warn"
+                          className="btn min-h-[36px] border-amber-500/45 px-5 text-[0.8125rem] text-warn"
                         >
                           <ChevronDown className="h-4 w-4" />
                           <span>加载失败，点击重试加载更多</span>
@@ -1157,14 +1297,14 @@ export function App() {
                         <button
                           type="button"
                           onClick={handleLoadMore}
-                          className="btn h-9 px-6 text-[13px]"
+                          className="btn min-h-[36px] px-6 text-[0.84375rem]"
                         >
                           <ChevronDown className="h-4 w-4 text-osu" />
                           <span>加载更多谱面</span>
                         </button>
                       ) : (
                         results.length > 0 && (
-                          <span className="text-[11.5px] text-ink-3">
+                          <span className="text-[0.75rem] font-medium text-ink-3">
                             已显示全部 {results.length} 套搜索结果
                           </span>
                         )
@@ -1177,6 +1317,26 @@ export function App() {
           </div>
         </main>
       </div>
+
+      {/* Floating Back-to-Top in Grid / List Views */}
+      {viewMode !== 'lazer' && showBackToTop && results.length > 0 && (
+        <div
+          className={`pointer-events-none fixed right-5 z-30 transition-[bottom] duration-200 ${
+            playingSet ? 'bottom-28 sm:bottom-[84px]' : 'bottom-5'
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+            title="回到顶部"
+            aria-label="回到顶部"
+            className="glass animate-fade-in pointer-events-auto inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-3.5 text-[0.78125rem] font-semibold text-ink transition-all duration-150 hover:border-osu/60 hover:text-osu"
+          >
+            <ArrowUp className="h-3.5 w-3.5 text-osu" />
+            <span>回到顶部</span>
+          </button>
+        </div>
+      )}
 
       {/* Floating Audio Preview Dock */}
       <AudioPlayerBar
@@ -1246,6 +1406,26 @@ export function App() {
         onLoadIntoGame={(setId) => void handleLoadIntoGame(setId)}
       />
 
+      {/* Fast Batch Bulk Download Modal */}
+      <FastBatchModal
+        open={fastBatchOpen}
+        filters={filters}
+        defaultTarget={target}
+        defaultVariant={variant}
+        config={config}
+        network={network}
+        library={library}
+        snapshot={fastBatch}
+        onClose={() => setFastBatchOpen(false)}
+        onSnapshotChange={setFastBatch}
+        onImportLazerPending={async (filenames) => {
+          const res = await importLazerPending(filenames);
+          notify(res.message);
+          setLibrary(await fetchLibraryStatus(true));
+        }}
+        onNotify={notify}
+      />
+
       {/* Dual-Client Library Sync Modal */}
       <LibrarySyncModal
         open={librarySyncOpen}
@@ -1273,7 +1453,7 @@ export function App() {
 
       {/* Toast */}
       {toast && (
-        <div className="glass animate-toast-in fixed top-12 right-4 z-[60] flex items-center gap-2.5 rounded-xl border-osu/35 px-4 py-2.5 text-[12px] font-medium text-ink">
+        <div className="glass animate-toast-in fixed top-12 right-4 z-[60] flex items-center gap-2.5 rounded-xl border-osu/35 px-4 py-2.5 text-[0.8125rem] font-semibold text-ink">
           <span>{toast.text}</span>
           {toast.actionLabel && toast.onAction && (
             <button
@@ -1282,7 +1462,7 @@ export function App() {
                 toast.onAction?.();
                 setToast(null);
               }}
-              className="btn btn-sm btn-primary h-6 px-2 text-[11px]"
+              className="btn btn-sm btn-primary min-h-[26px] px-2 text-[0.75rem]"
             >
               {toast.actionLabel}
             </button>

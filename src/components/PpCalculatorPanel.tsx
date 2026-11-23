@@ -143,10 +143,10 @@ export function PpCalculatorPanel({
             <Calculator className="h-3.5 w-3.5" />
           </div>
           <div>
-            <h3 className="font-display text-[13px] font-bold text-ink">
+            <h3 className="font-display text-[0.9375rem] font-bold text-ink">
               PP 情景估算计算器
             </h3>
-            <p className="text-[11px] text-ink-3">
+            <p className="text-[0.78125rem] font-medium text-ink-3">
               按当前选中难度实时模拟准度、失误、倍速与 Mod 组合
             </p>
           </div>
@@ -184,7 +184,7 @@ export function PpCalculatorPanel({
 
       {/* Unranked Warning Banner */}
       {!ranked && (
-        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-[11.5px]">
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-[10px] border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-[0.8125rem] font-medium">
           <div className="flex items-center gap-2 text-warn">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
             <span>
@@ -213,15 +213,15 @@ export function PpCalculatorPanel({
       >
         <div className="flex flex-col justify-between gap-2">
           <div className="flex items-baseline gap-2">
-            <span className="font-stat text-3xl leading-none font-bold tracking-tight text-lazer-soft tabular-nums">
+            <span className="font-stat text-[1.875rem] leading-none font-bold tracking-tight text-lazer-soft tabular-nums">
               {!ranked && !simulateRanked ? '—' : `${formatPp(result.pp)}`}
             </span>
-            <span className="font-stat text-[13px] font-bold text-ink-2">
+            <span className="font-stat text-[0.875rem] font-bold text-ink-2">
               {!ranked && !simulateRanked ? '不计官方 PP' : 'pp'}
             </span>
           </div>
 
-          <div className="font-mono flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-2 tabular-nums">
+          <div className="font-mono flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.75rem] font-medium text-ink-2 tabular-nums">
             <span>
               等效 SR:{' '}
               <strong className="text-ink">
@@ -257,10 +257,10 @@ export function PpCalculatorPanel({
                     : 'border-hairline bg-surface-1/75 text-ink-2 hover:border-hairline-strong hover:text-ink'
                 }`}
               >
-                <span className="font-stat text-[10px] font-semibold text-ink-3">
+                <span className="font-stat text-[0.71875rem] font-semibold text-ink-3">
                   {item.label}
                 </span>
-                <span className="font-stat mt-0.5 text-[13.5px] font-bold text-ink tabular-nums">
+                <span className="font-stat mt-0.5 text-[0.9375rem] font-bold text-ink tabular-nums">
                   {!ranked && !simulateRanked ? '—' : `${formatPp(item.pp)}`}
                 </span>
               </button>
@@ -290,9 +290,9 @@ export function PpCalculatorPanel({
                   if (Number.isFinite(v)) setAccuracy(Math.min(100, Math.max(0, v)));
                 }}
                 aria-label="准度百分比"
-                className="field font-mono h-7 w-20 text-right text-[11.5px] tabular-nums"
+                className="field font-mono min-h-[28px] w-20 text-right text-[0.8125rem] tabular-nums"
               />
-              <span className="font-mono text-[11px] text-ink-3">%</span>
+              <span className="font-mono text-[0.75rem] text-ink-3">%</span>
             </div>
           </div>
 
@@ -314,7 +314,7 @@ export function PpCalculatorPanel({
                 key={p.value}
                 type="button"
                 onClick={() => setAccuracy(p.value)}
-                className={`btn btn-sm font-stat h-[23px] px-2 text-[10.5px] ${
+                className={`btn btn-sm font-stat min-h-[26px] px-2 text-[0.75rem] font-semibold ${
                   Math.abs(accuracy - p.value) < 0.05
                     ? 'border-osu/60 bg-osu/15 text-osu-soft'
                     : ''
@@ -333,7 +333,7 @@ export function PpCalculatorPanel({
               <Zap className="h-3 w-3 text-lazer-soft" />
               倍速调节 (HT / NM / DT)
             </span>
-            <span className="font-mono text-[11.5px] font-semibold text-ink tabular-nums">
+            <span className="font-mono text-[0.78125rem] font-semibold text-ink tabular-nums">
               {rate.toFixed(2)}x · {effectiveBpm} BPM
             </span>
           </div>
@@ -356,7 +356,7 @@ export function PpCalculatorPanel({
                 key={p.value}
                 type="button"
                 onClick={() => setRate(p.value)}
-                className={`btn btn-sm font-stat h-[23px] px-2 text-[10.5px] ${
+                className={`btn btn-sm font-stat min-h-[26px] px-2 text-[0.75rem] font-semibold ${
                   Math.abs(rate - p.value) < 0.01
                     ? 'border-lazer/60 bg-lazer/18 text-lazer-soft'
                     : ''
@@ -385,7 +385,7 @@ export function PpCalculatorPanel({
                 }
               }}
               aria-label="失误数"
-              className="field font-mono h-7 w-20 text-right text-[11.5px] tabular-nums"
+              className="field font-mono min-h-[28px] w-20 text-right text-[0.8125rem] tabular-nums"
             />
           </div>
           <div className="flex flex-wrap gap-1">
@@ -394,7 +394,7 @@ export function PpCalculatorPanel({
                 key={m}
                 type="button"
                 onClick={() => setMisses(m)}
-                className={`btn btn-sm font-mono h-[24px] px-2.5 text-[11px] ${
+                className={`btn btn-sm font-mono min-h-[26px] px-2.5 text-[0.75rem] font-semibold ${
                   misses === m ? 'border-osu/60 bg-osu/15 text-osu-soft' : ''
                 }`}
               >
@@ -413,7 +413,7 @@ export function PpCalculatorPanel({
                 type="button"
                 onClick={() => setMods((m) => ({ ...m, classic: !m.classic }))}
                 title="Classic / Stable 计分规则 (×0.96)"
-                className={`btn btn-sm font-stat h-[24px] px-2 text-[10.5px] ${
+                className={`btn btn-sm font-stat min-h-[26px] px-2 text-[0.75rem] font-semibold ${
                   mods.classic
                     ? 'border-stable/60 bg-stable/16 text-stable-soft'
                     : 'border-lazer/45 bg-lazer/12 text-lazer-soft'
@@ -425,7 +425,7 @@ export function PpCalculatorPanel({
                 type="button"
                 onClick={() => setMods((m) => ({ ...m, ez: !m.ez }))}
                 title="Easy Mod (×0.50)"
-                className={`btn btn-sm font-stat h-[24px] px-2 text-[10.5px] ${
+                className={`btn btn-sm font-stat min-h-[26px] px-2 text-[0.75rem] font-semibold ${
                   mods.ez ? 'border-emerald-500/60 bg-emerald-500/16 text-ok' : ''
                 }`}
               >
@@ -435,7 +435,7 @@ export function PpCalculatorPanel({
                 type="button"
                 onClick={() => setMods((m) => ({ ...m, nf: !m.nf }))}
                 title="NoFail Mod (×0.75)"
-                className={`btn btn-sm font-stat h-[24px] px-2 text-[10.5px] ${
+                className={`btn btn-sm font-stat min-h-[26px] px-2 text-[0.75rem] font-semibold ${
                   mods.nf ? 'border-amber-500/60 bg-amber-500/16 text-warn' : ''
                 }`}
               >
@@ -446,7 +446,7 @@ export function PpCalculatorPanel({
 
           {activeDiff.modeInt === 3 && (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
-              <span className="text-[11px] text-ink-3">320:300 (MA 比)</span>
+              <span className="text-[0.75rem] font-medium text-ink-3">320:300 (MA 比)</span>
               <div className="flex flex-wrap gap-1">
                 {MA_OPTIONS.map((opt) => (
                   <button
@@ -454,7 +454,7 @@ export function PpCalculatorPanel({
                     type="button"
                     title={opt.hint}
                     onClick={() => setMaPreset(opt.id)}
-                    className={`btn btn-sm font-mono h-[23px] px-2 text-[10px] ${
+                    className={`btn btn-sm font-mono min-h-[26px] px-2 text-[0.71875rem] font-semibold ${
                       maPreset === opt.id
                         ? 'border-lazer/60 bg-lazer/16 text-lazer-soft'
                         : ''
@@ -470,7 +470,7 @@ export function PpCalculatorPanel({
       </div>
 
       {/* Concise Disclaimer */}
-      <p className="text-[10.5px] leading-relaxed text-ink-3">
+      <p className="text-[0.75rem] font-medium leading-relaxed text-ink-3">
         说明：NM (1.00x) 依据 <code className="font-mono">ppy/osu</code> 官方 Mania 准度制公式计算（含 80% 门槛与物件数长度加成）；HT / DT / 自定义倍速的等效星数与 PP 为基于原星数的近似估算，最终结算以官服在线算分为准。
       </p>
     </section>

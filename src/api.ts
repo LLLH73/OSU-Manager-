@@ -3,6 +3,8 @@ import {
   DownloadTarget,
   DownloadTask,
   DownloadVariant,
+  FastBatchSnapshot,
+  FastBatchStartOptions,
   LibraryDiffResult,
   LocalLibraryStatus,
   NetworkStatus,
@@ -197,4 +199,33 @@ export function loadBeatmapIntoGame(
     method: 'POST',
     body: JSON.stringify({ beatmapsetId, client }),
   });
+}
+
+export function fetchFastBatchStatus(): Promise<FastBatchSnapshot> {
+  return apiJson<FastBatchSnapshot>('/api/fast-batch/status');
+}
+
+export function startFastBatch(
+  options: Partial<FastBatchStartOptions>,
+): Promise<FastBatchSnapshot> {
+  return apiJson<FastBatchSnapshot>('/api/fast-batch/start', {
+    method: 'POST',
+    body: JSON.stringify(options),
+  });
+}
+
+export function pauseFastBatch(): Promise<FastBatchSnapshot> {
+  return apiJson<FastBatchSnapshot>('/api/fast-batch/pause', { method: 'POST' });
+}
+
+export function resumeFastBatch(): Promise<FastBatchSnapshot> {
+  return apiJson<FastBatchSnapshot>('/api/fast-batch/resume', { method: 'POST' });
+}
+
+export function stopFastBatch(): Promise<FastBatchSnapshot> {
+  return apiJson<FastBatchSnapshot>('/api/fast-batch/stop', { method: 'POST' });
+}
+
+export function clearFastBatch(): Promise<FastBatchSnapshot> {
+  return apiJson<FastBatchSnapshot>('/api/fast-batch/clear', { method: 'POST' });
 }

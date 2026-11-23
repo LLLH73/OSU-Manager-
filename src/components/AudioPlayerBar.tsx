@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Download, Pause, Play, Volume2, VolumeX, X } from 'lucide-react';
 import { formatDuration } from '../constants';
 import { DownloadTarget, NormalizedBeatmapset } from '../types';
+import { MarqueeText } from './MarqueeText';
 
 interface AudioPlayerBarProps {
   beatmapset: NormalizedBeatmapset | null;
@@ -70,7 +71,7 @@ export function AudioPlayerBar({
   return (
     <div
       className={`pointer-events-none fixed right-4 bottom-4 left-4 z-40 flex justify-center transition-[left] duration-250 ${
-        sidebarCollapsed ? 'lg:left-4' : 'lg:left-[248px]'
+        sidebarCollapsed ? 'lg:left-4' : 'lg:left-[calc(var(--sidebar-w)+16px)]'
       }`}
     >
       <div className="animate-dock-in pointer-events-auto flex w-full max-w-[740px] flex-wrap items-center gap-3 rounded-2xl border border-hairline-strong bg-surface-2/90 px-3.5 py-2 shadow-[0_18px_44px_-16px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:rounded-full">
@@ -91,11 +92,12 @@ export function AudioPlayerBar({
               className="h-full w-full object-cover"
             />
           </div>
-          <div className="min-w-0">
-            <div className="font-display truncate text-[12.5px] font-bold text-ink">
-              {beatmapset.title}
-            </div>
-            <div className="flex items-center gap-1.5 truncate text-[11px] text-ink-3">
+          <div className="min-w-0 flex-1">
+            <MarqueeText
+              text={beatmapset.title}
+              className="font-display text-[0.8125rem] font-bold text-ink"
+            />
+            <div className="flex items-center gap-1.5 truncate text-[0.75rem] font-medium text-ink-3">
               <span className="truncate">{beatmapset.artist}</span>
               <span className={`eq h-[8px] shrink-0 text-osu ${!playing ? 'eq-paused' : ''}`}>
                 <i />
@@ -123,7 +125,7 @@ export function AudioPlayerBar({
             )}
           </button>
 
-          <span className="font-mono w-8 text-right text-[10.5px] text-ink-3 tabular-nums">
+          <span className="font-mono w-8 text-right text-[0.71875rem] text-ink-3 tabular-nums">
             {formatDuration(currentTime)}
           </span>
           <input
@@ -141,7 +143,7 @@ export function AudioPlayerBar({
             className="impeccable-range flex-1"
             aria-label="试听进度"
           />
-          <span className="font-mono w-8 text-[10.5px] text-ink-3 tabular-nums">
+          <span className="font-mono w-8 text-[0.71875rem] text-ink-3 tabular-nums">
             {formatDuration(duration)}
           </span>
         </div>
@@ -177,7 +179,7 @@ export function AudioPlayerBar({
           <button
             type="button"
             onClick={() => onDownload(beatmapset, activeTarget)}
-            className="ml-1 inline-flex h-7 items-center gap-1.5 rounded-full bg-ink px-3 text-[11px] font-semibold text-canvas transition-opacity hover:opacity-88"
+            className="ml-1 inline-flex min-h-[28px] items-center gap-1.5 rounded-full bg-ink px-3 text-[0.75rem] font-semibold text-canvas transition-opacity hover:opacity-88"
           >
             <Download className="h-3 w-3" />
             <span>下载</span>
