@@ -79,8 +79,9 @@
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
 | `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏折叠按钮、单色粗线图标 `LaneEmblem` + `OSU!Downloader!`、浮窗开关、8 主题分组弹窗、代理 6174、镜像延迟、窗口控制） |
 | `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
-| `src/components/StarRangeSlider.tsx` | Lazer 选歌风格官方光谱星数上下界双滑块组件（`0.0★–10.0★+ / ∞`，指针捕获拖拽、键盘微调与点按编辑） |
-| `src/components/FilterPanel.tsx` | 可收起/展开的搜索框、高频词条、基础筛选、Lazer 星数双滑块 + 情景化大致 PP 范围筛选浮层与高级数值/LN% 筛选（Lazer 模式下均采用悬浮层以免挤压选歌区） |
+| `src/components/StarRangeSlider.tsx` | Lazer 选歌风格加粗官方光谱星数上下界双滑块组件（`12px` 滑轨、`10×20px` 扁平圆角纯色矩形手柄、`0.0★–10.0★+ / ∞` 与点按编辑） |
+| `src/components/PpRangeSlider.tsx` | 同步风格 PP 范围双滑块组件（`12px` 滑轨、`10×20px` 扁平圆角纯色矩形手柄、`0–1000pp / ∞`、点按直输至 `5000pp` 与情景按钮槽位） |
+| `src/components/FilterPanel.tsx` | 可收起/展开的搜索框、高频词条、基础筛选、星数双滑块 + PP 范围双滑块与情景化配置浮层及高级数值/LN% 筛选（Lazer 模式下均采用悬浮层以免挤压选歌区） |
 | `src/components/BeatmapCard.tsx` | `grid` 卡片网格单卡（`memo` + `.song-grid-card` `content-visibility: auto`，含 Ranked `~XXXpp` 与已装 Mania 预览入口） |
 | `src/components/BeatmapListRow.tsx` | `list` 紧凑列表单行（`memo` + `.song-list-row` `content-visibility: auto` 无冗余模糊层，含 Ranked `~XXXpp` 与已装 Mania 预览入口） |
 | `src/components/LazerSongSelect.tsx` | `lazer` osu!lazer 弧形选歌轮盘 + 左侧楔形展示（支持 `hasGlobalBg` 全窗背景穿透、头部纯倾向标签 `单键 Rice`/`综合 Hybrid`/`长条 LN`）+ 右侧平滑左移交错难度列表（`LN XX%`）+ 「回到选中 ↑/↓」「回到顶部」悬浮导航 + 滚底自动加载 + 键盘导航 |

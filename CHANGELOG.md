@@ -4,6 +4,12 @@ All notable changes to **OSU!Downloader! (`osu-4k-dual-downloader`)** will be do
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.1] - 2026-11-24
+
+### Changed
+- **加粗星数双滑块滑轨与扁平圆角纯色矩形手柄**（`src/components/StarRangeSlider.tsx`）：将星数光谱滑轨由 `8px` 加粗至 `12px`，左右双滑块升级为 `10×20px` 扁平圆角纯色矩形（`rounded-[4px] bg-osu`，去除了白边与投影）。
+- **新增同步风格 PP 范围双滑块 `PpRangeSlider`**（`src/components/PpRangeSlider.tsx`, `src/components/FilterPanel.tsx`）：将主筛选栏中的 PP 上下限输入替换为与星数滑块同风格的 `0–1000pp` 双滑块（`12px` 滑轨 + `10×20px` `bg-lazer` 扁平圆角纯色矩形手柄 + 点击胶囊直输上限至 `5000pp` + 一键复位 + 情景按钮集成）。
+
 ## [1.6.0] - 2026-11-24
 
 ### Added

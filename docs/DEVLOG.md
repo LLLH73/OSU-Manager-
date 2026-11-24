@@ -4,6 +4,34 @@
 
 ---
 
+## Session 10 — 加粗星数滑轨、扁平圆角纯色矩形滑块与同步风格 PP 范围滑块 (`v1.6.1`)
+
+- **日期**：2026-11-24
+- **对话 ID**：`0f9e8be2-483f-48f5-a728-b5ae61581742`
+- **版本**：`v1.6.0` → `v1.6.1`
+- **关联提交**：`7e2feb7`
+
+### 本次需求
+1. **星数滑动条加粗并升级滑块形态**：将 `StarRangeSlider` 的左右两个滑动点改为两个扁平的圆角纯色矩形，并将滑动条轨道适度加粗。
+2. **PP 范围筛选改用对应双滑块**：将 `FilterPanel` 中的「大致 PP」范围筛选同样调整为相同风格的上下界双滑块组件。
+
+### 关键实现
+1. **加粗光谱轨道 + 扁平圆角纯色矩形滑块**（`src/components/StarRangeSlider.tsx`）：
+   - 将光谱滑轨由 `h-[8px]` 加粗为 `h-[12px] rounded-[6px]`，保持背景 `opacity-25`、选中区间 `clip-path` 全彩呈现。
+   - 将两个 `[role="slider"]` 滑块由圆形白边带阴影手柄改为 `10×20px` 扁平圆角纯色矩形（`h-[20px] w-[10px] rounded-[4px] bg-osu`，零边框、零投影），并支持悬停/拖拽轻微纵向缩放反馈。
+2. **同步风格 PP 范围双滑块 `PpRangeSlider`**（`src/components/PpRangeSlider.tsx`, `src/components/FilterPanel.tsx`）：
+   - 新增 `PpRangeSlider`（`0–1000pp`，步进 `10pp`）：采用一致的 `h-[12px] rounded-[6px]` 轨道与两个 `10×20px` `rounded-[4px] bg-lazer` 扁平纯色矩形滑块，左右胶囊支持点击输入精确数值（上限开放至 `5000pp`），松手即触发搜索并保留「清除 PP 范围」与右侧「情景」浮层按钮。
+   - 调整 `FilterPanel` 第三行栅格比例（`xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)]`）并清理未使用的输入逻辑与图标引入。
+
+### 验证记录
+- **类型检查与打包**：`npm run typecheck` 与 `npm run electron:pack`（`v1.6.1`）退出码 `0` 通过，重新生成 `release\win-unpacked\osu-4k-downloader.exe`。
+- **多分辨率实时浏览器验收**（`http://127.0.0.1:3728`，`1440×900` / `1280×720` / `1040×680`，`0` 控制台错误）：
+  - `1440×900`：确认 `StarRangeSlider` 与 `PpRangeSlider` 内轨高度均为 `12px`，全部 4 个滑块手柄边界框均为 `10×20px`、`rounded-[4px]` 扁平纯色矩形；测试调整 PP 滑块至 `300pp–450pp` 正常返回 `24` 套对应 Ranked 谱面且清除重置恢复完整结果。
+  - `1280×720` & `1040×680`（携带 `NM 98%·3:1` 情景标签）：`1280×720` 下 `StarRangeSlider` 轨宽 `248.13px`、`PpRangeSlider` 轨宽 `199.17px`、`NM 98%·3:1` 宽度 `122.66px` 无裁切；`1040×680` 下自动折行展开（轨宽 `510.00px` / `399.31px`），Lazer 视图 `<main>` `mainDidScroll=false` 且 `.cover-frame` 高度分别为 `115.19px` / `108.80px`。
+- **打包冒烟与现场清理**：以 `OSU_DL_DATA_DIR=d:\Code\osumapdownloader\data` 在临时端口 `3729` 启动 `release\win-unpacked\osu-4k-downloader.exe` 验证 `/api/health` 返回 `{"ok":true,...}` 并关闭；`3721`/`3728`/`3729` 端口监听数归 `0`，用户 `data/config.json` 完整保留。
+
+---
+
 ## Session 9 — PP 自定义黄彩比、Lazer 星数双滑块、情景化大致 PP 筛选与侧栏双端启动器 (`v1.6.0`)
 
 - **日期**：2026-11-24
