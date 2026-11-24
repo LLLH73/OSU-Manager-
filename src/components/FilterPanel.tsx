@@ -3,12 +3,14 @@ import type { CSSProperties } from 'react';
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
+  BookmarkPlus,
   Calculator,
   ChevronDown,
   ChevronUp,
   RotateCcw,
   Search,
   SlidersHorizontal,
+  X,
 } from 'lucide-react';
 import {
   OSU_GENRES,
@@ -19,9 +21,19 @@ import {
 } from '../constants';
 import { InstalledFilter, SearchFilters, SearchMode, SearchSource, SearchStatus } from '../types';
 import {
+  PP_SCENARIO_CATEGORY_META,
+  PP_SCENARIO_PRESETS,
+  PpScenarioCategory,
+  SAVED_PP_SCENARIOS_EVENT,
+  SavedPpScenario,
+  deleteSavedPpScenario,
   extractPpScenarioFromFilters,
   formatPpScenarioShort,
+  inferScenarioCategory,
   isDefaultPpScenario,
+  loadSavedPpScenarios,
+  matchesScenarioPatch,
+  saveCustomPpScenario,
 } from '../utils/pp';
 import { PpRangeSlider } from './PpRangeSlider';
 import { SelectField } from './SelectField';
@@ -41,50 +53,45 @@ interface FilterPanelProps {
 const PP_RANGE_PRESETS: Array<{ label: string; minPp?: number; maxPp?: number }> = [
   { label: '不限' },
   { label: '<200', maxPp: 200 },
-  { label: '200–300', minPp: 200, maxPp: 300 },
-  { label: '300–400', minPp: 300, maxPp: 400 },
-  { label: '400–500', minPp: 400, maxPp: 500 },
-  { label: '500–650', minPp: 500, maxPp: 650 },
-  { label: '650+', minPp: 650 },
+  { label: '200–350', minPp: 200, maxPp: 350 },
+  { label: '350–500', minPp: 350, maxPp: 500 },
+  { label: '500–700', minPp: 500, maxPp: 700 },
+  { label: '700–1000', minPp: 700, maxPp: 1000 },
+  { label: '1000+', minPp: 1000 },
 ];
 
-const PP_SCENARIO_PRESETS: Array<{
-  label: string;
-  patch: Partial<SearchFilters>;
-}> = [
-  {
-    label: 'NM 95%',
-    patch: { ppAccuracy: 95, ppRate: 1, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
-  },
-  {
-    label: 'NM 98%',
-    patch: { ppAccuracy: 98, ppRate: 1, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
-  },
-  {
-    label: 'NM 99%',
-    patch: { ppAccuracy: 99, ppRate: 1, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
-  },
-  {
-    label: 'SS 100%',
-    patch: { ppAccuracy: 100, ppRate: 1, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
-  },
-  {
-    label: 'DT 1.5x 98%',
-    patch: { ppAccuracy: 98, ppRate: 1.5, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
-  },
-  {
-    label: 'HT 0.75x 98%',
-    patch: { ppAccuracy: 98, ppRate: 0.75, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
-  },
-  {
-    label: '98% · 3:1',
-    patch: { ppAccuracy: 98, ppRate: 1, ppMisses: 0, ppMaRatio: 3, ppClassic: false, ppEz: false, ppNf: false },
-  },
-  {
-    label: '99% · 5:1',
-    patch: { ppAccuracy: 99, ppRate: 1, ppMisses: 0, ppMaRatio: 5, ppClassic: false, ppEz: false, ppNf: false },
-  },
+const PP_RATE_QUICK_CHIPS: Array<{ label: string; value: number }> = [
+  { label: 'HT 0.75x', value: 0.75 },
+  { label: '0.9x', value: 0.9 },
+  { label: 'NM 1.0x', value: 1 },
+  { label: '1.1x', value: 1.1 },
+  { label: '1.2x', value: 1.2 },
+  { label: '1.3x', value: 1.3 },
+  { label: 'DT 1.5x', value: 1.5 },
 ];
+
+const PP_ACC_QUICK_CHIPS: Array<{ label: string; value: number }> = [
+  { label: '94%', value: 94 },
+  { label: '95%', value: 95 },
+  { label: '97%', value: 97 },
+  { label: '98%', value: 98 },
+  { label: '99%', value: 99 },
+  { label: '99.5%', value: 99.5 },
+  { label: 'SS', value: 100 },
+];
+
+const PP_MA_QUICK_CHIPS: Array<{ label: string; value: number | undefined }> = [
+  { label: '直算', value: undefined },
+  { label: '1:1', value: 1 },
+  { label: '2:1', value: 2 },
+  { label: '3:1', value: 3 },
+  { label: '4:1', value: 4 },
+  { label: '5:1', value: 5 },
+  { label: '8:1', value: 8 },
+  { label: '全彩', value: 1000 },
+];
+
+const PP_MISS_QUICK_CHIPS = [0, 1, 2, 3, 5, 8, 10];
 
 function RangeInput({
   label,
@@ -148,8 +155,28 @@ export function FilterPanel({
 }: FilterPanelProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [ppPopoverOpen, setPpPopoverOpen] = useState(false);
+  const [savedScenarios, setSavedScenarios] = useState<SavedPpScenario[]>(loadSavedPpScenarios);
+  const [scenarioTab, setScenarioTab] = useState<PpScenarioCategory>(() =>
+    inferScenarioCategory(extractPpScenarioFromFilters(filters)),
+  );
+  const [customScenarioName, setCustomScenarioName] = useState('');
+  const [popoverPos, setPopoverPos] = useState<{ openUpward: boolean; maxHeight: number }>({
+    openUpward: false,
+    maxHeight: 540,
+  });
   const panelRef = useRef<HTMLElement | null>(null);
   const ppPopoverRef = useRef<HTMLDivElement | null>(null);
+  const prevPopoverOpenRef = useRef(false);
+
+  useEffect(() => {
+    const sync = () => setSavedScenarios(loadSavedPpScenarios());
+    window.addEventListener(SAVED_PP_SCENARIOS_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(SAVED_PP_SCENARIOS_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
 
   useEffect(() => {
     if (!floatingAdvanced || !advancedOpen) return;
@@ -173,6 +200,16 @@ export function FilterPanel({
 
   useEffect(() => {
     if (!ppPopoverOpen) return;
+    const recalc = () => {
+      const rect = ppPopoverRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const spaceBelow = window.innerHeight - rect.bottom - 14;
+      const spaceAbove = rect.top - 52;
+      const openUpward = spaceBelow < 320 && spaceAbove > spaceBelow;
+      const maxHeight = Math.max(230, Math.min(620, openUpward ? spaceAbove : spaceBelow));
+      setPopoverPos({ openUpward, maxHeight });
+    };
+    recalc();
     const onPointerDown = (e: MouseEvent) => {
       if (ppPopoverRef.current && !ppPopoverRef.current.contains(e.target as Node)) {
         setPpPopoverOpen(false);
@@ -183,9 +220,11 @@ export function FilterPanel({
         setPpPopoverOpen(false);
       }
     };
+    window.addEventListener('resize', recalc);
     window.addEventListener('mousedown', onPointerDown);
     window.addEventListener('keydown', onKeyDown);
     return () => {
+      window.removeEventListener('resize', recalc);
       window.removeEventListener('mousedown', onPointerDown);
       window.removeEventListener('keydown', onKeyDown);
     };
@@ -221,6 +260,25 @@ export function FilterPanel({
   const ppScenarioLabel = formatPpScenarioShort(ppScenario);
   const hasStarFilter = filters.minStars != null || filters.maxStars != null;
   const hasPpFilter = filters.minPp != null || filters.maxPp != null;
+
+  useEffect(() => {
+    if (ppPopoverOpen && !prevPopoverOpenRef.current) {
+      const matchedSaved = savedScenarios.some((s) => matchesScenarioPatch(ppScenario, s.patch));
+      setScenarioTab(matchedSaved ? 'custom' : inferScenarioCategory(ppScenario));
+    }
+    prevPopoverOpenRef.current = ppPopoverOpen;
+  }, [ppPopoverOpen, ppScenario, savedScenarios]);
+
+  const maLiveReadout = (() => {
+    if (ppScenario.maRatio === null) {
+      return '直算模式（不区分黄/彩 300）';
+    }
+    const r = ppScenario.maRatio;
+    const maxPct = ((r / (r + 1)) * 100).toFixed(1);
+    const factor = (320 * r + 300) / (320 * (r + 1));
+    const effAcc = (ppScenario.accuracy * factor).toFixed(2);
+    return `彩占 ${maxPct}% · 折算 ${effAcc}%`;
+  })();
 
   const modeSummary =
     filters.mode === '3'
@@ -269,7 +327,12 @@ export function FilterPanel({
             )}
             {hasPpFilter && (
               <span className="chip border-lazer/35 bg-lazer/12 text-lazer-soft">
-                ~{filters.minPp ?? 0}–{filters.maxPp ?? '∞'}pp
+                ~{filters.minPp ?? 0}–{filters.maxPp ?? '∞'}pp · {ppScenarioLabel}
+              </span>
+            )}
+            {!hasPpFilter && ppScenarioCustomized && (
+              <span className="chip border-lazer/35 bg-lazer/12 text-lazer-soft">
+                情景 {ppScenarioLabel}
               </span>
             )}
             {advancedCount > 0 && (
@@ -525,15 +588,15 @@ export function FilterPanel({
                   setAdvancedOpen(false);
                   setPpPopoverOpen((v) => !v);
                 }}
-                title="设定或自定义 PP 计算情景（准度 / 倍速 / 黄彩比 / Mod）"
-                className={`btn btn-sm min-h-[26px] shrink-0 px-2 text-[0.71875rem] ${
+                title={`当前 PP 筛选情景: ${ppScenarioLabel}（点击配置 DT/HT/准度/黄彩比/Miss）`}
+                className={`btn btn-sm min-h-[26px] max-w-[152px] shrink-0 px-2 text-[0.71875rem] 2xl:max-w-[210px] ${
                   ppPopoverOpen || ppScenarioCustomized
                     ? 'border-lazer/50 bg-lazer/14 text-lazer-soft'
                     : ''
                 }`}
               >
                 <Calculator className="h-3 w-3 shrink-0" />
-                <span>{ppScenarioLabel}</span>
+                <span className="truncate">{ppScenarioLabel}</span>
                 <ChevronDown
                   className={`h-3 w-3 shrink-0 transition-transform ${
                     ppPopoverOpen ? 'rotate-180' : ''
@@ -545,7 +608,12 @@ export function FilterPanel({
 
           {/* Floating PP Scenario Configurator Popover */}
           {ppPopoverOpen && (
-            <div className="panel-flat animate-fade-in absolute top-full right-0 z-40 mt-2 w-[min(92vw,440px)] space-y-3 rounded-[14px] border border-hairline-strong bg-surface-2 p-3.5 shadow-2xl">
+            <div
+              style={{ maxHeight: `${popoverPos.maxHeight}px` }}
+              className={`panel-flat animate-fade-in absolute right-0 z-40 w-[min(94vw,520px)] space-y-3 overflow-y-auto overscroll-contain rounded-[14px] border border-hairline-strong bg-surface-2 p-3.5 shadow-2xl ${
+                popoverPos.openUpward ? 'bottom-full mb-2' : 'top-full mt-2'
+              }`}
+            >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                   <Calculator className="h-3.5 w-3.5 text-lazer-soft" />
@@ -602,107 +670,236 @@ export function FilterPanel({
                 </div>
               </div>
 
-              {/* Scenario Presets */}
-              <div className="space-y-1.5 border-t border-hairline pt-2.5">
-                <span className="field-label block">给定情景预设</span>
-                <div className="flex flex-wrap gap-1">
-                  {PP_SCENARIO_PRESETS.map((p) => {
-                    const active =
-                      Math.abs((ppScenario.accuracy ?? 98) - (p.patch.ppAccuracy ?? 98)) < 0.05 &&
-                      Math.abs((ppScenario.rate ?? 1) - (p.patch.ppRate ?? 1)) < 0.01 &&
-                      (ppScenario.maRatio ?? undefined) === p.patch.ppMaRatio &&
-                      ppScenario.misses === 0 &&
-                      !ppScenario.mods.classic &&
-                      !ppScenario.mods.ez &&
-                      !ppScenario.mods.nf;
-                    return (
-                      <button
-                        key={p.label}
-                        type="button"
-                        onClick={() => update(p.patch, hasPpFilter)}
-                        className={`btn btn-sm font-stat min-h-[25px] px-2 text-[0.71875rem] ${
-                          active ? 'border-osu/60 bg-osu/15 text-osu-soft' : ''
-                        }`}
-                      >
-                        {p.label}
-                      </button>
-                    );
-                  })}
+              {/* Mode-Tabbed Scenario Library (NM / DT / HT / Rate / Custom) */}
+              <div className="space-y-2 border-t border-hairline pt-2.5">
+                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                  <span className="field-label">DT / HT / 给定与自定义情景库</span>
+                  <div className="flex flex-wrap gap-1">
+                    {(['nm', 'dt', 'ht', 'rate', 'custom'] as PpScenarioCategory[]).map((tab) => {
+                      const active = scenarioTab === tab;
+                      const countSuffix =
+                        tab === 'custom' && savedScenarios.length > 0
+                          ? ` (${savedScenarios.length})`
+                          : '';
+                      return (
+                        <button
+                          key={tab}
+                          type="button"
+                          onClick={() => setScenarioTab(tab)}
+                          className={`btn btn-sm font-stat min-h-[23px] px-2 text-[0.6875rem] ${
+                            active
+                              ? tab === 'dt'
+                                ? 'border-osu/60 bg-osu/16 text-osu-soft'
+                                : tab === 'ht'
+                                  ? 'border-stable/60 bg-stable/16 text-stable-soft'
+                                  : 'border-lazer/60 bg-lazer/18 text-lazer-soft'
+                              : ''
+                          }`}
+                        >
+                          {PP_SCENARIO_CATEGORY_META[tab].label}
+                          {countSuffix}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+
+                {scenarioTab !== 'custom' ? (
+                  <div className="flex flex-wrap gap-1">
+                    {PP_SCENARIO_PRESETS.filter((p) => p.category === scenarioTab).map((p) => {
+                      const active = matchesScenarioPatch(ppScenario, p.patch);
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          title={p.desc}
+                          onClick={() => update(p.patch, hasPpFilter)}
+                          className={`btn btn-sm font-stat min-h-[25px] px-2 text-[0.71875rem] ${
+                            active ? 'border-osu/60 bg-osu/15 text-osu-soft' : ''
+                          }`}
+                        >
+                          {p.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : savedScenarios.length === 0 ? (
+                  <p className="rounded-[9px] border border-dashed border-hairline px-2.5 py-2 text-[0.71875rem] text-ink-3">
+                    尚未保存自定义情景 — 可在下方调整 DT/HT 倍速、准度、黄彩比与 Miss 后点击「+ 存为自定义」。
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-1.5">
+                    {savedScenarios.map((item) => {
+                      const active = matchesScenarioPatch(ppScenario, item.patch);
+                      const shortSummary = formatPpScenarioShort({
+                        accuracy: item.patch.ppAccuracy,
+                        rate: item.patch.ppRate,
+                        misses: item.patch.ppMisses,
+                        maRatio: item.patch.ppMaRatio ?? null,
+                        mods: {
+                          classic: item.patch.ppClassic,
+                          ez: item.patch.ppEz,
+                          nf: item.patch.ppNf,
+                        },
+                      });
+                      return (
+                        <div
+                          key={item.id}
+                          className={`inline-flex items-center rounded-[7px] border transition-colors ${
+                            active
+                              ? 'border-osu/60 bg-osu/15 text-osu-soft'
+                              : 'border-hairline bg-surface-1/80 text-ink-2 hover:border-hairline-strong'
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            title={`应用情景 (${shortSummary})`}
+                            onClick={() => update(item.patch, hasPpFilter)}
+                            className="font-stat px-2 py-1 text-[0.71875rem] font-semibold"
+                          >
+                            {item.name}
+                          </button>
+                          <button
+                            type="button"
+                            title="删除该自定义情景"
+                            aria-label={`删除自定义情景 ${item.name}`}
+                            onClick={() => setSavedScenarios(deleteSavedPpScenario(item.id))}
+                            className="flex h-6 w-5 items-center justify-center rounded-r-[7px] border-l border-hairline/70 text-ink-3 hover:bg-bad/15 hover:text-bad"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Custom Scenario Parameters */}
               <div className="space-y-2.5 border-t border-hairline pt-2.5">
-                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                  {/* Accuracy */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[0.71875rem]">
-                      <span className="font-semibold text-ink-2">准度</span>
-                      <div className="flex items-center gap-1">
-                        <input
-                          type="number"
-                          min={50}
-                          max={100}
-                          step={0.1}
-                          value={ppScenario.accuracy}
-                          onChange={(e) => {
-                            const v = Number(e.target.value);
-                            if (Number.isFinite(v)) {
-                              update({ ppAccuracy: Math.min(100, Math.max(0, v)) });
-                            }
-                          }}
-                          className="field font-mono min-h-[24px] w-16 px-1.5 py-0 text-right text-[0.75rem]"
-                        />
-                        <span className="font-mono text-ink-3">%</span>
-                      </div>
+                {/* Rate / Mode */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 text-[0.71875rem]">
+                    <span className="font-semibold text-ink-2">模式与倍速 (HT / NM / DT)</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={0.5}
+                        max={2}
+                        step={0.05}
+                        value={ppScenario.rate}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          if (Number.isFinite(v)) {
+                            update({
+                              ppRate: Math.min(2, Math.max(0.5, Math.round(v * 100) / 100)),
+                            });
+                          }
+                        }}
+                        aria-label="筛选倍速数值"
+                        className="field font-mono min-h-[24px] w-16 px-1.5 py-0 text-right text-[0.75rem]"
+                      />
+                      <span className="font-mono text-ink-3">x</span>
                     </div>
-                    <input
-                      type="range"
-                      min={80}
-                      max={100}
-                      step={0.5}
-                      value={Math.max(80, Math.min(100, ppScenario.accuracy))}
-                      onChange={(e) => update({ ppAccuracy: Number(e.target.value) })}
-                      style={
-                        {
-                          '--fill': `${Math.min(100, Math.max(0, ((ppScenario.accuracy - 80) / 20) * 100))}%`,
-                        } as CSSProperties
-                      }
-                      className="slim-range w-full"
-                      aria-label="筛选准度滑块"
-                    />
                   </div>
+                  <input
+                    type="range"
+                    min={0.5}
+                    max={2}
+                    step={0.05}
+                    value={ppScenario.rate}
+                    onChange={(e) => update({ ppRate: Number(e.target.value) })}
+                    style={
+                      {
+                        '--fill': `${Math.min(100, Math.max(0, ((ppScenario.rate - 0.5) / 1.5) * 100))}%`,
+                      } as CSSProperties
+                    }
+                    className="slim-range w-full"
+                    aria-label="筛选倍速滑块"
+                  />
+                  <div className="flex flex-wrap gap-1">
+                    {PP_RATE_QUICK_CHIPS.map((c) => (
+                      <button
+                        key={c.label}
+                        type="button"
+                        onClick={() => update({ ppRate: c.value })}
+                        className={`btn btn-sm font-stat min-h-[22px] px-1.5 text-[0.6875rem] ${
+                          Math.abs(ppScenario.rate - c.value) < 0.01
+                            ? 'border-lazer/60 bg-lazer/18 text-lazer-soft'
+                            : ''
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                  {/* Rate */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-[0.71875rem]">
-                      <span className="font-semibold text-ink-2">倍速</span>
-                      <span className="font-mono font-bold text-ink tabular-nums">
-                        {ppScenario.rate.toFixed(2)}x
-                      </span>
+                {/* Accuracy */}
+                <div className="space-y-1.5 border-t border-hairline/60 pt-2">
+                  <div className="flex items-center justify-between gap-2 text-[0.71875rem]">
+                    <span className="font-semibold text-ink-2">准度 (Accuracy)</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={50}
+                        max={100}
+                        step={0.1}
+                        value={ppScenario.accuracy}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          if (Number.isFinite(v)) {
+                            update({ ppAccuracy: Math.min(100, Math.max(0, v)) });
+                          }
+                        }}
+                        aria-label="筛选准度数值"
+                        className="field font-mono min-h-[24px] w-16 px-1.5 py-0 text-right text-[0.75rem]"
+                      />
+                      <span className="font-mono text-ink-3">%</span>
                     </div>
-                    <input
-                      type="range"
-                      min={0.5}
-                      max={2}
-                      step={0.05}
-                      value={ppScenario.rate}
-                      onChange={(e) => update({ ppRate: Number(e.target.value) })}
-                      style={
-                        {
-                          '--fill': `${Math.min(100, Math.max(0, ((ppScenario.rate - 0.5) / 1.5) * 100))}%`,
-                        } as CSSProperties
-                      }
-                      className="slim-range w-full"
-                      aria-label="筛选倍速滑块"
-                    />
+                  </div>
+                  <input
+                    type="range"
+                    min={80}
+                    max={100}
+                    step={0.1}
+                    value={Math.max(80, Math.min(100, ppScenario.accuracy))}
+                    onChange={(e) => update({ ppAccuracy: Number(e.target.value) })}
+                    style={
+                      {
+                        '--fill': `${Math.min(100, Math.max(0, ((ppScenario.accuracy - 80) / 20) * 100))}%`,
+                      } as CSSProperties
+                    }
+                    className="slim-range w-full"
+                    aria-label="筛选准度滑块"
+                  />
+                  <div className="flex flex-wrap gap-1">
+                    {PP_ACC_QUICK_CHIPS.map((c) => (
+                      <button
+                        key={c.label}
+                        type="button"
+                        onClick={() => update({ ppAccuracy: c.value })}
+                        className={`btn btn-sm font-stat min-h-[22px] px-1.5 text-[0.6875rem] ${
+                          Math.abs(ppScenario.accuracy - c.value) < 0.05
+                            ? 'border-osu/60 bg-osu/15 text-osu-soft'
+                            : ''
+                        }`}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
                   </div>
                 </div>
 
                 {/* Custom MA Ratio */}
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between gap-2 text-[0.71875rem]">
-                    <span className="font-semibold text-ink-2">黄彩比 (彩300 : 黄300)</span>
+                <div className="space-y-1.5 border-t border-hairline/60 pt-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-[0.71875rem]">
+                    <div className="min-w-0">
+                      <span className="font-semibold text-ink-2">黄彩比 (彩300 : 黄300)</span>
+                      <span className="font-mono ml-1.5 text-[0.6875rem] text-ink-3 tabular-nums">
+                        {maLiveReadout}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1">
                       <input
                         type="number"
@@ -719,7 +916,9 @@ export function FilterPanel({
                           }
                           const v = Number(raw);
                           if (Number.isFinite(v)) {
-                            update({ ppMaRatio: Math.min(999, Math.max(0, Math.round(v * 100) / 100)) });
+                            update({
+                              ppMaRatio: Math.min(999, Math.max(0, Math.round(v * 100) / 100)),
+                            });
                           }
                         }}
                         aria-label="筛选黄彩比数值"
@@ -754,58 +953,96 @@ export function FilterPanel({
                     className={`slim-range w-full ${ppScenario.maRatio === null ? 'opacity-60' : ''}`}
                     aria-label="筛选黄彩比滑块"
                   />
+                  <div className="flex flex-wrap gap-1">
+                    {PP_MA_QUICK_CHIPS.map((c) => {
+                      const active =
+                        c.value === undefined
+                          ? ppScenario.maRatio === null
+                          : ppScenario.maRatio !== null && Math.abs(ppScenario.maRatio - c.value) < 0.05;
+                      return (
+                        <button
+                          key={c.label}
+                          type="button"
+                          onClick={() => update({ ppMaRatio: c.value })}
+                          className={`btn btn-sm font-mono min-h-[22px] px-1.5 text-[0.6875rem] ${
+                            active ? 'border-lazer/60 bg-lazer/18 text-lazer-soft' : ''
+                          }`}
+                        >
+                          {c.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Misses & Mods */}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[0.71875rem] font-semibold text-ink-2">Miss</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={100}
-                      step={1}
-                      value={ppScenario.misses}
-                      onChange={(e) => {
-                        const v = Number(e.target.value);
-                        if (Number.isFinite(v)) {
-                          update({ ppMisses: Math.min(100, Math.max(0, Math.round(v))) });
-                        }
-                      }}
-                      aria-label="筛选失误数"
-                      className="field font-mono min-h-[24px] w-14 px-1.5 py-0 text-center text-[0.75rem]"
-                    />
+                <div className="space-y-1.5 border-t border-hairline/60 pt-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[0.71875rem] font-semibold text-ink-2">Miss</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={1}
+                        value={ppScenario.misses}
+                        onChange={(e) => {
+                          const v = Number(e.target.value);
+                          if (Number.isFinite(v)) {
+                            update({ ppMisses: Math.min(100, Math.max(0, Math.round(v))) });
+                          }
+                        }}
+                        aria-label="筛选失误数"
+                        className="field font-mono min-h-[24px] w-14 px-1.5 py-0 text-center text-[0.75rem]"
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      <button
+                        type="button"
+                        onClick={() => update({ ppClassic: !ppScenario.mods.classic })}
+                        className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
+                          ppScenario.mods.classic
+                            ? 'border-stable/60 bg-stable/16 text-stable-soft'
+                            : ''
+                        }`}
+                      >
+                        Classic
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => update({ ppEz: !ppScenario.mods.ez })}
+                        className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
+                          ppScenario.mods.ez ? 'border-emerald-500/60 bg-emerald-500/16 text-ok' : ''
+                        }`}
+                      >
+                        EZ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => update({ ppNf: !ppScenario.mods.nf })}
+                        className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
+                          ppScenario.mods.nf ? 'border-amber-500/60 bg-amber-500/16 text-warn' : ''
+                        }`}
+                      >
+                        NF
+                      </button>
+                    </div>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    <button
-                      type="button"
-                      onClick={() => update({ ppClassic: !ppScenario.mods.classic })}
-                      className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
-                        ppScenario.mods.classic
-                          ? 'border-stable/60 bg-stable/16 text-stable-soft'
-                          : ''
-                      }`}
-                    >
-                      Classic
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => update({ ppEz: !ppScenario.mods.ez })}
-                      className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
-                        ppScenario.mods.ez ? 'border-emerald-500/60 bg-emerald-500/16 text-ok' : ''
-                      }`}
-                    >
-                      EZ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => update({ ppNf: !ppScenario.mods.nf })}
-                      className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
-                        ppScenario.mods.nf ? 'border-amber-500/60 bg-amber-500/16 text-warn' : ''
-                      }`}
-                    >
-                      NF
-                    </button>
+                    {PP_MISS_QUICK_CHIPS.map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => update({ ppMisses: m })}
+                        className={`btn btn-sm font-mono min-h-[22px] px-1.5 text-[0.6875rem] ${
+                          ppScenario.misses === m
+                            ? 'border-osu/60 bg-osu/15 text-osu-soft'
+                            : ''
+                        }`}
+                      >
+                        {m}M
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -820,6 +1057,41 @@ export function FilterPanel({
                   />
                   <span>含未上架谱面（按模拟上架 PP 筛选）</span>
                 </label>
+
+                {/* Save Current Scenario Bar */}
+                <div className="flex items-center gap-1.5 rounded-[10px] border border-hairline bg-surface-1/65 p-2">
+                  <input
+                    type="text"
+                    maxLength={48}
+                    value={customScenarioName}
+                    onChange={(e) => setCustomScenarioName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        const { list } = saveCustomPpScenario(ppScenario, customScenarioName);
+                        setSavedScenarios(list);
+                        setCustomScenarioName('');
+                        setScenarioTab('custom');
+                      }
+                    }}
+                    placeholder="保存当前组合名称（留空自动生成）"
+                    aria-label="自定义 PP 情景名称"
+                    className="field min-h-[26px] flex-1 px-2 py-0.5 text-[0.75rem]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const { list } = saveCustomPpScenario(ppScenario, customScenarioName);
+                      setSavedScenarios(list);
+                      setCustomScenarioName('');
+                      setScenarioTab('custom');
+                    }}
+                    className="btn btn-sm min-h-[26px] shrink-0 border-lazer/45 bg-lazer/14 px-2.5 text-[0.71875rem] text-lazer-soft hover:bg-lazer/22"
+                  >
+                    <BookmarkPlus className="h-3 w-3 shrink-0" />
+                    <span>+ 存为自定义</span>
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between gap-2 border-t border-hairline pt-2.5">

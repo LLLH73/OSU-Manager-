@@ -1,14 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { Award, Calculator, RotateCcw, Sparkles, Zap } from 'lucide-react';
+import { Award, BookmarkPlus, Calculator, RotateCcw, Sparkles, X, Zap } from 'lucide-react';
 import { NormalizedBeatmap } from '../types';
 import {
   DEFAULT_PP_MODS,
+  PP_SCENARIO_CATEGORY_META,
+  PP_SCENARIO_PRESETS,
   PpMods,
+  PpScenarioCategory,
   PpScenarioInput,
+  PpScenarioPatch,
+  SAVED_PP_SCENARIOS_EVENT,
+  SavedPpScenario,
   calculateBeatmapPp,
+  deleteSavedPpScenario,
   formatPp,
+  formatPpScenarioShort,
+  inferScenarioCategory,
   isRankedForPp,
+  loadSavedPpScenarios,
+  matchesScenarioPatch,
+  saveCustomPpScenario,
 } from '../utils/pp';
 import { SelectField } from './SelectField';
 
@@ -80,8 +92,23 @@ export function PpCalculatorPanel({
   });
   const [maRatio, setMaRatio] = useState<number | null>(initMaRatio);
   const [simulateRanked, setSimulateRanked] = useState(false);
+  const [savedScenarios, setSavedScenarios] = useState<SavedPpScenario[]>(loadSavedPpScenarios);
+  const [scenarioTab, setScenarioTab] = useState<PpScenarioCategory>(() =>
+    inferScenarioCategory(initialScenario),
+  );
+  const [customScenarioName, setCustomScenarioName] = useState('');
 
   const ranked = isRankedForPp(status);
+
+  useEffect(() => {
+    const sync = () => setSavedScenarios(loadSavedPpScenarios());
+    window.addEventListener(SAVED_PP_SCENARIOS_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(SAVED_PP_SCENARIOS_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
 
   useEffect(() => {
     setSimulateRanked(false);
@@ -93,6 +120,15 @@ export function PpCalculatorPanel({
     setRate(initRate);
     setMods({ classic: initClassic, ez: initEz, nf: initNf });
     setMaRatio(initMaRatio);
+    setScenarioTab(
+      inferScenarioCategory({
+        accuracy: initAcc,
+        misses: initMisses,
+        rate: initRate,
+        mods: { classic: initClassic, ez: initEz, nf: initNf },
+        maRatio: initMaRatio,
+      }),
+    );
   }, [initAcc, initMisses, initRate, initClassic, initEz, initNf, initMaRatio]);
 
   const sortedDiffs = useMemo(
@@ -310,6 +346,181 @@ export function PpCalculatorPanel({
             );
           })}
         </div>
+      </div>
+
+      {/* Compact Quick Scenario Presets Strip (NM / DT / HT / Rate / Custom) */}
+      <div className="space-y-2 rounded-[10px] border border-hairline bg-surface-1/55 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="field-label">快捷情景预设（NM / DT / HT / 变速 / 自定义）</span>
+          <div className="flex flex-wrap gap-1">
+            {(['nm', 'dt', 'ht', 'rate', 'custom'] as PpScenarioCategory[]).map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setScenarioTab(tab)}
+                className={`btn btn-sm font-stat min-h-[24px] px-2 text-[0.71875rem] ${
+                  scenarioTab === tab
+                    ? tab === 'dt'
+                      ? 'border-osu/60 bg-osu/16 text-osu-soft'
+                      : tab === 'ht'
+                        ? 'border-stable/60 bg-stable/16 text-stable-soft'
+                        : 'border-lazer/60 bg-lazer/18 text-lazer-soft'
+                    : ''
+                }`}
+              >
+                {PP_SCENARIO_CATEGORY_META[tab].label}
+                {tab === 'custom' && savedScenarios.length > 0 ? ` (${savedScenarios.length})` : ''}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {scenarioTab !== 'custom' ? (
+          <div className="flex flex-wrap gap-1">
+            {PP_SCENARIO_PRESETS.filter((p) => p.category === scenarioTab).map((p) => {
+              const curScenario: PpScenarioInput = {
+                accuracy,
+                misses,
+                rate,
+                mods,
+                maRatio: activeDiff.modeInt === 3 ? maRatio : null,
+              };
+              const active = matchesScenarioPatch(curScenario, p.patch);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  title={p.desc}
+                  onClick={() => {
+                    const patch: PpScenarioPatch = p.patch;
+                    setAccuracy(patch.ppAccuracy);
+                    setRate(patch.ppRate);
+                    setMisses(patch.ppMisses);
+                    setMaRatio(patch.ppMaRatio ?? null);
+                    setMods({
+                      classic: patch.ppClassic,
+                      ez: patch.ppEz,
+                      nf: patch.ppNf,
+                    });
+                  }}
+                  className={`btn btn-sm font-stat min-h-[24px] px-2 text-[0.71875rem] ${
+                    active ? 'border-osu/60 bg-osu/15 text-osu-soft' : ''
+                  }`}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {savedScenarios.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {savedScenarios.map((item) => {
+                  const curScenario: PpScenarioInput = {
+                    accuracy,
+                    misses,
+                    rate,
+                    mods,
+                    maRatio: activeDiff.modeInt === 3 ? maRatio : null,
+                  };
+                  const active = matchesScenarioPatch(curScenario, item.patch);
+                  const shortSummary = formatPpScenarioShort({
+                    accuracy: item.patch.ppAccuracy,
+                    rate: item.patch.ppRate,
+                    misses: item.patch.ppMisses,
+                    maRatio: item.patch.ppMaRatio ?? null,
+                    mods: {
+                      classic: item.patch.ppClassic,
+                      ez: item.patch.ppEz,
+                      nf: item.patch.ppNf,
+                    },
+                  });
+                  return (
+                    <div
+                      key={item.id}
+                      className={`inline-flex items-center rounded-[7px] border transition-colors ${
+                        active
+                          ? 'border-osu/60 bg-osu/15 text-osu-soft'
+                          : 'border-hairline bg-surface-2/80 text-ink-2 hover:border-hairline-strong'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        title={`应用情景 (${shortSummary})`}
+                        onClick={() => {
+                          setAccuracy(item.patch.ppAccuracy);
+                          setRate(item.patch.ppRate);
+                          setMisses(item.patch.ppMisses);
+                          setMaRatio(item.patch.ppMaRatio ?? null);
+                          setMods({
+                            classic: item.patch.ppClassic,
+                            ez: item.patch.ppEz,
+                            nf: item.patch.ppNf,
+                          });
+                        }}
+                        className="font-stat px-2 py-1 text-[0.71875rem] font-semibold"
+                      >
+                        {item.name}
+                      </button>
+                      <button
+                        type="button"
+                        title="删除该自定义情景"
+                        aria-label={`删除自定义情景 ${item.name}`}
+                        onClick={() => setSavedScenarios(deleteSavedPpScenario(item.id))}
+                        className="flex h-6 w-5 items-center justify-center rounded-r-[7px] border-l border-hairline/70 text-ink-3 hover:bg-bad/15 hover:text-bad"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-[0.71875rem] text-ink-3">
+                暂无保存情景 — 下方可输入名称将当前组合存入自定义库（与主筛选同步）。
+              </p>
+            )}
+
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                maxLength={48}
+                value={customScenarioName}
+                onChange={(e) => setCustomScenarioName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const { list } = saveCustomPpScenario(
+                      { accuracy, misses, rate, mods, maRatio: activeDiff.modeInt === 3 ? maRatio : null },
+                      customScenarioName,
+                    );
+                    setSavedScenarios(list);
+                    setCustomScenarioName('');
+                  }
+                }}
+                placeholder="情景名称（留空自动命名，如 DT 96.5%·2:1·3M）"
+                aria-label="保存计算器情景名称"
+                className="field min-h-[26px] flex-1 px-2 py-0.5 text-[0.75rem]"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const { list } = saveCustomPpScenario(
+                    { accuracy, misses, rate, mods, maRatio: activeDiff.modeInt === 3 ? maRatio : null },
+                    customScenarioName,
+                  );
+                  setSavedScenarios(list);
+                  setCustomScenarioName('');
+                }}
+                className="btn btn-sm min-h-[26px] shrink-0 border-lazer/45 bg-lazer/14 px-2.5 text-[0.71875rem] text-lazer-soft"
+              >
+                <BookmarkPlus className="h-3 w-3" />
+                <span>+ 存为自定义</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Controls Grid */}

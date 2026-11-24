@@ -484,6 +484,20 @@ export function LazerSongSelect({
   const [activeDiffId, setActiveDiffId] = useState<number | null>(null);
   const [autoPreview, setAutoPreview] = useState<boolean>(readInitialAutoPreview);
   const [quickRate, setQuickRate] = useState<0.75 | 1 | 1.5>(1);
+
+  useEffect(() => {
+    const r = ppScenario?.rate;
+    if (r == null) {
+      setQuickRate(1);
+    } else if (Math.abs(r - 0.75) < 0.01) {
+      setQuickRate(0.75);
+    } else if (Math.abs(r - 1.5) < 0.01) {
+      setQuickRate(1.5);
+    } else if (Math.abs(r - 1) < 0.01) {
+      setQuickRate(1);
+    }
+  }, [ppScenario?.rate]);
+
   const [brokenCovers, setBrokenCovers] = useState<Set<number>>(() => new Set());
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [activeOffscreenDir, setActiveOffscreenDir] = useState<'up' | 'down' | null>(null);
@@ -903,7 +917,7 @@ export function LazerSongSelect({
       ]
     : [];
 
-  const quickPpSummary = activeDiff ? getQuickPpSummary(activeDiff, quickRate) : null;
+  const quickPpSummary = activeDiff ? getQuickPpSummary(activeDiff, quickRate, ppScenario) : null;
 
   return (
     <section

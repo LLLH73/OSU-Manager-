@@ -48,6 +48,440 @@ export const DEFAULT_PP_SCENARIO: PpScenarioInput = {
   maRatio: null,
 };
 
+export interface PpScenarioPatch {
+  ppAccuracy: number;
+  ppRate: number;
+  ppMisses: number;
+  ppMaRatio: number | undefined;
+  ppClassic: boolean;
+  ppEz: boolean;
+  ppNf: boolean;
+}
+
+export type PpScenarioCategory = 'nm' | 'dt' | 'ht' | 'rate' | 'custom';
+
+export interface PpScenarioPreset {
+  id: string;
+  category: Exclude<PpScenarioCategory, 'custom'>;
+  label: string;
+  desc: string;
+  patch: PpScenarioPatch;
+}
+
+export interface SavedPpScenario {
+  id: string;
+  name: string;
+  patch: PpScenarioPatch;
+  createdAt: number;
+}
+
+export const SAVED_PP_SCENARIOS_KEY = 'osu4k-saved-pp-scenarios';
+export const SAVED_PP_SCENARIOS_EVENT = 'osu4k-pp-scenarios-changed';
+
+export const PP_SCENARIO_CATEGORY_META: Record<
+  PpScenarioCategory,
+  { label: string; short: string }
+> = {
+  nm: { label: 'NM 常速', short: 'NM' },
+  dt: { label: 'DT 1.5x', short: 'DT' },
+  ht: { label: 'HT 0.75x', short: 'HT' },
+  rate: { label: '变速 Rate', short: '变速' },
+  custom: { label: '自定义', short: '自定义' },
+};
+
+const mkPreset = (
+  id: string,
+  category: Exclude<PpScenarioCategory, 'custom'>,
+  label: string,
+  desc: string,
+  opts: {
+    acc: number;
+    rate: number;
+    misses?: number;
+    maRatio?: number;
+    classic?: boolean;
+    ez?: boolean;
+    nf?: boolean;
+  },
+): PpScenarioPreset => ({
+  id,
+  category,
+  label,
+  desc,
+  patch: {
+    ppAccuracy: opts.acc,
+    ppRate: opts.rate,
+    ppMisses: opts.misses ?? 0,
+    ppMaRatio: opts.maRatio,
+    ppClassic: Boolean(opts.classic),
+    ppEz: Boolean(opts.ez),
+    ppNf: Boolean(opts.nf),
+  },
+});
+
+export const PP_SCENARIO_PRESETS: PpScenarioPreset[] = [
+  // NM 常速 (1.0x) — 9 presets
+  mkPreset('nm-95-2-5m', 'nm', 'NM 95%·2:1·5M', 'NM 1.0x 95% · 黄彩比 2:1 · 5 Miss', {
+    acc: 95,
+    rate: 1,
+    maRatio: 2,
+    misses: 5,
+  }),
+  mkPreset('nm-965-2-3m', 'nm', 'NM 96.5%·2:1·3M', 'NM 1.0x 96.5% · 黄彩比 2:1 · 3 Miss', {
+    acc: 96.5,
+    rate: 1,
+    maRatio: 2,
+    misses: 3,
+  }),
+  mkPreset('nm-975-25-2m', 'nm', 'NM 97.5%·2.5:1·2M', 'NM 1.0x 97.5% · 黄彩比 2.5:1 · 2 Miss', {
+    acc: 97.5,
+    rate: 1,
+    maRatio: 2.5,
+    misses: 2,
+  }),
+  mkPreset('nm-98', 'nm', 'NM 98%', '默认 NM 1.0x 98% · 0 Miss（直算）', {
+    acc: 98,
+    rate: 1,
+  }),
+  mkPreset('nm-98-3', 'nm', 'NM 98%·3:1', 'NM 1.0x 98% · 黄彩比 3:1 · 0 Miss', {
+    acc: 98,
+    rate: 1,
+    maRatio: 3,
+  }),
+  mkPreset('nm-985-35-1m', 'nm', 'NM 98.5%·3.5:1·1M', 'NM 1.0x 98.5% · 黄彩比 3.5:1 · 1 Miss', {
+    acc: 98.5,
+    rate: 1,
+    maRatio: 3.5,
+    misses: 1,
+  }),
+  mkPreset('nm-99-5', 'nm', 'NM 99%·5:1', 'NM 1.0x 99% · 黄彩比 5:1 · 0 Miss', {
+    acc: 99,
+    rate: 1,
+    maRatio: 5,
+  }),
+  mkPreset('nm-995-8', 'nm', 'NM 99.5%·8:1', 'NM 1.0x 99.5% · 黄彩比 8:1 · 0 Miss', {
+    acc: 99.5,
+    rate: 1,
+    maRatio: 8,
+  }),
+  mkPreset('nm-ss', 'nm', 'NM SS 100%', 'NM 1.0x 100% SS · 0 Miss', {
+    acc: 100,
+    rate: 1,
+  }),
+
+  // DT 1.5x — 9 presets
+  mkPreset('dt-94-15-8m', 'dt', 'DT 94%·1.5:1·8M', 'DT 1.5x 94% · 黄彩比 1.5:1 · 8 Miss', {
+    acc: 94,
+    rate: 1.5,
+    maRatio: 1.5,
+    misses: 8,
+  }),
+  mkPreset('dt-95-2-5m', 'dt', 'DT 95%·2:1·5M', 'DT 1.5x 95% · 黄彩比 2:1 · 5 Miss', {
+    acc: 95,
+    rate: 1.5,
+    maRatio: 2,
+    misses: 5,
+  }),
+  mkPreset('dt-965-2-3m', 'dt', 'DT 96.5%·2:1·3M', 'DT 1.5x 96.5% · 黄彩比 2:1 · 3 Miss', {
+    acc: 96.5,
+    rate: 1.5,
+    maRatio: 2,
+    misses: 3,
+  }),
+  mkPreset('dt-975-25-2m', 'dt', 'DT 97.5%·2.5:1·2M', 'DT 1.5x 97.5% · 黄彩比 2.5:1 · 2 Miss', {
+    acc: 97.5,
+    rate: 1.5,
+    maRatio: 2.5,
+    misses: 2,
+  }),
+  mkPreset('dt-98', 'dt', 'DT 98%', 'DT 1.5x 98% · 0 Miss（直算）', {
+    acc: 98,
+    rate: 1.5,
+  }),
+  mkPreset('dt-98-3-1m', 'dt', 'DT 98%·3:1·1M', 'DT 1.5x 98% · 黄彩比 3:1 · 1 Miss', {
+    acc: 98,
+    rate: 1.5,
+    maRatio: 3,
+    misses: 1,
+  }),
+  mkPreset('dt-985-35', 'dt', 'DT 98.5%·3.5:1', 'DT 1.5x 98.5% · 黄彩比 3.5:1 · 0 Miss', {
+    acc: 98.5,
+    rate: 1.5,
+    maRatio: 3.5,
+  }),
+  mkPreset('dt-99-5', 'dt', 'DT 99%·5:1', 'DT 1.5x 99% · 黄彩比 5:1 · 0 Miss', {
+    acc: 99,
+    rate: 1.5,
+    maRatio: 5,
+  }),
+  mkPreset('dt-ss', 'dt', 'DT SS 100%', 'DT 1.5x 100% SS · 0 Miss', {
+    acc: 100,
+    rate: 1.5,
+  }),
+
+  // HT 0.75x — 9 presets
+  mkPreset('ht-94-15-8m', 'ht', 'HT 94%·1.5:1·8M', 'HT 0.75x 94% · 黄彩比 1.5:1 · 8 Miss', {
+    acc: 94,
+    rate: 0.75,
+    maRatio: 1.5,
+    misses: 8,
+  }),
+  mkPreset('ht-95-2-5m', 'ht', 'HT 95%·2:1·5M', 'HT 0.75x 95% · 黄彩比 2:1 · 5 Miss', {
+    acc: 95,
+    rate: 0.75,
+    maRatio: 2,
+    misses: 5,
+  }),
+  mkPreset('ht-965-25-3m', 'ht', 'HT 96.5%·2.5:1·3M', 'HT 0.75x 96.5% · 黄彩比 2.5:1 · 3 Miss', {
+    acc: 96.5,
+    rate: 0.75,
+    maRatio: 2.5,
+    misses: 3,
+  }),
+  mkPreset('ht-975-3-2m', 'ht', 'HT 97.5%·3:1·2M', 'HT 0.75x 97.5% · 黄彩比 3:1 · 2 Miss', {
+    acc: 97.5,
+    rate: 0.75,
+    maRatio: 3,
+    misses: 2,
+  }),
+  mkPreset('ht-98', 'ht', 'HT 98%', 'HT 0.75x 98% · 0 Miss（直算）', {
+    acc: 98,
+    rate: 0.75,
+  }),
+  mkPreset('ht-98-3-1m', 'ht', 'HT 98%·3:1·1M', 'HT 0.75x 98% · 黄彩比 3:1 · 1 Miss', {
+    acc: 98,
+    rate: 0.75,
+    maRatio: 3,
+    misses: 1,
+  }),
+  mkPreset('ht-99-5', 'ht', 'HT 99%·5:1', 'HT 0.75x 99% · 黄彩比 5:1 · 0 Miss', {
+    acc: 99,
+    rate: 0.75,
+    maRatio: 5,
+  }),
+  mkPreset('ht-995-8', 'ht', 'HT 99.5%·8:1', 'HT 0.75x 99.5% · 黄彩比 8:1 · 0 Miss', {
+    acc: 99.5,
+    rate: 0.75,
+    maRatio: 8,
+  }),
+  mkPreset('ht-ss', 'ht', 'HT SS 100%', 'HT 0.75x 100% SS · 0 Miss', {
+    acc: 100,
+    rate: 0.75,
+  }),
+
+  // 变速 Rate (0.85x–1.4x) — 8 presets
+  mkPreset('rate-085-97-25-3m', 'rate', '0.85x 97%·2.5:1·3M', '0.85x 97% · 黄彩比 2.5:1 · 3 Miss', {
+    acc: 97,
+    rate: 0.85,
+    maRatio: 2.5,
+    misses: 3,
+  }),
+  mkPreset('rate-090-98-3-1m', 'rate', '0.9x 98%·3:1·1M', '0.9x 98% · 黄彩比 3:1 · 1 Miss', {
+    acc: 98,
+    rate: 0.9,
+    maRatio: 3,
+    misses: 1,
+  }),
+  mkPreset('rate-105-985-35-1m', 'rate', '1.05x 98.5%·3.5:1·1M', '1.05x 98.5% · 黄彩比 3.5:1 · 1 Miss', {
+    acc: 98.5,
+    rate: 1.05,
+    maRatio: 3.5,
+    misses: 1,
+  }),
+  mkPreset('rate-110-98-3-1m', 'rate', '1.1x 98%·3:1·1M', '1.1x 98% · 黄彩比 3:1 · 1 Miss', {
+    acc: 98,
+    rate: 1.1,
+    maRatio: 3,
+    misses: 1,
+  }),
+  mkPreset('rate-115-975-25-2m', 'rate', '1.15x 97.5%·2.5:1·2M', '1.15x 97.5% · 黄彩比 2.5:1 · 2 Miss', {
+    acc: 97.5,
+    rate: 1.15,
+    maRatio: 2.5,
+    misses: 2,
+  }),
+  mkPreset('rate-120-98-3-1m', 'rate', '1.2x 98%·3:1·1M', '1.2x 98% · 黄彩比 3:1 · 1 Miss', {
+    acc: 98,
+    rate: 1.2,
+    maRatio: 3,
+    misses: 1,
+  }),
+  mkPreset('rate-130-965-2-3m', 'rate', '1.3x 96.5%·2:1·3M', '1.3x 96.5% · 黄彩比 2:1 · 3 Miss', {
+    acc: 96.5,
+    rate: 1.3,
+    maRatio: 2,
+    misses: 3,
+  }),
+  mkPreset('rate-140-955-2-5m', 'rate', '1.4x 95.5%·2:1·5M', '1.4x 95.5% · 黄彩比 2:1 · 5 Miss', {
+    acc: 95.5,
+    rate: 1.4,
+    maRatio: 2,
+    misses: 5,
+  }),
+];
+
+export function inferScenarioCategory(
+  scenario?: Partial<PpScenarioInput>,
+): Exclude<PpScenarioCategory, 'custom'> {
+  const rate = scenario?.rate ?? 1;
+  if (Math.abs(rate - 1.5) < 0.03) return 'dt';
+  if (Math.abs(rate - 0.75) < 0.03) return 'ht';
+  if (Math.abs(rate - 1) >= 0.01) return 'rate';
+  return 'nm';
+}
+
+export function matchesScenarioPatch(
+  scenario: Partial<PpScenarioInput>,
+  patch: PpScenarioPatch,
+): boolean {
+  const sMa = scenario.maRatio ?? null;
+  const pMa = patch.ppMaRatio ?? null;
+  const maMatch =
+    sMa === null && pMa === null
+      ? true
+      : sMa !== null && pMa !== null
+        ? Math.abs(sMa - pMa) < 0.05
+        : false;
+  return (
+    Math.abs((scenario.accuracy ?? 98) - patch.ppAccuracy) < 0.05 &&
+    Math.abs((scenario.rate ?? 1) - patch.ppRate) < 0.01 &&
+    maMatch &&
+    (scenario.misses ?? 0) === patch.ppMisses &&
+    Boolean(scenario.mods?.classic) === Boolean(patch.ppClassic) &&
+    Boolean(scenario.mods?.ez) === Boolean(patch.ppEz) &&
+    Boolean(scenario.mods?.nf) === Boolean(patch.ppNf)
+  );
+}
+
+export function scenarioInputToPatch(scenario: Partial<PpScenarioInput>): PpScenarioPatch {
+  const acc = Math.min(100, Math.max(0, Number(scenario.accuracy ?? 98)));
+  const rate = Math.min(2, Math.max(0.5, Number(scenario.rate ?? 1)));
+  const misses = Math.max(0, Math.round(Number(scenario.misses ?? 0)));
+  const rawMa = scenario.maRatio ?? null;
+  const maRatio =
+    rawMa !== null && Number.isFinite(rawMa) && rawMa >= 0
+      ? Math.min(1000, Math.round(rawMa * 100) / 100)
+      : undefined;
+
+  return {
+    ppAccuracy: Math.round(acc * 10) / 10,
+    ppRate: Math.round(rate * 100) / 100,
+    ppMisses: misses,
+    ppMaRatio: maRatio,
+    ppClassic: Boolean(scenario.mods?.classic),
+    ppEz: Boolean(scenario.mods?.ez),
+    ppNf: Boolean(scenario.mods?.nf),
+  };
+}
+
+export function loadSavedPpScenarios(): SavedPpScenario[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = window.localStorage.getItem(SAVED_PP_SCENARIOS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const valid: SavedPpScenario[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== 'object' || !item.patch || typeof item.id !== 'string') {
+        continue;
+      }
+      const p = item.patch as Record<string, unknown>;
+      const acc = Number(p.ppAccuracy);
+      const rate = Number(p.ppRate);
+      if (!Number.isFinite(acc) || !Number.isFinite(rate)) continue;
+      const misses = Number.isFinite(Number(p.ppMisses))
+        ? Math.max(0, Math.round(Number(p.ppMisses)))
+        : 0;
+      const maRaw = p.ppMaRatio != null ? Number(p.ppMaRatio) : undefined;
+      const ppMaRatio =
+        maRaw !== undefined && Number.isFinite(maRaw) && maRaw >= 0 ? maRaw : undefined;
+      const cleanPatch: PpScenarioPatch = {
+        ppAccuracy: Math.min(100, Math.max(0, acc)),
+        ppRate: Math.min(2, Math.max(0.5, rate)),
+        ppMisses: misses,
+        ppMaRatio,
+        ppClassic: Boolean(p.ppClassic),
+        ppEz: Boolean(p.ppEz),
+        ppNf: Boolean(p.ppNf),
+      };
+      const name =
+        typeof item.name === 'string' && item.name.trim()
+          ? item.name.trim().slice(0, 48)
+          : formatPpScenarioShort({
+              accuracy: cleanPatch.ppAccuracy,
+              rate: cleanPatch.ppRate,
+              misses: cleanPatch.ppMisses,
+              maRatio: cleanPatch.ppMaRatio ?? null,
+              mods: {
+                classic: cleanPatch.ppClassic,
+                ez: cleanPatch.ppEz,
+                nf: cleanPatch.ppNf,
+              },
+            });
+      valid.push({
+        id: item.id,
+        name,
+        patch: cleanPatch,
+        createdAt: Number.isFinite(Number(item.createdAt)) ? Number(item.createdAt) : Date.now(),
+      });
+    }
+    return valid.slice(0, 24);
+  } catch {
+    return [];
+  }
+}
+
+function persistSavedPpScenarios(list: SavedPpScenario[]): SavedPpScenario[] {
+  const capped = list.slice(0, 24);
+  if (typeof window !== 'undefined') {
+    try {
+      window.localStorage.setItem(SAVED_PP_SCENARIOS_KEY, JSON.stringify(capped));
+      window.dispatchEvent(new Event(SAVED_PP_SCENARIOS_EVENT));
+    } catch {
+      // Ignore storage error
+    }
+  }
+  return capped;
+}
+
+export function saveCustomPpScenario(
+  scenario: Partial<PpScenarioInput>,
+  customName?: string,
+): { list: SavedPpScenario[]; saved: SavedPpScenario } {
+  const patch = scenarioInputToPatch(scenario);
+  const normalizedInput: PpScenarioInput = {
+    accuracy: patch.ppAccuracy,
+    rate: patch.ppRate,
+    misses: patch.ppMisses,
+    maRatio: patch.ppMaRatio ?? null,
+    mods: {
+      classic: patch.ppClassic,
+      ez: patch.ppEz,
+      nf: patch.ppNf,
+    },
+  };
+  const name = customName?.trim()
+    ? customName.trim().slice(0, 48)
+    : formatPpScenarioShort(normalizedInput);
+
+  const existing = loadSavedPpScenarios();
+  const deduped = existing.filter((item) => !matchesScenarioPatch(normalizedInput, item.patch));
+  const saved: SavedPpScenario = {
+    id: `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+    name,
+    patch,
+    createdAt: Date.now(),
+  };
+  const list = persistSavedPpScenarios([saved, ...deduped]);
+  return { list, saved };
+}
+
+export function deleteSavedPpScenario(id: string): SavedPpScenario[] {
+  const existing = loadSavedPpScenarios();
+  return persistSavedPpScenarios(existing.filter((item) => item.id !== id));
+}
+
 export function isRankedForPp(status: string): boolean {
   return status === 'ranked' || status === 'approved';
 }
@@ -138,14 +572,21 @@ export function calculateBeatmapPp(
   };
 }
 
-export function getQuickPpSummary(beatmap: NormalizedBeatmap, rate = 1): QuickPpSummary {
+export function getQuickPpSummary(
+  beatmap: NormalizedBeatmap,
+  rate = 1,
+  baseScenario?: Partial<PpScenarioInput>,
+): QuickPpSummary {
+  const maRatio = beatmap.modeInt === 3 ? (baseScenario?.maRatio ?? null) : null;
+  const misses = baseScenario?.misses ?? 0;
+  const mods = baseScenario?.mods;
   return {
-    pp95: calculateBeatmapPp(beatmap, { accuracy: 95, rate }).pp,
-    pp98: calculateBeatmapPp(beatmap, { accuracy: 98, rate }).pp,
-    pp99: calculateBeatmapPp(beatmap, { accuracy: 99, rate }).pp,
-    pp100: calculateBeatmapPp(beatmap, { accuracy: 100, rate }).pp,
-    pp98Dt: calculateBeatmapPp(beatmap, { accuracy: 98, rate: 1.5 }).pp,
-    pp98Ht: calculateBeatmapPp(beatmap, { accuracy: 98, rate: 0.75 }).pp,
+    pp95: calculateBeatmapPp(beatmap, { accuracy: 95, rate, maRatio, misses, mods }).pp,
+    pp98: calculateBeatmapPp(beatmap, { accuracy: 98, rate, maRatio, misses, mods }).pp,
+    pp99: calculateBeatmapPp(beatmap, { accuracy: 99, rate, maRatio, misses, mods }).pp,
+    pp100: calculateBeatmapPp(beatmap, { accuracy: 100, rate, misses: 0, maRatio: null, mods }).pp,
+    pp98Dt: calculateBeatmapPp(beatmap, { accuracy: 98, rate: 1.5, maRatio, misses, mods }).pp,
+    pp98Ht: calculateBeatmapPp(beatmap, { accuracy: 98, rate: 0.75, maRatio, misses, mods }).pp,
   };
 }
 

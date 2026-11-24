@@ -189,11 +189,19 @@ export function deriveStarBoundsFromPpFilter(f: SearchFilters): DerivedStarBound
     }
 
     let maxStars: number | undefined;
-    if (maxPp != null && scenario.misses === 0) {
-      const kMin = 8.0 * accFactorMax * 1.0 * modMult;
-      if (kMin > 1e-6) {
-        const effSrMax = 0.15 + Math.pow((maxPp + 0.5) / kMin, 1 / 2.2);
-        maxStars = Math.ceil((effSrMax / rateFactor + 0.06) * 100) / 100;
+    if (maxPp != null) {
+      let accFactorMin = accFactorMax;
+      if (scenario.misses > 0) {
+        // Safe lower bound of post-miss accuracy for beatmaps with >= 50 objects
+        const minAccAfterMiss = Math.max(0, rawAcc - scenario.misses / 50);
+        accFactorMin = Math.max(0, 5 * (minAccAfterMiss * maFactor) - 4);
+      }
+      if (accFactorMin > 0.05) {
+        const kMin = 8.0 * accFactorMin * 1.0 * modMult;
+        if (kMin > 1e-6) {
+          const effSrMax = 0.15 + Math.pow((maxPp + 0.5) / kMin, 1 / 2.2);
+          maxStars = Math.ceil((effSrMax / rateFactor + 0.06) * 100) / 100;
+        }
       }
     }
 
