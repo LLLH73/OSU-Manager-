@@ -4,6 +4,19 @@ All notable changes to **OSU!Downloader! (`osu-4k-dual-downloader`)** will be do
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.0] - 2026-11-24
+
+### Added
+- **PP 计算自定义黄彩比滑块与数值输入窗**（`src/utils/pp.ts`, `src/components/PpCalculatorPanel.tsx`）：
+  - 新增「自定义黄彩比 (彩300 : 黄300)」控制卡片，提供连续滑动条（`0–20`，步进 `0.1`）与同步数值输入框（`0–999`，带 `: 1` 后缀及一键「直算」清除），实时显示双视角比值（`彩:黄` / `黄:彩`）、彩 300 占比与折算准度，并修复 `maRatio = 0` 的全黄边界计算。
+- **Lazer 风格星数上下界双滑块 `StarRangeSlider`**（`src/components/StarRangeSlider.tsx`, `src/components/FilterPanel.tsx`）：
+  - 在搜索筛选面板常驻 Lazer 选歌风格官方光谱双滑块（`0.0★–10.0★+ / ∞`），支持指针捕获双柄自由拖动设定下界/上界、键盘微调、点击星数胶囊精准编辑与一键复位，并移除「高级筛选」中冗余的纯数字星数输入框。
+- **给定 / 自定义情景下的大致 PP 范围筛选**（`server/pp.ts`, `server/search.ts`, `server/index.ts`, `server/types.ts`, `src/types.ts`, `src/components/FilterPanel.tsx`, `src/components/BeatmapCard.tsx`, `src/components/BeatmapListRow.tsx`, `src/components/LazerSongSelect.tsx`, `src/components/BeatmapDetailModal.tsx`, `src/components/FastBatchModal.tsx`, `src/App.tsx`）：
+  - 在筛选主栏右侧新增「大致 PP」上下限输入与悬浮「情景」配置浮层（含常用 PP 区间、8 组给定情景预设、自定义准度/倍速/黄彩比/Miss/Mod 与「含未上架谱面」模拟选项）；
+  - 后端新增 `server/pp.ts` 分析反推公式 `deriveStarBoundsFromPpFilter()`，自动将情景 PP 区间换算为上游 `osu.direct` / `Sayobot` 星数与状态过滤范围后再按单难度精确匹配，并使列表 `.chip-pp`、Lazer 难度行及详情计算器实时响应当前筛选情景。
+- **左侧栏一键启动 osu!stable / osu!lazer**（`server/config.ts`, `server/library.ts`, `server/installer.ts`, `server/index.ts`, `src/api.ts`, `src/components/SideRail.tsx`, `src/App.tsx`）：
+  - 新增 `POST /api/game/launch` 接口与 `SideRail`「启动 Stable」「启动 Lazer」按钮：启动前自动检测已运行进程并优先切至前台以防 `osu!stable` 弹出双开警告，未运行时脱离启动并在缺失路径时引导至设置面板；同步优化 `SideRail` 与 `FilterPanel` 垂直间距，确保 `1280×720` 与 `1040×680` 下无滚动遮挡与按钮文字裁切。
+
 ## [1.5.0] - 2026-11-23
 
 ### Added

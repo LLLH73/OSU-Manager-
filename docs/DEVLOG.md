@@ -4,6 +4,46 @@
 
 ---
 
+## Session 9 — PP 自定义黄彩比、Lazer 星数双滑块、情景化大致 PP 筛选与侧栏双端启动器 (`v1.6.0`)
+
+- **日期**：2026-11-24
+- **对话 ID**：`0f9e8be2-483f-48f5-a728-b5ae61581742`
+- **版本**：`v1.5.0` → `v1.6.0`
+- **关联提交**：`6f06345`
+
+### 本次需求
+1. **PP 计算自定义黄彩比**：在 PP 计算器中支持自定义黄彩比，通过滚动条与数值输入窗口同步调节。
+2. **Lazer 风格星数上下界双滑块**：将筛选面板中的星数筛选升级为类似 `osu!lazer` 选歌页面上方的光谱双滑块，支持拖动下界与上界滑块设定范围。
+3. **给定 / 自定义情景下的大致 PP 范围筛选**：支持按默认或自定义情景（准度 / 倍速 / 黄彩比 / Miss / Mod / 模拟上架）的大致 PP 范围进行谱面筛选。
+4. **左侧栏「启动 Stable」与「启动 Lazer」按钮**：在左侧栏添加并实现一键启动 `osu!stable` 与 `osu!lazer` 客户端功能。
+
+### 关键实现
+1. **PP 计算自定义黄彩比滑块与数值输入窗**（`src/utils/pp.ts`, `src/components/PpCalculatorPanel.tsx`）：
+   - 修复 `calculateBeatmapPp` 对 `maRatio === 0`（全黄 300）的边界判断（改为 `maRatio >= 0`），并新增 `extractPpScenarioFromFilters`、`isDefaultPpScenario`、`formatPpScenarioShort` 与支持自定义情景的 `getBeatmapsetPpBadge`。
+   - 在 `PpCalculatorPanel` 新增独立「自定义黄彩比 (彩300 : 黄300)」控制卡片：连续滑块（`0–20`，步进 `0.1`）、同步数值输入窗（`0–999`，带 `: 1` 后缀与清空回「直算」按钮）、双视角实时换算提示（`彩:黄 X:1 · 黄:彩 1:X · 彩占 XX% · 折算准度`）以及快捷档位（`直算` / `1:1` / `2:1` / `3:1` / `5:1` / `8:1` / `全彩`），同时支持从当前筛选条件同步 `initialScenario`。
+2. **Lazer 光谱星数双滑块 `StarRangeSlider`**（`src/components/StarRangeSlider.tsx`, `src/components/FilterPanel.tsx`）：
+   - 复刻 `osu!lazer` 选歌顶部光谱条（`0.0★–10.0★+ / ∞`），使用 `getStarSpectrum` 生成固定光谱并用 `clip-path` 突出选中区间，支持指针捕获双柄拖拽（消除重叠死区）、键盘微调、点击左右星数胶囊精准输入与一键复位，拖拽松手即自动触发检索；同步移除「高级筛选」内原有的纯数字星数输入框。
+3. **情景化大致 PP 范围筛选（前端浮层 + 后端反推过滤）**（`server/types.ts`, `src/types.ts`, `server/pp.ts`, `server/search.ts`, `server/index.ts`, `src/components/FilterPanel.tsx`, `src/components/BeatmapCard.tsx`, `src/components/BeatmapListRow.tsx`, `src/components/LazerSongSelect.tsx`, `src/components/BeatmapDetailModal.tsx`, `src/components/FastBatchModal.tsx`, `src/App.tsx`）：
+   - 在 `SearchFilters` 扩展 `minPp`、`maxPp`、`ppAccuracy`、`ppRate`、`ppMisses`、`ppMaRatio`、`ppClassic`、`ppEz`、`ppNf`、`ppIncludeUnranked`。
+   - 新增 `server/pp.ts` 镜像计算逻辑与 `deriveStarBoundsFromPpFilter()`：根据设定情景与 PP 上下界反推出匹配星数范围并集约默认上架状态，在上游 `osu.direct` / `Sayobot` 查询前精准收窄星数与状态区间，再按单难度 `Math.round(pp)` 执行后置精确过滤与高亮标注；不可达条件（如 Mania 准度 `< 80%`）直接短路返回空结果。
+   - 在 `FilterPanel` 主栏右侧增加紧凑「大致 PP」范围输入与悬浮「情景」配置浮层（含常用 PP 区间、8 组给定情景预设、自定义准度/倍速/黄彩比/Miss/Mod 与「含未上架谱面」开关），保证在 Lazer 视图下展开浮层不挤压选歌区域；列表卡片 `.chip-pp`、Lazer 难度行及详情计算器自动联动当前筛选情景（卡片徽章继续严守仅 `ranked`/`approved` 显示）。
+4. **左侧栏「启动 Stable」「启动 Lazer」与后端进程拉起**（`server/config.ts`, `server/library.ts`, `server/installer.ts`, `server/index.ts`, `src/api.ts`, `src/components/SideRail.tsx`, `src/App.tsx`）：
+   - 导出 `detectLazerExePath()` 并在 `LocalLibraryStatus` 增补 `stableExeExists`；新增 `launchGameClient('stable' | 'lazer', cfg)` 与 `POST /api/game/launch` 接口：启动前先调用 `detectRunningClients(true)`，若客户端已在运行则尝试切回前台（避免 `osu!stable` 弹出双开警告），未运行时以客户端目录为 `cwd` 分离启动进程并附带 `error` 事件保护与 `cmd start` 兜底，随后在 `1.5s` / `4s` 自动刷新 SSE 曲库运行状态。
+   - 在 `SideRail`「本地曲库」区块下方增设并排极简「启动 Stable」「启动 Lazer」按钮，并收紧侧栏与筛选栏垂直间距以确保 `1280×720` 与 `1040×680` 下无需滚动即可完整点击。
+
+### 验证记录
+- **类型检查与打包**：`npm run typecheck` 与 `npm run electron:pack`（`v1.6.0`）全部退出码 `0` 通过，重新生成 `release\win-unpacked\osu-4k-downloader.exe`。
+- **隔离后端接口与 PP 筛选验证**（端口 `3728`，隔离临时数据目录）：
+  - 验证 `/api/library/status` 包含 `stableExeExists`；`POST /api/game/launch` 非法参数返回 `400`、缺失路径返回 `ok: false` 提示、虚拟 `osu!.exe` 存根正常拉起返回 `ok: true`；
+  - 验证不可达 PP 条件（`minPp=300&ppAccuracy=70`）直接短路返回 `0` 条结果；
+  - 验证 `GET /api/search?mode=3&keys=4&minPp=300&maxPp=420&ppAccuracy=98&ppRate=1.2&ppMaRatio=3&limit=12` 返回 `12` 套 Ranked 谱面、校验 `14` 个匹配难度 `allMatchValid: true`。
+- **多分辨率实时浏览器验收**（`http://127.0.0.1:3728`，`1440×900` / `1280×720` / `1040×680`，`0` 控制台错误）：
+  - `1440×900`：验证 `StarRangeSlider`（`3.5★–5.5★` 过滤与重置）、`大致 PP`（`300–450pp` + `黄彩比 3:1`）精准筛选、`BeatmapDetailModal` → `PpCalculatorPanel` 自定义黄彩比输入 `2.5`（`177pp → 160pp`，`折算准度 96.25%`）与滑块双向联动（`2.6:1`）、以及点击「启动 Stable」正确触发 `/api/game/launch` 并弹出设置引导提示。
+  - `1280×720` & `1040×680`（针对首轮测试发现的按钮截断与侧栏底部遮挡收紧布局后复测）：`SideRail` 未滚动时「启动 Stable」「启动 Lazer」底边 `511.67px` 均清晰位于底栏上方（`1280×720` 留白 `65.14px`、`1040×680` 留白 `25.14px`）；情景按钮 `NM 98%·3:1` 宽度 `122.66px` 无裁切；Lazer `<main>` `mainDidScroll=false` 且 `.cover-frame` 高度分别为 `115.19px` / `108.80px`。
+- **打包产物冒烟与现场清理**：以 `OSU_DL_DATA_DIR=d:\Code\osumapdownloader\data` 在临时端口 `3729` 启动 `release\win-unpacked\osu-4k-downloader.exe`，`GET /api/health` 返回 `{"ok":true,...}`；关闭测试进程并清理临时目录后，`3721`/`3728`/`3729` 端口监听数均为 `0`，用户 `data/config.json` 完整保留。
+
+---
+
 ## Session 8 — Lazer 难度平滑动效、列表详情滚动提速、120% 默认字号与快速批量下载/IPv6 加速 (`v1.5.0`)
 
 - **日期**：2026-11-23 ~ 2026-11-24

@@ -47,11 +47,12 @@
 | `server/logger.ts` | 零依赖结构化运行日志，输出至控制台与 `data/logs/server.log`（>2 MB 自动轮转至 `.1`），提供 `readRecentLogs()` |
 | `server/sources.ts` | 7 个下载镜像定义：`sayobot-auto`, `sayobot-txy`, `nekoha`, `osudirect`, `beatconnect`, `nerinyan`, `official` |
 | `server/network.ts` | `undici` 多 IP 协议族直连（DNS 缓存 + IPv6 优先/双栈 Happy Eyeballs）/代理路由、`6174` 端口 TCP 探测、并发镜像测速 `benchmarkMirrors()` |
-| `server/search.ts` | `osu.direct` 主搜索 + Sayobot 故障转移、官网 URL/ID 直达、LN% 估算与过滤、本地状态注入 |
+| `server/search.ts` | `osu.direct` 主搜索 + Sayobot 故障转移、官网 URL/ID 直达、LN% 估算、PP 情景反推星数与精确过滤、本地状态注入 |
+| `server/pp.ts` | 后端 PP 计算引擎（与前端一致的 Mania/通用公式）与 `deriveStarBoundsFromPpFilter()` 星数区间反推 |
 | `server/downloader.ts` | 并发下载队列、Magic Bytes (`PK\x03\x04`) 流首检测、自动切源重试、SSE 实时推送 |
 | `server/fastBatch.ts` | 快速跨页批量下载引擎：多镜像并发负载均衡、自动跨页扫描补齐目标数、跳过已装、IPv6/直连分流、Lazer 15 首合并 IPC 导入与节流 SSE 推送 |
-| `server/installer.ts` | `.osz` ZIP 校验 (`adm-zip` 与 `verifyOszFileFast` 尾目录异步速检)、Stable 解压/直投 `.osz`（`fastInstallToStable`）/运行期临时 IPC、Lazer 极速暂存/批量导入/运行加载 |
-| `server/library.ts` | Stable `Songs` 扫描、Lazer `client.realm`/`online.db`/`files` 哈希扫描缓存、进程检测、双端差异比对 |
+| `server/installer.ts` | `.osz` ZIP 校验 (`adm-zip` 与 `verifyOszFileFast` 尾目录异步速检)、Stable 解压/直投 `.osz`（`fastInstallToStable`）/运行期临时 IPC、Lazer 极速暂存/批量导入/运行加载、`launchGameClient()` 客户端拉起 |
+| `server/library.ts` | Stable `Songs` 扫描、Lazer `client.realm`/`online.db`/`files` 哈希扫描缓存、进程检测（含 `stableExeExists` / `lazerExeExists`）、双端差异比对 |
 | `server/media.ts` | 封面图与 MP3 音频试听代理 + 本地磁盘 LRU 裁剪缓存 |
 | `server/preview.ts` | Mania `.osu` 解析（红线 BPM + 绿线 SV + Barline + NPS 密度）、本地/ZIP/`cache/osz` 音源查找、`206 Range` 音频流与背景图输出 |
 | `server/skins.ts` | 扫描 `D:\OSU\Skins` 与 `osu!.<user>.cfg` 激活皮肤、解析 `[Mania]` `skin.ini`、内置 3 套皮肤、PerCy 超长 LN PNG 无损前 2048 行扫描线裁切 (`cropPngTopRows`) |
@@ -59,9 +60,9 @@
 #### 主要 HTTP / SSE 接口
 - 健康与日志：`GET /api/health`、`GET /api/logs?lines=120`
 - 配置与网络：`GET /api/config`、`PUT /api/config`、`POST /api/config/background`、`DELETE /api/config/background`、`GET /api/network/status`、`POST /api/network/benchmark`
-- 搜索与媒体：`GET /api/search`、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`、`GET /api/media/custom-bg`
+- 搜索与媒体：`GET /api/search`（含 `minPp`/`maxPp`/`ppAccuracy`/`ppRate`/`ppMisses`/`ppMaRatio`/`ppClassic`/`ppEz`/`ppNf`/`ppIncludeUnranked`）、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`、`GET /api/media/custom-bg`
 - 预览与皮肤：`GET /api/preview/beatmapset/:setId`、`GET /api/preview/beatmapset/:setId/chart/:index`、`GET /api/preview/beatmapset/:setId/audio/:index`、`GET /api/preview/beatmapset/:setId/bg/:index`、`GET /api/skins`、`GET /api/skins/:skinId/mania`、`GET /api/skins/:skinId/asset`
-- 本地曲库、Lazer 与游戏加载：`GET /api/library/status`、`POST /api/library/rescan`、`GET /api/library/diff`、`POST /api/library/sync-to-lazer`、`POST /api/library/open-folder`、`GET /api/lazer/pending`、`POST /api/lazer/import-pending`、`DELETE /api/lazer/pending`、`POST /api/game/load`
+- 本地曲库、Lazer 与游戏加载/启动：`GET /api/library/status`、`POST /api/library/rescan`、`GET /api/library/diff`、`POST /api/library/sync-to-lazer`、`POST /api/library/open-folder`、`GET /api/lazer/pending`、`POST /api/lazer/import-pending`、`DELETE /api/lazer/pending`、`POST /api/game/load`、`POST /api/game/launch`
 - 下载、快速批量与实时推送：`GET /api/downloads`、`POST /api/downloads`、`POST /api/downloads/batch`、`POST /api/downloads/:id/cancel`、`POST /api/downloads/:id/retry`、`DELETE /api/downloads/completed`、`GET/POST /api/fast-batch/(status|start|pause|resume|stop|clear)`、SSE `GET /api/events`（事件：`downloads`, `network`, `library`, `fast-batch`）
 
 ### 3.3 前端界面 (`src/`, React 19 + Vite 6 + Tailwind CSS v4)
@@ -72,20 +73,21 @@
 | `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠持久化、主题/视图模式持久化、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
 | `src/constants.ts` | 8 套主题元信息 (`THEME_OPTIONS`)、10 组强调色预设、`DEFAULT_FONT_SCALE = 1.2`、视图选项、工作流预设、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()`、统一 LN% 语义函数 `getLnCategory()` |
 | `src/utils/themeColor.ts` | Canvas 24-bin 色相主色调提取器 (`extractDominantColor`) 与动态强调色 CSS 变量推导/应用 (`deriveAccentVariables`, `applyAccentVariables`, `clearAccentVariables`) |
-| `src/utils/pp.ts` | Ranked PP 准度制计算引擎 (`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `isRankedForPp`) |
+| `src/utils/pp.ts` | Ranked PP 准度制计算引擎 (`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `extractPpScenarioFromFilters`, `formatPpScenarioShort`, `isRankedForPp`) |
 | `src/utils/maniaEngine.ts` | osu!mania Canvas2D 轨道渲染器（480p 坐标、BPM+SV 时间轴、PerCy `NoteBodyStyle` 0/1/2）与右侧滚动缩略图绘制引擎 |
-| `src/api.ts` | 前端 REST 封装（含自定义壁纸、IPv6 网络状态与快速批量下载接口） |
+| `src/api.ts` | 前端 REST 封装（含自定义壁纸、IPv6 网络状态、快速批量下载与游戏客户端启动接口） |
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
 | `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏折叠按钮、单色粗线图标 `LaneEmblem` + `OSU!Downloader!`、浮窗开关、8 主题分组弹窗、代理 6174、镜像延迟、窗口控制） |
-| `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、快速批量入口、队列与设置入口） |
-| `src/components/FilterPanel.tsx` | 可收起/展开的搜索框、高频词条、基础筛选、高级数值/LN% 筛选（Lazer 模式下高级筛选采用悬浮毛玻璃浮层以免挤压选歌区） |
+| `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
+| `src/components/StarRangeSlider.tsx` | Lazer 选歌风格官方光谱星数上下界双滑块组件（`0.0★–10.0★+ / ∞`，指针捕获拖拽、键盘微调与点按编辑） |
+| `src/components/FilterPanel.tsx` | 可收起/展开的搜索框、高频词条、基础筛选、Lazer 星数双滑块 + 情景化大致 PP 范围筛选浮层与高级数值/LN% 筛选（Lazer 模式下均采用悬浮层以免挤压选歌区） |
 | `src/components/BeatmapCard.tsx` | `grid` 卡片网格单卡（`memo` + `.song-grid-card` `content-visibility: auto`，含 Ranked `~XXXpp` 与已装 Mania 预览入口） |
 | `src/components/BeatmapListRow.tsx` | `list` 紧凑列表单行（`memo` + `.song-list-row` `content-visibility: auto` 无冗余模糊层，含 Ranked `~XXXpp` 与已装 Mania 预览入口） |
 | `src/components/LazerSongSelect.tsx` | `lazer` osu!lazer 弧形选歌轮盘 + 左侧楔形展示（支持 `hasGlobalBg` 全窗背景穿透、头部纯倾向标签 `单键 Rice`/`综合 Hybrid`/`长条 LN`）+ 右侧平滑左移交错难度列表（`LN XX%`）+ 「回到选中 ↑/↓」「回到顶部」悬浮导航 + 滚底自动加载 + 键盘导航 |
 | `src/components/ManiaPreviewModal.tsx` | Mania 谱面实时预览弹窗（自适应 120%–125% 字号布局、皮肤切换、流速/倍速/方向、Canvas2D 轨道、右侧可滑缩放缩略图、NPS 可拖进度条） |
 | `src/components/MarqueeText.tsx` | 基于全局共享单例 `ResizeObserver` 的单行溢出往返平滑跑马灯组件（右缘渐隐，支持 `always` / `group-hover` 与减少动态偏好） |
 | `src/components/OverlayApp.tsx` | macOS 毛玻璃游戏内浮窗（红黄绿灯折叠、Spotlight 搜索、实时下载/加载、透明度调节） |
-| `src/components/PpCalculatorPanel.tsx` | 交互式 PP 情景估算计算器（准度/Miss/倍速/Mod/MA比/未上架模拟） |
+| `src/components/PpCalculatorPanel.tsx` | 交互式 PP 情景估算计算器（准度/倍速/自定义黄彩比滑块+输入窗/Miss/Mod/未上架模拟） |
 | `src/components/AudioPlayerBar.tsx` | `pbakaus/impeccable` 风格底部浮动胶囊音频试听栏（圆形封面、`2px` 细滑轨与自适应左侧栏折叠居中偏移） |
 | `src/components/BeatmapDetailModal.tsx` | 谱面完整详情（`max-w-[960px]`、`overscroll-contain` + GPU 合成滚层）、全难度表（含 `大致 PP` 列、`Rice · LN XX%`/`Hybrid · LN XX%` 完整展示与单难度预览入口）、内嵌 PP 计算器、标签搜索、单独指定源下载 |
 | `src/components/DownloadDrawer.tsx` | 下载任务队列（含完成态预览/再加载按钮）与 Lazer 待导入队列批量导入抽屉 |
