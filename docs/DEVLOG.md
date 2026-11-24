@@ -4,6 +4,86 @@
 
 ---
 
+## Session 14 — 左侧栏 Book 模式入口与 RhineLabUI 风格 3D 本地曲库档案库 (`v1.7.0`)
+
+- **日期**：2026-11-24
+- **对话 ID**：`fa7e8a34-bada-4c8a-9083-8a97a5691139`
+- **版本**：`v1.7.0`（增量功能）
+- **需求来源**：在左侧栏添加 Book 模式入口并新增 Book 模式：将本地已安装的每首 Song 包装为 3D 书脊长方体陈列在档案库中，书脊截取封面局部并叠加轻微模糊；参考 `LBEILC/RhineLabUI` 美术与动效，悬停时平滑半抽出且周围书籍按距离递减联动微抽；点击选中后完全抽出并翻开内页（难度、历史成绩、游玩次数、PP 等），取消选中后播放放回动画。
+- **实现要点**：
+  1. **零原生依赖双端本地曲库聚合与 Realm 读取**（`server/realmReader.ts`、`server/localLibrary.ts`、`server/types.ts`、`server/index.ts`）：
+     - 自研只读 Realm v24 (`T-DB`) 二进制解析器 `readLazerRealmData`（带文件锁临时拷贝回退），读取 `client.realm` 中的谱面集、难度、元信息、文件映射、规则集、用户与成绩记录；解析 `osu!.db`（兼容 `>=20250107` 浮点数星数词典）、未入库 `Songs/` 目录与 `scores.db`。
+     - 延迟按需解析 `.osu` `[Events]` 背景图（`/api/books` 冷构建 `435ms` 聚合 `757` 本 Book 与 `7,094` 条游玩记录）；提供魔数 MIME 嗅探封面输出与建筑线框 SVG 回退、音频 `206 Range` 流式播放、去重成绩与 Mania PP / MA 比计算。
+  2. **RhineLabUI 视觉动效与 Three.js 3D 书架舞台**（`src/components/book/rhineMotion.ts`、`src/components/book/BookTextureManager.ts`、`src/components/book/BookArchiveScene.ts`）：
+     - 实现临界阻尼弹簧与相邻书脊高斯递减悬停抽出波（`computeHoverWaveLift`）；Canvas 贴图截取封面片段施加 `6-7px` 模糊并叠加磨砂釉面、`NO.XXX` 索引与琥珀色标尺线，支持 LRU 缓存、并发限流与瓷器白/曜石黑动态切换。
+     - 通过 `RoomEnvironment`/`PMREMGenerator` 灯光、斜向长焦相机、拖拽/滚轮/射线拾取、视口虚拟化以及 `HeroBookRig` 翻页状态机（抽出 → 翻开 → 闭合 → 放回）呈现完整 3D 体验，并兼容无 WebGL 回退模式。
+  3. **档案库界面、打开双页 Spread 与左侧栏入口**（`src/components/book/BookArchiveMode.tsx`、`src/components/book/BookSpreadOverlay.tsx`、`src/components/SideRail.tsx`、`src/App.tsx`、`src/index.css`）：
+     - 在 `SideRail` 顶部新增「工作区模式（搜图下载 | Book 模式）」与「进入 Book 档案库」入口并收紧间距以确保 `1280×720` 零裁剪展示；切换至 Book 模式后暂停搜图试听条并锁定 `<main>` 全画布渲染，内置 2.5D 回退架位与磨砂 `ACCESS BOOK` 卡片。
+     - 在 `.rhine-book-root` 内渲染双页展开内页（左页：封面、游玩次数、最高 PP / 评级与本地音频播放/加载入游戏/打开目录；右页：`01 难度一览`、`02 历史成绩`含 `SelectField` 筛选与 MA 比、`03 曲目详档`含评级分布与标签）。
+- **验证结果**：
+  - `npm run typecheck` 通过（exit code 0）；`npm run electron:pack` 重新打包 `release\win-unpacked\osu-4k-downloader.exe` 通过（exit code 0）。
+  - 对本地实库 HTTP API 验证 `/api/books` 返回 `757` 本 Book（`391` Stable / `597` Lazer / `231` 双端 / `610` 已游玩、`7,094` 条游玩记录、最高 `320.1pp`），封面/SVG 回退与音频 `206 Range` 均返回 `200`/`206`。
+  - 真实浏览器在 `1440×900` 与 `1280×720` 分辨率、瓷器白（浅色）与曜石黑（深色）主题下完成 Book 模式进入、悬停联动波、点击抽出翻开、三标签切换、关书放回及搜图下载 `Lazer` 视图回归检查：0 控制台/页面报错，0 `/api/books/*` 404。
+
+### 追加优化（9 项视觉、动效与性能优化）
+- **新增 / 改造组件**：`src/components/book/RhineLoadingVeil.tsx`、`BookTextureManager.ts`、`BookArchiveScene.ts`、`BookSpreadOverlay.tsx`、`BookArchiveMode.tsx`、`src/index.css`。
+- **核心改动**：
+  1. **书脊排版强化**：侧脊贴图升至 `144×640`，编号（`22px` Bold）与曲名（`30px` ExtraBold + 描边轮廓光晕）显著放大加粗；顶部横脊 `512×72` 同样放大加粗，并**移除顶部封面图**改用纯粹 RhineLab 哑光瓷白/深灰盒体与琥珀索引镶边。
+  2. **重度缩采样高斯模糊与点选渐清**：书脊侧面与正封面改用双阶段缩采样高斯模糊（`blurCanvasA/B` 离线重度虚化，主线程单帧 `<0.2ms`）；`HeroBookRig` 叠加模糊+高清双层封面平面，抽出过程中逐步提升清晰度并联动内页 `.rhine-spread-cover-img` 完成 `18px -> 0px` 澄清动画。
+  3. **远景雾化模糊与淡入淡出**：所有书架 Slot 材质注入共享 `#include <fog_fragment>` `uSlotFade` 着色器淡入/淡出（边缘平滑溶入雾色），配合顶部 `.rhine-distance-mist` 渐隐模糊遮罩。
+  4. **前后档案循环与持久化**：支持 `physRow` 无边界循环浏览（`NO.001` 向前直接衔接末尾 `NO.757`，`rebaseCoordinatesIfNeeded` 自动平移坐标防精度衰减）；`SlotMeshEntry` 实行对象池化复用（取消滚动期 WebGL 材质销毁重建）、图片 `img.decode()` + 分帧绘制预算队列（`processPaintQueue` 限制每帧 ≤2 本 / 3.5ms），彻底消除滚动/切换/关闭放回卡顿。
+  5. **RhineLabUI 加载界、视角中键控制、可收起浮卡与筛选过渡**：新增 `RhineLoadingVeil` 覆盖进入 Book 模式、主题校准（异步分批重绘书脊）与手动刷新扫描；支持鼠标中键平移/倾角调节观察视角（双击中键或点击底栏「重置视角」复位）；右中 `ACCESS BOOK` 预览卡新增「收起 / 展开预览」侧边页签并持久化至 `localStorage`；切换 Stable/Lazer/排序等筛选时播放 `RhineFilterTransitionHud` 扫描条与阶梯落雾升起转场。
+- **二次验证结果**：
+  - `npm run typecheck` 通过（exit code 0）；`npm run electron:pack` 重新打包 `release\win-unpacked\osu-4k-downloader.exe` 通过（exit code 0）。
+  - 真实浏览器（`1440×900` 与 `1280×720`）实测通过：进入加载页（`82% SYNC`）、无封面顶面+大号粗体书脊、悬停波与模糊封面、向上按键从 `NO.001` 循环至 `NO.756`、`Stable (391)`/`Lazer (597)`/`全部 (757)` 筛选、鼠标中键移动视角与「重置视角」、右中预览卡收起为侧边页签/展开、打开 `01/03` 双页内页与 `ESC` 放回、`曜石黑` 主题切换校准加载界及搜图 `Lazer` 视图回归均正常；全程 0 控制台/页面报错，0 `/api/books/*` HTTP 错误。
+
+### 三次迭代（纯垂直悬停、仿下载页高级筛选 & 无字平铺毛玻璃视图）
+- **新增 / 修改文件**：`src/components/book/bookFilters.ts`、`src/components/book/BookFilterPanel.tsx`、`src/components/book/BookMosaicView.tsx`、`src/components/book/BookArchiveScene.ts`、`src/components/book/BookArchiveMode.tsx`。
+- **核心改动**：
+  1. **修复悬停倾斜突兀感**：移除 `BookArchiveScene.ts` 悬停波浪的 `slot.mesh.rotation.x` 倾角计算（改为固定 `0`），使悬停与邻书肩部起伏严格沿竖直 `+Y` 方向平滑上下抽出。
+  2. **仿下载页高级筛选矩阵**：新增 `bookFilters.ts` 与可折叠悬浮面板 `BookFilterPanel.tsx`，复用下载页 `StarRangeSlider`、`PpRangeSlider`、`SelectField` 与高频词条标签，覆盖本地来源/游玩状态、游戏模式、键数（4K–10K/其他）、谱面状态、最高评级、星数与 PP 范围（含「仅 Ranked PP」）、BPM、时长、LN%（Rice/Hybrid/LN 速选）、谱师过滤及 8 维度升/降序排序。
+  3. **实验原型确认 + 平铺毛玻璃视图正式接入**：先生成交互样品 `frosted-mosaic-prototype.html` 确认用户选定的 **方案 A · 柔和光学窗** 与 **毛玻璃虹膜叠化 (`frost-iris`)** 翻页动效，再构建正式组件 `BookMosaicView.tsx`（默认仍保持 `3D 书脊`，顶部新增 `3D 书脊 | 平铺毛玻璃` 切换）。每页封面零文字、无缝平铺拼接、相邻边界混色并整页双层高斯模糊，中心矩形保留高清锐利显示（悬停微扩 `+0.12`），支持 `3×2`/`4×2`/`4×3`/`5×3` 网格与虹膜闭环翻页，点击封面直接打开双页 `BookSpreadOverlay`。
+  4. **视觉与缩放细节修复**：为 `BookMosaicView` 补充 `ResizeObserver` 同步重绘以消除 `1440×900 -> 1280×720` 切换瞬间的白板闪屏，并将顶栏「高级筛选」激活态改用 `rhine-solid-btn` 以保证瓷器白/曜石黑高对比度。
+- **验证结果**：
+  - `npm run typecheck` 通过（exit code 0）；`npm run electron:pack` 重新打包 `release\win-unpacked\osu-4k-downloader.exe` 通过（exit code 0）。
+  - 真实浏览器（`1440×900` 与 `1280×720`）复测通过：`3D 书脊` 悬停垂直抽出端正、`3–5★` 筛选精准收敛至 `699 / 757` 本（激活按钮文字清晰）、`平铺毛玻璃` 瓷器白/曜石黑与虹膜翻页（`01 -> 02 / 64 页`）、点击打开详情页及 `平铺 <-> 3D` 往返无卡死、搜图下载视图正常，且 `1280×720` 视口缩放瞬间画布完整无白屏；0 控制台报错、0 页面异常、0 `/api/books*` 错误。
+
+---
+
+## Session 13 — PP 情景主/副词条分栏层级升级与 Filter 存档右侧栏（含浏览位置与上下文恢复）(`v1.7.0`)
+
+- **日期**：2026-11-24
+- **对话 ID**：`f07d7fe0-7f66-4f92-8df8-5c59ea9782f4`
+- **版本**：`v1.6.3` → `v1.7.0`
+
+### 本次需求
+1. **PP 情景主/副词条清晰区分**：在 PP 情景设置中将 `NM / DT / HT / 变速 / 自定义` 主词条与其对应的副词条组合明显区隔，不再仅靠上下按钮堆叠。
+2. **Filter 存档功能与默认收起右侧栏**：新建默认收起的右侧栏以保存并管理搜索状态（筛选选项、搜索框内容、存档名称、创建时间、可选「当前页面浏览位置与前后上下文」），支持下一次加载时自动定位到保存的谱面与上下文。
+
+### 关键实现
+1. **PP 情景主从分栏共享组件**（`src/utils/pp.ts`, `src/components/PpScenarioLibrary.tsx`, `src/components/FilterPanel.tsx`, `src/components/PpCalculatorPanel.tsx`）：
+   - 扩展 `PP_SCENARIO_CATEGORY_META`（`code`, `subtitle`, `tone` 色系标识）与 `PpScenarioPreset`（`primaryText` 与 `secondaryText`），剥离副词条重复的 `NM`/`DT`/`HT` 前缀；
+   - 新建 `PpScenarioLibrary` 采用左右主从分栏（Master-Detail Split）：左侧为垂直主模式轨道（3px 模式色条、加粗模式名、副标题与当前生效模式指示圆点），右侧为独立抬升表面的副词条详情面板（顶部主模式彩色徽章 + 数量、双列/三列分栏瓦片及自定义存档卡片）；同步接入 `FilterPanel` 浮层与 `PpCalculatorPanel` 计算器。
+2. **Filter 存档后端持久化与 REST API**（`server/types.ts`, `src/types.ts`, `server/filterArchives.ts`, `server/index.ts`, `src/api.ts`）：
+   - 新增 `FilterArchive` 与 `FilterArchiveBrowsePosition`（含 `anchorBeatmapsetId`, `anchorBeatmapId`, `anchorIndex`, `batchUpstreamOffset`, `contextBeatmapsetIds`, `contextSnapshot` 等）；
+   - 新建 `server/filterArchives.ts` 原子读写 `data/filter-archives.json`（上限 100 条、置顶优先排序、遵循 `OSU_DL_DATA_DIR` 隔离）；在 `server/index.ts` 与 `src/api.ts` 注册并封装 `GET/POST/PUT/DELETE /api/filter-archives`。
+3. **默认收起右侧栏、浏览位置捕获与上下文恢复**（`src/utils/filterArchive.ts`, `src/components/FilterArchiveRail.tsx`, `src/components/TitleBar.tsx`, `src/components/LazerSongSelect.tsx`, `src/components/BeatmapCard.tsx`, `src/components/BeatmapListRow.tsx`, `src/components/AudioPlayerBar.tsx`, `src/App.tsx`, `src/index.css`）：
+   - `TitleBar` 新增对称「存档」开关（默认收起态 `osu4k-archive-rail-collapsed = true`），`FilterPanel` 展开/收起态均新增快捷 `存档` 按钮并自动聚焦命名输入框；
+   - `FilterArchiveRail` 展示筛选摘要、搜索框关键词、创建时间、可选「保存当前浏览位置与上下文」（附实时锚点预览），支持置顶、内联重命名、覆盖更新、两步安全删除与关键词过滤；
+   - `App.tsx` 恢复带位置存档时：浅层自动翻页定位、深层（`batchUpstreamOffset > 48`）按 `max(0, batchUpstreamOffset - 24)` 回退窗口拉取上下文并在顶部提供「向上加载更早谱面 / 回到第 1 页」条；`LazerSongSelect` 静默定位目标曲目与难度，`grid`/`list` 视图平滑居中滚动并施加 `.card-locate-pulse` 高亮；若原曲变动则自动降级定位至相邻上下文并提供「查看原谱面」详情入口；
+   - 响应式与层级优化：右侧栏在 `2xl:`（`>= 1536px`）内联停靠、`<= xl` 采用根节点 `z-50` 右侧覆盖抽屉（同时将左侧窄屏抽屉移至根节点 `z-50` 彻底解决被 `TitleBar` 遮挡问题），`<main>` 补充 `min-w-0` 防止横向撑开溢出。
+
+### 验证记录
+- **类型检查与打包**：`npm run typecheck` 与 `npm run electron:pack`（`v1.7.0`）均以退出码 `0` 通过，生成更新版 `release\win-unpacked\osu-4k-downloader.exe`。
+- **REST API CRUD 持久化验证**（`http://127.0.0.1:3728`，隔离目录 `%TEMP%\osu-dl-verify-v170`）：实测 `GET / POST(201) / PUT / DELETE /api/filter-archives` 与磁盘 `filter-archives.json` 读写全部通过。
+- **多分辨率实时浏览器验收**（`http://127.0.0.1:3728`，`0` 控制台与未捕获页面错误）：
+  - **`1440×900`（`light` & `dark` 主题）**：确认右侧栏默认收起（`aria-pressed="false"`）；`FilterPanel` 浮层与 `PpCalculatorPanel` 均以左侧 `tablist` 主轨道 + 右侧副词条网格呈现并完成自定义保存/删除；实测创建纯筛选存档与 Lazer 第 2 页 `#28` (`Fly to night, tonight`) 定位存档，置顶/改名并刷新页面后持久保留；重置搜索后点「恢复并定位」准确恢复搜索词 `camellia`、48 首结果、`Fly to night, tonight` 选中态及相邻曲目；列表视图测试 `Mei (Camellia's "Yomigae" Remix)` (`#16`) 定位滚动居中并命中 `.card-locate-pulse`。
+  - **`1040×680` & `1280×720`**：确认根节点 `z-50` 右侧覆盖抽屉起始于 `y=0` 位于 `TitleBar` 之上（关闭按钮可直接命中，点击左侧遮罩、`Escape` 与关闭按钮均顺利收起），`<main>` 零横向溢出（`1040`/`1280`）且 Lazer 视图零外层滚动，PP 浮层在 `720px` 高下保持在视口内并可内滚至底部按钮。
+  - **`1600×900`（`2xl` 双侧栏同时停靠）**：左侧栏 `280px` + `<main>` `1000px` + 右侧栏 `320px` 零溢出、零裁切且 PP 浮层正常弹出。
+- **清理确认**：测试服务已关闭，临时目录 `%TEMP%\osu-dl-verify-v170` 已清理，`3721`/`3728` 端口监听数均为 `0`，真实 `data/config.json`（`D:\OSU` / `6174`）完整未动。
+
+---
+
 ## Session 12 — DT/HT/变速 PP 筛选与计算器多维情景预设库及自定义情景持久化 (`v1.6.3`)
 
 - **日期**：2026-11-24

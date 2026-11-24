@@ -4,6 +4,25 @@ All notable changes to **OSU!Downloader! (`osu-4k-dual-downloader`)** will be do
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.7.0] - 2026-11-24
+
+### Added
+- **Book 模式入口与 RhineLabUI 风格 3D 本地曲库档案库**（`server/realmReader.ts`, `server/localLibrary.ts`, `server/index.ts`, `server/types.ts`, `src/api.ts`, `src/types.ts`, `src/components/SideRail.tsx`, `src/App.tsx`, `src/index.css`, `src/components/book/*`）：
+  - **双端本地曲库深度聚合与零依赖 Realm 读取**：新增只读 Realm v24 二进制解析器 `realmReader.ts` 与本地曲库聚合器 `localLibrary.ts`，统一融合 `osu!stable`（`osu!.db`、`Songs/`、`scores.db`）与 `osu!lazer`（`client.realm`、`files/`），支持谱面与成绩跨端去重、Mania PP 估算、MA 比统计及延迟 `.osu` 背景解析（无背景时输出 RhineLab 建筑线框 SVG 回退）与 `206 Range` 本地音频直出；开放 `GET /api/books`、`GET /api/books/:bookKey`、`GET /api/books/:bookKey/cover`、`GET /api/books/:bookKey/audio` 接口。
+  - **Three.js 3D 书脊档案架与平铺毛玻璃视图 (`BookMosaicView`)**：每首本地歌曲默认以大号加粗描边书脊字样、纯哑光无封面顶面及双阶段重度高斯模糊侧脊/正面封面陈列于 3D 多通道档案架（修复悬停抽出倾斜改为严格垂直升降），支持前后档案无缝循环、Slot 对象池与分帧绘制消除卡顿、远景平滑雾化、`uSlotFade` 淡入淡出、鼠标中键移动视角、点击渐清及平滑放回动画；同步在顶部新增 `平铺毛玻璃` 视图入口，以无字无缝平铺封面配合邻界混色、**方案 A 柔和光学窗**（边缘毛玻璃柔融 + 中心清晰）与**毛玻璃虹膜叠化 (`frost-iris`)** 翻页动效呈现，点击任意封面均可打开详情内页。
+  - **加载校准遮罩、仿下载页高级筛选与双页展开内页**：在 `SideRail` 新增「工作区模式（搜图下载 | Book 模式）」与「进入 Book 档案库」入口；新增 `RhineLoadingVeil`（进入/主题校准/刷新）与筛选切换 `RhineFilterTransitionHud`；新增可折叠 `BookFilterPanel` 高级筛选矩阵（复用 `StarRangeSlider`/`PpRangeSlider`/`SelectField` 与高频词条，支持来源/模式/键数/状态/评级/星数/PP/BPM/时长/LN%/谱师与 8 维双向排序）；支持右中 `ACCESS BOOK` 浮卡收起/展开记忆；双页 Spread 展示 `01 难度一览`、`02 历史成绩` 与 `03 曲目详档`。
+- **Filter 存档功能与默认收起右侧栏（含浏览位置与上下文保存/恢复）**（`server/filterArchives.ts`, `server/index.ts`, `src/utils/filterArchive.ts`, `src/components/FilterArchiveRail.tsx`, `src/components/TitleBar.tsx`, `src/components/FilterPanel.tsx`, `src/App.tsx`）：
+  - 在标题栏新增对称「存档」开关（默认收起）并在筛选栏新增快捷 `存档` 按钮，支持 `2xl:`（`>=1536px`）内联停靠与 `<=xl` 右侧覆盖抽屉两种响应式形态。
+  - 支持将当前搜索状态（全部筛选选项、搜索框内容、存档名称、创建时间与可选「当前页面浏览位置与前后上下文」）持久化保存至 `data/filter-archives.json`，提供关键词过滤、置顶、内联重命名、覆盖更新与两步安全删除。
+  - 恢复含浏览位置的存档时，支持自动翻页或深层偏移窗口直跳并附带「向上加载更早谱面 / 回到第 1 页」上下文条，在 `Lazer`、`列表` 与 `卡片` 视图下自动定位高亮目标曲目；若原曲变动则自动降级定位至相邻上下文并提供「查看原谱面」详情入口。
+
+### Changed
+- **PP 情景预设库升级为左右主从分栏层级**（`src/utils/pp.ts`, `src/components/PpScenarioLibrary.tsx`, `src/components/FilterPanel.tsx`, `src/components/PpCalculatorPanel.tsx`）：
+  - 将 `NM 常速`、`DT 1.5x`、`HT 0.75x`、`变速 Rate` 与 `自定义` 5 个主词条独立为左侧垂直主模式轨道（带模式色条、副注与当前生效指示点），右侧独立面板展示去冗余前缀、突出准度/倍速与黄彩比/Miss 的副词条网格，清晰区隔主词条与副词条关系。
+
+### Fixed
+- **修复窄屏抽屉堆叠层级与双侧栏横向收缩**（`src/App.tsx`）：将左右窄屏抽屉移至根节点 `z-50` 层级以免顶部标题栏遮挡抽屉关闭按钮，并为 `<main>` 添加 `min-w-0` 防止双侧栏展开时横向溢出。
+
 ## [1.6.3] - 2026-11-24
 
 ### Added

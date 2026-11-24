@@ -51,8 +51,11 @@
 | `server/pp.ts` | 后端 PP 计算引擎（与前端一致的 Mania/通用公式）与 `deriveStarBoundsFromPpFilter()` 星数区间反推 |
 | `server/downloader.ts` | 并发下载队列、Magic Bytes (`PK\x03\x04`) 流首检测、自动切源重试、SSE 实时推送 |
 | `server/fastBatch.ts` | 快速跨页批量下载引擎：多镜像并发负载均衡、自动跨页扫描补齐目标数、跳过已装、IPv6/直连分流、Lazer 15 首合并 IPC 导入与节流 SSE 推送 |
+| `server/filterArchives.ts` | Filter 存档持久化管理：原子读写 `data/filter-archives.json`（上限 100 条、置顶排序、筛选条件与可选浏览位置上下文校验） |
 | `server/installer.ts` | `.osz` ZIP 校验 (`adm-zip` 与 `verifyOszFileFast` 尾目录异步速检)、Stable 解压/直投 `.osz`（`fastInstallToStable`）/运行期临时 IPC、Lazer 极速暂存/批量导入/运行加载、`launchGameClient()` 客户端拉起 |
 | `server/library.ts` | Stable `Songs` 扫描、Lazer `client.realm`/`online.db`/`files` 哈希扫描缓存、进程检测（含 `stableExeExists` / `lazerExeExists`）、双端差异比对 |
+| `server/realmReader.ts` | 零原生依赖只读 Realm v24 (`T-DB`) 二进制解析器（带文件锁临时拷贝回退），读取 Lazer `client.realm` 谱面、难度、元数据、文件映射与游玩成绩 |
+| `server/localLibrary.ts` | 双端本地曲库与成绩聚合器（融合 `osu!.db` / `Songs/` / `scores.db` 与 `client.realm` / `files/`），提供成绩去重、Mania PP 估算、延迟 `.osu` 背景提取与 SVG 回退及音频流输出 |
 | `server/media.ts` | 封面图与 MP3 音频试听代理 + 本地磁盘 LRU 裁剪缓存 |
 | `server/preview.ts` | Mania `.osu` 解析（红线 BPM + 绿线 SV + Barline + NPS 密度）、本地/ZIP/`cache/osz` 音源查找、`206 Range` 音频流与背景图输出 |
 | `server/skins.ts` | 扫描 `D:\OSU\Skins` 与 `osu!.<user>.cfg` 激活皮肤、解析 `[Mania]` `skin.ini`、内置 3 套皮肤、PerCy 超长 LN PNG 无损前 2048 行扫描线裁切 (`cropPngTopRows`) |
@@ -60,9 +63,11 @@
 #### 主要 HTTP / SSE 接口
 - 健康与日志：`GET /api/health`、`GET /api/logs?lines=120`
 - 配置与网络：`GET /api/config`、`PUT /api/config`、`POST /api/config/background`、`DELETE /api/config/background`、`GET /api/network/status`、`POST /api/network/benchmark`
+- Filter 存档：`GET /api/filter-archives`、`POST /api/filter-archives`、`PUT /api/filter-archives/:id`、`DELETE /api/filter-archives/:id`
+- 本地 Book 档案库：`GET /api/books`、`GET /api/books/:bookKey`、`GET /api/books/:bookKey/cover`、`GET /api/books/:bookKey/audio`
 - 搜索与媒体：`GET /api/search`（含 `minPp`/`maxPp`/`ppAccuracy`/`ppRate`/`ppMisses`/`ppMaRatio`/`ppClassic`/`ppEz`/`ppNf`/`ppIncludeUnranked`）、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`、`GET /api/media/custom-bg`
 - 预览与皮肤：`GET /api/preview/beatmapset/:setId`、`GET /api/preview/beatmapset/:setId/chart/:index`、`GET /api/preview/beatmapset/:setId/audio/:index`、`GET /api/preview/beatmapset/:setId/bg/:index`、`GET /api/skins`、`GET /api/skins/:skinId/mania`、`GET /api/skins/:skinId/asset`
-- 本地曲库、Lazer 与游戏加载/启动：`GET /api/library/status`、`POST /api/library/rescan`、`GET /api/library/diff`、`POST /api/library/sync-to-lazer`、`POST /api/library/open-folder`、`GET /api/lazer/pending`、`POST /api/lazer/import-pending`、`DELETE /api/lazer/pending`、`POST /api/game/load`、`POST /api/game/launch`
+- 本地曲库、Lazer 与游戏加载/启动：`GET /api/library/status`、`POST /api/library/rescan`、`GET /api/library/diff`、`POST /api/library/sync-to-lazer`、`POST /api/library/open-folder`（支持 `subFolder`）、`GET /api/lazer/pending`、`POST /api/lazer/import-pending`、`DELETE /api/lazer/pending`、`POST /api/game/load`、`POST /api/game/launch`
 - 下载、快速批量与实时推送：`GET /api/downloads`、`POST /api/downloads`、`POST /api/downloads/batch`、`POST /api/downloads/:id/cancel`、`POST /api/downloads/:id/retry`、`DELETE /api/downloads/completed`、`GET/POST /api/fast-batch/(status|start|pause|resume|stop|clear)`、SSE `GET /api/events`（事件：`downloads`, `network`, `library`, `fast-batch`）
 
 ### 3.3 前端界面 (`src/`, React 19 + Vite 6 + Tailwind CSS v4)
@@ -73,12 +78,24 @@
 | `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠持久化、主题/视图模式持久化、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
 | `src/constants.ts` | 8 套主题元信息 (`THEME_OPTIONS`)、10 组强调色预设、`DEFAULT_FONT_SCALE = 1.2`、视图选项、工作流预设、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()`、统一 LN% 语义函数 `getLnCategory()` |
 | `src/utils/themeColor.ts` | Canvas 24-bin 色相主色调提取器 (`extractDominantColor`) 与动态强调色 CSS 变量推导/应用 (`deriveAccentVariables`, `applyAccentVariables`, `clearAccentVariables`) |
-| `src/utils/pp.ts` | Ranked PP 准度制计算引擎（含 35 组 `NM / DT / HT / 变速` 情景预设、`localStorage` 自定义情景持久化、`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `extractPpScenarioFromFilters`, `formatPpScenarioShort`, `isRankedForPp`） |
+| `src/utils/pp.ts` | Ranked PP 准度制计算引擎（含 35 组 `NM / DT / HT / 变速` 情景预设与主/副展示文案、`localStorage` 自定义情景持久化、`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `extractPpScenarioFromFilters`, `formatPpScenarioShort`, `isRankedForPp`） |
+| `src/utils/filterArchive.ts` | Filter 存档筛选净化、自动命名、语义摘要标签提取与创建时间格式化工具 |
 | `src/utils/maniaEngine.ts` | osu!mania Canvas2D 轨道渲染器（480p 坐标、BPM+SV 时间轴、PerCy `NoteBodyStyle` 0/1/2）与右侧滚动缩略图绘制引擎 |
-| `src/api.ts` | 前端 REST 封装（含自定义壁纸、IPv6 网络状态、快速批量下载与游戏客户端启动接口） |
+| `src/api.ts` | 前端 REST 封装（含 Book 档案库、自定义壁纸、IPv6 网络状态、快速批量下载与游戏客户端启动接口） |
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
-| `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏折叠按钮、单色粗线图标 `LaneEmblem` + `OSU!Downloader!`、浮窗开关、8 主题分组弹窗、代理 6174、镜像延迟、窗口控制） |
-| `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
+| `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏与右侧存档栏折叠按钮、单色粗线图标 `LaneEmblem` + `OSU!Downloader!`、浮窗开关、8 主题分组弹窗、代理 6174、镜像延迟、窗口控制） |
+| `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（工作区模式切换 `搜图下载 | Book 模式`、`进入 Book 档案库` 入口、目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
+| `src/components/book/RhineLoadingVeil.tsx` | RhineLabUI 风格同心扫描环加载校准遮罩 (`RhineLoadingVeil`，支持进入/主题校准/刷新) 与顶部筛选切换扫光提示 (`RhineFilterTransitionHud`) |
+| `src/components/book/bookFilters.ts` | 本地 Book 多维筛选与排序纯函数引擎（来源/模式/键数/状态/评级/星数/PP/BPM/时长/LN%/谱师及 8 维度双向排序） |
+| `src/components/book/BookFilterPanel.tsx` | 仿下载页 RhineLabUI 悬浮高级筛选矩阵（复用 `StarRangeSlider`、`PpRangeSlider`、`SelectField` 与 `QUICK_PRACTICE_TAGS`） |
+| `src/components/book/BookMosaicView.tsx` | WebGL1 + Canvas2D 无字无缝平铺毛玻璃封面视图（方案 A 柔和光学窗、邻界混色整页模糊、悬停扩窗与毛玻璃虹膜叠化翻页，含 `ResizeObserver` 同步重绘） |
+| `src/components/book/rhineMotion.ts` | RhineLabUI 临界阻尼弹簧、插值波形与相邻书脊高斯递减悬停联动数学原语 (`computeHoverWaveLift`) |
+| `src/components/book/BookTextureManager.ts` | Canvas 动态贴图引擎（大号加粗描边书脊字样、纯哑光无封面顶面、双阶段重度缩采样高斯模糊、分帧绘制预算队列 `processPaintQueue`、LRU 保护与分批异步主题重绘 `setDarkModeAsync`） |
+| `src/components/book/BookArchiveScene.ts` | Three.js 3D 循环档案架控制器（纯垂直悬停抽出、前后循环换行、Slot 池化与 `uSlotFade` 着色器远景淡入淡出、中键视角平移与复位、`HeroBookRig` 抽出渐清/翻开/放回与筛选阶梯波动） |
+| `src/components/book/BookSpreadOverlay.tsx` | 打开 Book 后的 `React.memo` 双页展开内页浮层（带封面澄清动效、左页元数据/音频试听/操作，右页 `01 难度一览` / `02 历史成绩` / `03 曲目详档`） |
+| `src/components/book/BookArchiveMode.tsx` | Book 模式主视图容器（`3D 书脊 \| 平铺毛玻璃` 切换、高级筛选浮层与双向排序、远景雾模糊遮罩、可收起/展开 `ACCESS BOOK` 浮卡、8 刻度导航与加载遮罩调度） |
+| `src/components/FilterArchiveRail.tsx` | 默认收起的 Filter 存档右侧栏（保存当前搜索状态与可选浏览位置、实时锚点预览、置顶/内联重命名/覆盖更新/两步安全删除/搜索过滤） |
+| `src/components/PpScenarioLibrary.tsx` | 左右主从分栏（Master-Detail）PP 情景库共享组件（左侧主模式轨道区分 `NM/DT/HT/Rate/自定义`，右侧展示对应副词条网格与自定义组合） |
 | `src/components/StarRangeSlider.tsx` | Lazer 选歌风格加粗官方光谱星数上下界双滑块组件（`12px` 滑轨、`24×14px` 扁平长圆角纯色矩形手柄、`0.0★–15.0★ / ∞` 防抽搐定位与点按编辑） |
 | `src/components/PpRangeSlider.tsx` | 同步风格 PP 范围双滑块组件（`12px` 滑轨、`24×14px` 扁平长圆角纯色矩形手柄、`0–2000pp / ∞`、防抽搐定位、点按直输与情景按钮槽位） |
 | `src/components/FilterPanel.tsx` | 可收起/展开的搜索框、高频词条、基础筛选、星数双滑块 + PP 范围双滑块与多标签情景库浮层（含 `NM/DT/HT/变速/自定义` 预设与持久化保存）及高级数值/LN% 筛选（Lazer 模式下均采用悬浮层以免挤压选歌区） |
