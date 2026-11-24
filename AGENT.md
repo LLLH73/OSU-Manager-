@@ -73,7 +73,7 @@
 | `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠持久化、主题/视图模式持久化、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
 | `src/constants.ts` | 8 套主题元信息 (`THEME_OPTIONS`)、10 组强调色预设、`DEFAULT_FONT_SCALE = 1.2`、视图选项、工作流预设、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()`、统一 LN% 语义函数 `getLnCategory()` |
 | `src/utils/themeColor.ts` | Canvas 24-bin 色相主色调提取器 (`extractDominantColor`) 与动态强调色 CSS 变量推导/应用 (`deriveAccentVariables`, `applyAccentVariables`, `clearAccentVariables`) |
-| `src/utils/pp.ts` | Ranked PP 准度制计算引擎 (`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `extractPpScenarioFromFilters`, `formatPpScenarioShort`, `isRankedForPp`) |
+| `src/utils/pp.ts` | Ranked PP 准度制计算引擎（含 35 组 `NM / DT / HT / 变速` 情景预设、`localStorage` 自定义情景持久化、`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `extractPpScenarioFromFilters`, `formatPpScenarioShort`, `isRankedForPp`） |
 | `src/utils/maniaEngine.ts` | osu!mania Canvas2D 轨道渲染器（480p 坐标、BPM+SV 时间轴、PerCy `NoteBodyStyle` 0/1/2）与右侧滚动缩略图绘制引擎 |
 | `src/api.ts` | 前端 REST 封装（含自定义壁纸、IPv6 网络状态、快速批量下载与游戏客户端启动接口） |
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
@@ -81,7 +81,7 @@
 | `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
 | `src/components/StarRangeSlider.tsx` | Lazer 选歌风格加粗官方光谱星数上下界双滑块组件（`12px` 滑轨、`24×14px` 扁平长圆角纯色矩形手柄、`0.0★–15.0★ / ∞` 防抽搐定位与点按编辑） |
 | `src/components/PpRangeSlider.tsx` | 同步风格 PP 范围双滑块组件（`12px` 滑轨、`24×14px` 扁平长圆角纯色矩形手柄、`0–2000pp / ∞`、防抽搐定位、点按直输与情景按钮槽位） |
-| `src/components/FilterPanel.tsx` | 可收起/展开的搜索框、高频词条、基础筛选、星数双滑块 + PP 范围双滑块与情景化配置浮层及高级数值/LN% 筛选（Lazer 模式下均采用悬浮层以免挤压选歌区） |
+| `src/components/FilterPanel.tsx` | 可收起/展开的搜索框、高频词条、基础筛选、星数双滑块 + PP 范围双滑块与多标签情景库浮层（含 `NM/DT/HT/变速/自定义` 预设与持久化保存）及高级数值/LN% 筛选（Lazer 模式下均采用悬浮层以免挤压选歌区） |
 | `src/components/BeatmapCard.tsx` | `grid` 卡片网格单卡（`memo` + `.song-grid-card` `content-visibility: auto`，含 Ranked `~XXXpp` 与已装 Mania 预览入口） |
 | `src/components/BeatmapListRow.tsx` | `list` 紧凑列表单行（`memo` + `.song-list-row` `content-visibility: auto` 无冗余模糊层，含 Ranked `~XXXpp` 与已装 Mania 预览入口） |
 | `src/components/LazerSongSelect.tsx` | `lazer` osu!lazer 弧形选歌轮盘 + 左侧楔形展示（支持 `hasGlobalBg` 全窗背景穿透、头部纯倾向标签 `单键 Rice`/`综合 Hybrid`/`长条 LN`）+ 右侧平滑左移交错难度列表（`LN XX%`）+ 「回到选中 ↑/↓」「回到顶部」悬浮导航 + 滚底自动加载 + 键盘导航 |

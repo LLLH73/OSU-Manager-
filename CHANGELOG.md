@@ -4,6 +4,17 @@ All notable changes to **OSU!Downloader! (`osu-4k-dual-downloader`)** will be do
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.3] - 2026-11-24
+
+### Added
+- **扩展 PP 筛选与计算器的 DT / HT / 变速多维情景预设库与自定义持久化**（`src/utils/pp.ts`, `src/components/FilterPanel.tsx`, `src/components/PpCalculatorPanel.tsx`）：
+  - 在 `src/utils/pp.ts` 内置 35 组覆盖 **`NM 常速`**、**`DT 1.5x`**、**`HT 0.75x`** 与 **`变速 Rate` (`0.85x–1.4x`)** 的典型 Mania 表现组合（含对应准度 `94%–100% SS`、黄彩比 `1.5:1–8:1` 与 `0–8 Miss`），支持 `localStorage` 自定义命名持久化（上限 24 条、自动去重与跨面板实时同步）。
+  - 升级 `FilterPanel` PP 情景浮层：新增五标签情景库、视口自适应上下弹出与最大高度约束、常用区间补充至 `1000+`；在自定义区新增倍速输入窗+滑块+快捷档、准度快捷档、黄彩比实时彩占/折算准度读数+快捷档、Miss 快捷档及「`+ 存为自定义`」持久化保存栏；右侧触发按钮支持溢出省略，收起态徽章同步显示完整情景标签。
+  - 在 `PpCalculatorPanel` 同步加入同类多标签快捷情景栏与自定义情景保存能力，并联动 `LazerSongSelect` 左侧 PP 速览（自动跟随筛选倍速切换 HT/NM/DT 并套用黄彩比/Miss/Mod）。
+
+### Changed
+- **完善 `Miss > 0` 情景下的后端星数上界反推**（`server/pp.ts`）：在 `deriveStarBoundsFromPpFilter()` 中对失误大于 0 的 DT/HT/NM 组合补充保守准度折损下界估算，在上游搜索阶段即可合理收窄最高星数并保证零漏召回。
+
 ## [1.6.2] - 2026-11-24
 
 ### Changed

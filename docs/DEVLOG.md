@@ -4,6 +4,39 @@
 
 ---
 
+## Session 12 — DT/HT/变速 PP 筛选与计算器多维情景预设库及自定义情景持久化 (`v1.6.3`)
+
+- **日期**：2026-11-24
+- **对话 ID**：`0f9e8be2-483f-48f5-a728-b5ae61581742`
+- **版本**：`v1.6.2` → `v1.6.3`
+- **关联提交**：`009ed77`
+
+### 本次需求
+- 在 PP 筛选中扩充 `DT`、`HT` 与不同倍速模式下的对应准度（Acc）、黄彩比、Miss 数等给定组合，并强化自定义情景参数调整与本地持久化保存体验。
+
+### 关键实现
+1. **35 组分类情景预设库与 `localStorage` 持久化引擎**（`src/utils/pp.ts`）：
+   - 导出 `PP_SCENARIO_PRESETS`（覆盖 `nm` 常速 9 组、`dt` 1.5x 9 组、`ht` 0.75x 9 组、`rate` 0.85x–1.4x 8 组）与精确比对函数 `matchesScenarioPatch()`（修复此前仅校验 `misses === 0` 的局限）。
+   - 新增 `loadSavedPpScenarios()` / `saveCustomPpScenario()` / `deleteSavedPpScenario()`（`osu4k-saved-pp-scenarios`，上限 24 条、参数去重并通过自定义事件跨组件同步），并扩展 `getQuickPpSummary()` 支持基于筛选情景估算 `95%/98%/99%`。
+2. **后端失误情景星数反推补全**（`server/pp.ts`）：
+   - 更新 `deriveStarBoundsFromPpFilter()` 中的 `maxStars` 分支：当 `misses > 0` 时按 `Math.max(0, rawAcc - misses / 50)` 保守推算 `accFactorMin`，在 `accFactorMin > 0.05` 时正常给出上游最高星数约束，兼顾 DT/HT 含失误筛选效率与零漏召回。
+3. **筛选浮层、计算器与 Lazer 速览同步升级**（`src/components/FilterPanel.tsx`, `src/components/PpCalculatorPanel.tsx`, `src/components/LazerSongSelect.tsx`）：
+   - `FilterPanel` 情景浮层升级为自适应上下定位与 `maxHeight` 约束（`w-[min(94vw,520px)]`），新增 `NM 常速 / DT 1.5x / HT 0.75x / 变速 Rate / 自定义` 五标签切换，并完善倍速输入+滑块+快捷档、准度快捷档、黄彩比实时折算与快捷档、Miss 快捷档、`+ 存为自定义` 名称保存栏与右侧按钮窄屏防溢出省略。
+   - `PpCalculatorPanel` 接入同一套五标签情景预设与自定义保存能力；`LazerSongSelect` 左侧 PP 速览同步响应筛选倍速与黄彩比/Miss/Mod。
+
+### 验证记录
+- **类型检查与打包**：`npm run typecheck` 与 `npm run electron:pack`（`v1.6.3`）退出码 `0` 通过，更新生成 `release\win-unpacked\osu-4k-downloader.exe`。
+- **DT / HT 含失误搜索接口验证**（`http://127.0.0.1:3728`）：
+  - `DT 96.5%·2:1·3M` (`300–450pp`)：反推星数 `[4.8, 7.75]`，HTTP `200` 返回 `12` 套 / `14` 个匹配 Ranked 难度，越界 `0`；
+  - `HT 97.5%·3:1·2M` (`180–300pp`)：反推星数 `[6.06, 9.16]`，HTTP `200` 返回 `12` 套 / `14` 个匹配 Ranked 难度，越界 `0`。
+- **多分辨率实时浏览器验收**（`http://127.0.0.1:3728`，`1440×900` / `1280×720` / `1040×680`，`0` 控制台错误）：
+  - **五标签情景浮层与筛选联动**：验证 `NM 常速 / DT 1.5x / HT 0.75x / 变速 Rate / 自定义` 切换与 `DT 96.5%·2:1·3M` 选中筛选（`350–500pp`），左侧 Lazer `PP 速览` 同步切换为 `DT` 档；
+  - **颗粒度自定义、持久化与计算器同步**：实测点按 `HT 0.75x` + `97%` + `3:1` + `2M` 生成 `HT 97%·3:1·2M` 并保存为 `我的HT练习`，整页重载后验证保留并成功同步至 `BeatmapDetailModal` → `PpCalculatorPanel` 的 `自定义 (1)` 栏；完成删除与「重置情景」还原。
+  - **窄窗口防溢出与视口约束**：长标签 `DT 96.5%·2:1·3M·CL·EZ` 在 `1280×720` 下保持 `PP` 轨宽 `103.52px` 且右侧按钮限宽 `152px` 优雅省略；浮层在 `1280×720`（`bottom=714 <= 720`）下向下裁剪可内滚，在 `1040×680`（`y=44, h=357.47`）下自动向上翻转弹出，全程 `<main>` 零外层滚动。
+- **清理确认**：测试服务已停止，临时数据目录已清除，`3721`/`3728` 端口监听数均为 `0`，用户真实 `data/config.json` 完整未动。
+
+---
+
 ## Session 11 — 更扁长滑块手柄、彻底修复右滑块无穷边界抽搐、提升上限至 `15.0★` / `2000pp` (`v1.6.2`)
 
 - **日期**：2026-11-24
