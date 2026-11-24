@@ -59,11 +59,14 @@ export interface PpScenarioPatch {
 }
 
 export type PpScenarioCategory = 'nm' | 'dt' | 'ht' | 'rate' | 'custom';
+export type PpCategoryTone = 'lazer' | 'osu' | 'stable' | 'warn';
 
 export interface PpScenarioPreset {
   id: string;
   category: Exclude<PpScenarioCategory, 'custom'>;
   label: string;
+  primaryText: string;
+  secondaryText: string;
   desc: string;
   patch: PpScenarioPatch;
 }
@@ -80,13 +83,13 @@ export const SAVED_PP_SCENARIOS_EVENT = 'osu4k-pp-scenarios-changed';
 
 export const PP_SCENARIO_CATEGORY_META: Record<
   PpScenarioCategory,
-  { label: string; short: string }
+  { code: string; label: string; short: string; subtitle: string; tone: PpCategoryTone }
 > = {
-  nm: { label: 'NM 常速', short: 'NM' },
-  dt: { label: 'DT 1.5x', short: 'DT' },
-  ht: { label: 'HT 0.75x', short: 'HT' },
-  rate: { label: '变速 Rate', short: '变速' },
-  custom: { label: '自定义', short: '自定义' },
+  nm: { code: 'NM', label: 'NM 常速', short: 'NM', subtitle: '1.0x 常速', tone: 'lazer' },
+  dt: { code: 'DT', label: 'DT 1.5x', short: 'DT', subtitle: '1.5x 加速', tone: 'osu' },
+  ht: { code: 'HT', label: 'HT 0.75x', short: 'HT', subtitle: '0.75x 减速', tone: 'stable' },
+  rate: { code: 'Rate', label: '变速 Rate', short: '变速', subtitle: '0.85–1.4x', tone: 'warn' },
+  custom: { code: '自定义', label: '自定义', short: '自定义', subtitle: '已保存组合', tone: 'lazer' },
 };
 
 const mkPreset = (
@@ -103,21 +106,37 @@ const mkPreset = (
     ez?: boolean;
     nf?: boolean;
   },
-): PpScenarioPreset => ({
-  id,
-  category,
-  label,
-  desc,
-  patch: {
-    ppAccuracy: opts.acc,
-    ppRate: opts.rate,
-    ppMisses: opts.misses ?? 0,
-    ppMaRatio: opts.maRatio,
-    ppClassic: Boolean(opts.classic),
-    ppEz: Boolean(opts.ez),
-    ppNf: Boolean(opts.nf),
-  },
-});
+): PpScenarioPreset => {
+  const misses = opts.misses ?? 0;
+  const primaryText =
+    category === 'rate'
+      ? `${opts.rate}x`
+      : opts.acc === 100
+        ? '100% SS'
+        : `${opts.acc}%`;
+  const secondaryText =
+    category === 'rate'
+      ? `${opts.acc}% · ${opts.maRatio != null ? `${opts.maRatio}:1 · ` : ''}${misses}M`
+      : `${opts.maRatio != null ? `${opts.maRatio}:1` : opts.acc === 100 ? '全彩/SS' : '直算'} · ${misses}M`;
+
+  return {
+    id,
+    category,
+    label,
+    primaryText,
+    secondaryText,
+    desc,
+    patch: {
+      ppAccuracy: opts.acc,
+      ppRate: opts.rate,
+      ppMisses: misses,
+      ppMaRatio: opts.maRatio,
+      ppClassic: Boolean(opts.classic),
+      ppEz: Boolean(opts.ez),
+      ppNf: Boolean(opts.nf),
+    },
+  };
+};
 
 export const PP_SCENARIO_PRESETS: PpScenarioPreset[] = [
   // NM 常速 (1.0x) — 9 presets

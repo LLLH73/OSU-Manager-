@@ -10,8 +10,11 @@ import {
   LayoutGrid,
   List,
   Loader2,
+  MapPin,
   Music,
+  RotateCcw,
   Square,
+  X,
   Zap,
 } from 'lucide-react';
 import {
@@ -19,11 +22,15 @@ import {
   clearCustomBackground,
   clearFinishedDownloadTasks,
   clearLazerPending,
+  createFilterArchive,
+  deleteFilterArchive,
   enqueueBatchDownloads,
   enqueueDownload,
+  fetchBeatmapsetDetail,
   fetchConfig,
   fetchDownloads,
   fetchFastBatchStatus,
+  fetchFilterArchives,
   fetchLibraryStatus,
   fetchNetworkStatus,
   importLazerPending,
@@ -34,6 +41,7 @@ import {
   runNetworkBenchmark,
   searchBeatmapsets,
   updateConfig,
+  updateFilterArchive,
   uploadCustomBackground,
 } from './api';
 import { AudioPlayerBar } from './components/AudioPlayerBar';
@@ -42,6 +50,7 @@ import { BeatmapDetailModal } from './components/BeatmapDetailModal';
 import { BeatmapListRow } from './components/BeatmapListRow';
 import { DownloadDrawer } from './components/DownloadDrawer';
 import { FastBatchModal } from './components/FastBatchModal';
+import { CurrentBrowsePreview, FilterArchiveRail } from './components/FilterArchiveRail';
 import { FilterPanel } from './components/FilterPanel';
 import { LazerSongSelect } from './components/LazerSongSelect';
 import { LibrarySyncModal } from './components/LibrarySyncModal';
@@ -49,6 +58,7 @@ import { ManiaPreviewModal } from './components/ManiaPreviewModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SideRail } from './components/SideRail';
 import { TitleBar } from './components/TitleBar';
+import { BookArchiveMode } from './components/book/BookArchiveMode';
 import {
   DEFAULT_FILTERS,
   DEFAULT_FONT_SCALE,
@@ -59,6 +69,7 @@ import {
   isDarkTheme,
   isValidTheme,
 } from './constants';
+import { sanitizeFiltersForArchive } from './utils/filterArchive';
 import {
   applyAccentVariables,
   clearAccentVariables,
@@ -71,6 +82,8 @@ import {
   DownloadTask,
   DownloadVariant,
   FastBatchSnapshot,
+  FilterArchive,
+  FilterArchiveBrowsePosition,
   LocalLibraryStatus,
   NetworkStatus,
   NormalizedBeatmapset,
@@ -79,6 +92,7 @@ import {
   SearchResult,
   SongViewMode,
   ThemeId,
+  WorkspaceMode,
 } from './types';
 
 function readInitialTheme(): ThemeId {
@@ -135,6 +149,7 @@ export function App() {
   const [downloads, setDownloads] = useState<DownloadTask[]>([]);
 
   const [theme, setTheme] = useState<ThemeId>(readInitialTheme);
+  const [workspaceMode, setWorkspaceMode] = useState<WorkspaceMode>('browse');
   const [viewMode, setViewMode] = useState<SongViewMode>(readInitialViewMode);
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
   const [activePresetId, setActivePresetId] = useState<string | null>(null);
@@ -160,6 +175,30 @@ export function App() {
   const [filterCollapsed, setFilterCollapsed] = useState<boolean>(() =>
     readBoolStorage('osu4k-filter-collapsed', false),
   );
+  const [archiveRailCollapsed, setArchiveRailCollapsed] = useState<boolean>(() =>
+    readBoolStorage('osu4k-archive-rail-collapsed', true),
+  );
+  const [archives, setArchives] = useState<FilterArchive[]>([]);
+  const [activeArchiveId, setActiveArchiveId] = useState<string | null>(null);
+  const [restoringArchiveId, setRestoringArchiveId] = useState<string | null>(null);
+  const [highlightedSetId, setHighlightedSetId] = useState<number | null>(null);
+  const [lazerRestoreTarget, setLazerRestoreTarget] = useState<{
+    beatmapsetId: number;
+    beatmapId?: number | null;
+    nonce: number;
+  } | null>(null);
+  const [saveInputFocusNonce, setSaveInputFocusNonce] = useState(0);
+  const [activeLazerDiffId, setActiveLazerDiffId] = useState<number | null>(null);
+  const [gridListVisibleAnchorId, setGridListVisibleAnchorId] = useState<number | null>(null);
+  const [headUpstreamOffset, setHeadUpstreamOffset] = useState(0);
+  const [loadingEarlier, setLoadingEarlier] = useState(false);
+  const [restoredContextInfo, setRestoredContextInfo] = useState<{
+    archiveName: string;
+    anchorTitle: string;
+    anchorBeatmapsetId: number;
+    headUpstreamOffset: number;
+    savedAnchorSet?: NormalizedBeatmapset;
+  } | null>(null);
   const [activeLazerSet, setActiveLazerSet] = useState<NormalizedBeatmapset | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const [initialFontScale] = useState<number>(readInitialFontScale);
@@ -197,6 +236,9 @@ export function App() {
   const loadMoreSentinelRef = useRef<HTMLDivElement | null>(null);
   const loadingMoreRef = useRef(false);
   const searchEpochRef = useRef(0);
+  const batchOffsetsRef = useRef<Map<number, number>>(new Map());
+  const lazerScrollTopRef = useRef(0);
+  const highlightTimerRef = useRef<number | null>(null);
 
   const openDetail = useCallback(
     (set: NormalizedBeatmapset, options?: { diffId?: number; focusPp?: boolean }) => {
@@ -290,6 +332,46 @@ export function App() {
       }
       return next;
     });
+  }, []);
+
+  const toggleArchiveRailCollapsed = useCallback(() => {
+    setArchiveRailCollapsed((prev) => {
+      const next = !prev;
+      if (!next) {
+        setWorkspaceMode('browse');
+      }
+      try {
+        localStorage.setItem('osu4k-archive-rail-collapsed', String(next));
+      } catch {
+        // Ignore storage error
+      }
+      return next;
+    });
+  }, []);
+
+  const openSaveArchiveRail = useCallback(() => {
+    setWorkspaceMode('browse');
+    setArchiveRailCollapsed(false);
+    try {
+      localStorage.setItem('osu4k-archive-rail-collapsed', 'false');
+    } catch {
+      // Ignore storage error
+    }
+    setSaveInputFocusNonce((n) => n + 1);
+  }, []);
+
+  const switchWorkspaceMode = useCallback((nextMode: WorkspaceMode) => {
+    setWorkspaceMode(nextMode);
+    setNavOpen(false);
+    if (nextMode === 'book') {
+      setIsPlaying(false);
+      setArchiveRailCollapsed(true);
+      try {
+        localStorage.setItem('osu4k-archive-rail-collapsed', 'true');
+      } catch {
+        // Ignore storage error
+      }
+    }
   }, []);
 
   const effectiveConfig = useMemo(() => {
@@ -414,6 +496,21 @@ export function App() {
       if (myEpoch !== searchEpochRef.current) return;
       const { beatmapsets, ...meta } = res;
       setSearchMeta(meta);
+      if (!append) {
+        const nextMap = new Map<number, number>();
+        for (const item of beatmapsets) {
+          nextMap.set(item.id, meta.upstreamOffset);
+        }
+        batchOffsetsRef.current = nextMap;
+        setHeadUpstreamOffset(f.offset ?? 0);
+        setRestoredContextInfo(null);
+      } else {
+        for (const item of beatmapsets) {
+          if (!batchOffsetsRef.current.has(item.id)) {
+            batchOffsetsRef.current.set(item.id, meta.upstreamOffset);
+          }
+        }
+      }
       setResults((prev) => {
         if (!append) return beatmapsets;
         const existingIds = new Set(prev.map((x) => x.id));
@@ -442,14 +539,16 @@ export function App() {
   useEffect(() => {
     void (async () => {
       try {
-        const [cfg, net, lib, dls, fb] = await Promise.all([
+        const [cfg, net, lib, dls, fb, savedArchives] = await Promise.all([
           fetchConfig(),
           fetchNetworkStatus(false),
           fetchLibraryStatus(false),
           fetchDownloads(),
           fetchFastBatchStatus().catch(() => null),
+          fetchFilterArchives().catch(() => [] as FilterArchive[]),
         ]);
         setConfig(cfg);
+        setArchives(savedArchives);
         if (fb) setFastBatch(fb);
         try {
           localStorage.setItem(
@@ -565,10 +664,27 @@ export function App() {
       else if (detailState) setDetailState(null);
       else if (downloadsOpen) setDownloadsOpen(false);
       else if (navOpen) setNavOpen(false);
+      else if (!archiveRailCollapsed && window.innerWidth < 1536) {
+        setArchiveRailCollapsed(true);
+        try {
+          localStorage.setItem('osu4k-archive-rail-collapsed', 'true');
+        } catch {
+          // Ignore storage error
+        }
+      }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [settingsOpen, fastBatchOpen, librarySyncOpen, previewState, detailState, downloadsOpen, navOpen]);
+  }, [
+    settingsOpen,
+    fastBatchOpen,
+    librarySyncOpen,
+    previewState,
+    detailState,
+    downloadsOpen,
+    navOpen,
+    archiveRailCollapsed,
+  ]);
 
   // Track outer scroll offset in Grid / List views for floating Back-to-Top button
   useEffect(() => {
@@ -691,7 +807,9 @@ export function App() {
   };
 
   const handleSelectPreset = (preset: WorkflowPreset) => {
+    setWorkspaceMode('browse');
     setActivePresetId(preset.id);
+    setActiveArchiveId(null);
     const next: SearchFilters = { ...DEFAULT_FILTERS, ...preset.filters, offset: 0 };
     setFilters(next);
     if (preset.suggestedTarget) {
@@ -703,6 +821,7 @@ export function App() {
 
   const handleFilterChange = (next: SearchFilters, autoSearch = false) => {
     setActivePresetId(null);
+    setActiveArchiveId(null);
     setFilters(next);
     if (autoSearch) {
       void runSearch(next, false);
@@ -711,9 +830,466 @@ export function App() {
 
   const handleResetFilters = () => {
     setActivePresetId(null);
+    setActiveArchiveId(null);
     setFilters(DEFAULT_FILTERS);
     void runSearch(DEFAULT_FILTERS, false);
   };
+
+  const findGridListAnchor = useCallback((): {
+    set: NormalizedBeatmapset;
+    index: number;
+    scrollTop: number;
+  } | null => {
+    if (results.length === 0) return null;
+    const root = mainScrollRef.current;
+    if (!root || root.scrollTop < 40) {
+      return { set: results[0], index: 0, scrollTop: root?.scrollTop ?? 0 };
+    }
+    const rootRect = root.getBoundingClientRect();
+    const focusY = rootRect.top + 88;
+    const nodes = root.querySelectorAll<HTMLElement>('[data-set-id]');
+    let bestId: number | null = null;
+    let bestDist = Infinity;
+    for (const el of nodes) {
+      const r = el.getBoundingClientRect();
+      if (r.bottom < rootRect.top + 28) continue;
+      const dist = Math.abs(r.top - focusY);
+      if (dist < bestDist) {
+        const parsedId = Number(el.dataset.setId);
+        if (Number.isFinite(parsedId) && parsedId > 0) {
+          bestDist = dist;
+          bestId = parsedId;
+        }
+      }
+    }
+    if (bestId !== null) {
+      const idx = results.findIndex((s) => s.id === bestId);
+      if (idx >= 0) {
+        return { set: results[idx], index: idx, scrollTop: root.scrollTop };
+      }
+    }
+    return { set: results[0], index: 0, scrollTop: root.scrollTop };
+  }, [results]);
+
+  useEffect(() => {
+    if (viewMode === 'lazer' || results.length === 0) {
+      setGridListVisibleAnchorId(null);
+      return;
+    }
+    const root = mainScrollRef.current;
+    if (!root) return;
+    let timer: number | null = null;
+    const syncAnchor = () => {
+      const anchor = findGridListAnchor();
+      setGridListVisibleAnchorId(anchor ? anchor.set.id : null);
+    };
+    syncAnchor();
+    const onScroll = () => {
+      if (archiveRailCollapsed) return;
+      if (timer !== null) return;
+      timer = window.setTimeout(() => {
+        timer = null;
+        syncAnchor();
+      }, 120);
+    };
+    root.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      root.removeEventListener('scroll', onScroll);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [viewMode, results, archiveRailCollapsed, findGridListAnchor]);
+
+  const currentBrowsePreview = useMemo<CurrentBrowsePreview | null>(() => {
+    if (results.length === 0) return null;
+    let anchor: NormalizedBeatmapset | undefined;
+    if (viewMode === 'lazer') {
+      anchor = (activeLazerSet && results.find((r) => r.id === activeLazerSet.id)) ?? results[0];
+    } else {
+      anchor =
+        (gridListVisibleAnchorId !== null
+          ? results.find((r) => r.id === gridListVisibleAnchorId)
+          : undefined) ?? results[0];
+    }
+    if (!anchor) return null;
+    const index = Math.max(0, results.findIndex((r) => r.id === anchor!.id));
+    return {
+      id: anchor.id,
+      title: anchor.title,
+      artist: anchor.artist,
+      coverUrl: anchor.coverUrl,
+      index,
+      totalLoaded: results.length,
+      viewMode,
+    };
+  }, [results, viewMode, activeLazerSet, gridListVisibleAnchorId]);
+
+  const captureCurrentBrowsePosition = useCallback((): FilterArchiveBrowsePosition | null => {
+    if (results.length === 0) return null;
+    let anchorSet: NormalizedBeatmapset | undefined;
+    let anchorIndex = 0;
+    let scrollTop = 0;
+    let anchorBeatmapId: number | null = null;
+
+    if (viewMode === 'lazer') {
+      anchorSet = (activeLazerSet && results.find((r) => r.id === activeLazerSet.id)) ?? results[0];
+      anchorIndex = Math.max(0, results.findIndex((r) => r.id === anchorSet!.id));
+      scrollTop = lazerScrollTopRef.current;
+      anchorBeatmapId = activeLazerDiffId;
+    } else {
+      const found = findGridListAnchor();
+      anchorSet = found?.set ?? results[0];
+      anchorIndex = found?.index ?? 0;
+      scrollTop = found?.scrollTop ?? 0;
+    }
+
+    if (!anchorSet) return null;
+
+    const contextBeatmapsetIds: number[] = [];
+    for (const offset of [1, -1, 2, -2, 3, -3, 4, -4]) {
+      const neighbor = results[anchorIndex + offset];
+      if (neighbor && neighbor.id !== anchorSet.id && !contextBeatmapsetIds.includes(neighbor.id)) {
+        contextBeatmapsetIds.push(neighbor.id);
+      }
+    }
+
+    const snapStart = Math.max(0, anchorIndex - 5);
+    const snapEnd = Math.min(results.length, anchorIndex + 6);
+    const contextSnapshot = results.slice(snapStart, snapEnd);
+    const batchUpstreamOffset =
+      batchOffsetsRef.current.get(anchorSet.id) ?? Math.max(0, Math.floor(anchorIndex / 24) * 24);
+
+    return {
+      anchorBeatmapsetId: anchorSet.id,
+      anchorBeatmapId,
+      anchorTitle: anchorSet.title,
+      anchorArtist: anchorSet.artist,
+      anchorCreator: anchorSet.creator,
+      anchorCoverUrl: anchorSet.coverUrl,
+      anchorIndex,
+      loadedCount: results.length,
+      batchUpstreamOffset,
+      nextUpstreamOffset: searchMeta?.nextUpstreamOffset ?? results.length,
+      provider: searchMeta?.provider,
+      viewMode,
+      scrollTop,
+      contextBeatmapsetIds,
+      contextSnapshot,
+    };
+  }, [results, viewMode, activeLazerSet, activeLazerDiffId, findGridListAnchor, searchMeta]);
+
+  const scrollToGridListTarget = useCallback((targetId: number) => {
+    setHighlightedSetId(targetId);
+    if (highlightTimerRef.current) window.clearTimeout(highlightTimerRef.current);
+    highlightTimerRef.current = window.setTimeout(() => {
+      setHighlightedSetId((prev) => (prev === targetId ? null : prev));
+    }, 2500);
+
+    const locate = (behavior: ScrollBehavior) => {
+      const root = mainScrollRef.current;
+      if (!root) return;
+      const el = root.querySelector<HTMLElement>(`[data-set-id="${targetId}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior, block: 'center' });
+      }
+    };
+
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        locate('smooth');
+      });
+    });
+    window.setTimeout(() => {
+      locate('smooth');
+    }, 150);
+  }, []);
+
+  const handleSaveNewArchive = useCallback(
+    async ({ name, savePosition }: { name: string; savePosition: boolean }) => {
+      const browsePosition = savePosition ? captureCurrentBrowsePosition() : null;
+      const created = await createFilterArchive({
+        name,
+        filters: sanitizeFiltersForArchive(filters),
+        browsePosition,
+      });
+      setArchives((prev) => {
+        const next = [created, ...prev];
+        return next.sort((a, b) => {
+          const pinDiff = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+          return pinDiff !== 0 ? pinDiff : b.createdAt - a.createdAt;
+        });
+      });
+      setActiveArchiveId(created.id);
+      notify(
+        browsePosition
+          ? `已保存存档「${created.name}」（含定位：${browsePosition.anchorTitle}）`
+          : `已保存存档「${created.name}」`,
+      );
+    },
+    [filters, captureCurrentBrowsePosition, notify],
+  );
+
+  const handleOverwriteArchive = useCallback(
+    async (archive: FilterArchive, savePosition: boolean) => {
+      const browsePosition = savePosition ? captureCurrentBrowsePosition() : null;
+      const updated = await updateFilterArchive(archive.id, {
+        filters: sanitizeFiltersForArchive(filters),
+        browsePosition,
+      });
+      setArchives((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      setActiveArchiveId(updated.id);
+      notify(`已覆盖更新存档「${updated.name}」`);
+    },
+    [filters, captureCurrentBrowsePosition, notify],
+  );
+
+  const handleRenameArchive = useCallback(
+    async (id: string, name: string) => {
+      const updated = await updateFilterArchive(id, { name });
+      setArchives((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
+      notify(`已重命名存档为「${updated.name}」`);
+    },
+    [notify],
+  );
+
+  const handleTogglePinArchive = useCallback(async (archive: FilterArchive) => {
+    const updated = await updateFilterArchive(archive.id, { pinned: !archive.pinned });
+    setArchives((prev) =>
+      prev
+        .map((a) => (a.id === updated.id ? updated : a))
+        .sort((a, b) => {
+          const pinDiff = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+          return pinDiff !== 0 ? pinDiff : b.createdAt - a.createdAt;
+        }),
+    );
+  }, []);
+
+  const handleDeleteArchive = useCallback(
+    async (id: string) => {
+      await deleteFilterArchive(id);
+      setArchives((prev) => prev.filter((a) => a.id !== id));
+      setActiveArchiveId((prev) => (prev === id ? null : prev));
+      notify('已删除 Filter 存档');
+    },
+    [notify],
+  );
+
+  const handleRestoreFilterArchive = useCallback(
+    async (archive: FilterArchive, options?: { ignorePosition?: boolean }) => {
+      const nextFilters: SearchFilters = {
+        ...DEFAULT_FILTERS,
+        ...archive.filters,
+        offset: 0,
+      };
+      setActivePresetId(null);
+      setActiveArchiveId(archive.id);
+      setFilters(nextFilters);
+      setRestoredContextInfo(null);
+
+      const pos = !options?.ignorePosition ? archive.browsePosition : null;
+      if (!pos) {
+        setHeadUpstreamOffset(0);
+        if (mainScrollRef.current && viewMode !== 'lazer') {
+          mainScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        await runSearch(nextFilters, false);
+        notify(`已应用存档「${archive.name}」`);
+        return;
+      }
+
+      searchEpochRef.current += 1;
+      const myEpoch = searchEpochRef.current;
+      loadingMoreRef.current = false;
+      setLoadingMore(false);
+      setLoading(true);
+      setRestoringArchiveId(archive.id);
+      setSearchError(null);
+
+      try {
+        const fetchWindow = async (initialOffset: number) => {
+          let cursor = Math.max(0, initialOffset);
+          const acc: NormalizedBeatmapset[] = [];
+          const seen = new Set<number>();
+          const offsetsMap = new Map<number, number>();
+          let lastRes: SearchResult | null = null;
+          let anchorFoundIdx = -1;
+
+          for (let round = 0; round < 4; round++) {
+            const res = await searchBeatmapsets({ ...nextFilters, offset: cursor });
+            if (myEpoch !== searchEpochRef.current) return null;
+            lastRes = res;
+            for (const item of res.beatmapsets) {
+              if (!seen.has(item.id)) {
+                seen.add(item.id);
+                offsetsMap.set(item.id, res.upstreamOffset);
+                acc.push(item);
+              }
+            }
+            anchorFoundIdx = acc.findIndex((s) => s.id === pos.anchorBeatmapsetId);
+            if (anchorFoundIdx >= 0) {
+              if (anchorFoundIdx <= acc.length - 3 || !res.hasMore) {
+                break;
+              }
+            }
+            if (!res.hasMore || res.nextUpstreamOffset <= cursor) {
+              break;
+            }
+            cursor = res.nextUpstreamOffset;
+          }
+
+          return {
+            acc,
+            offsetsMap,
+            lastRes,
+            anchorFoundIdx,
+            startOffset: Math.max(0, initialOffset),
+          };
+        };
+
+        const plannedStart =
+          pos.batchUpstreamOffset <= 48 ? 0 : Math.max(0, pos.batchUpstreamOffset - 24);
+        let windowData = await fetchWindow(plannedStart);
+        if (!windowData || myEpoch !== searchEpochRef.current) return;
+
+        if (plannedStart > 0 && windowData.acc.length === 0) {
+          windowData = await fetchWindow(0);
+          if (!windowData || myEpoch !== searchEpochRef.current) return;
+        }
+
+        const { acc, offsetsMap, lastRes, anchorFoundIdx, startOffset } = windowData;
+        if (lastRes) {
+          const { beatmapsets: _ignored, ...meta } = lastRes;
+          setSearchMeta(meta);
+        } else {
+          setSearchMeta(null);
+        }
+        batchOffsetsRef.current = offsetsMap;
+        setResults(acc);
+        setHeadUpstreamOffset(startOffset);
+
+        const savedAnchorSnap = pos.contextSnapshot?.find(
+          (s) => s.id === pos.anchorBeatmapsetId,
+        );
+
+        if (startOffset > 0) {
+          setRestoredContextInfo({
+            archiveName: archive.name,
+            anchorTitle: pos.anchorTitle,
+            anchorBeatmapsetId: pos.anchorBeatmapsetId,
+            headUpstreamOffset: startOffset,
+            savedAnchorSet: savedAnchorSnap,
+          });
+        }
+
+        if (acc.length === 0) {
+          notify(`存档「${archive.name}」已恢复筛选，但当前无匹配结果`);
+          return;
+        }
+
+        let targetId: number | null = null;
+        let hitKind: 'exact' | 'neighbor' | 'fallback' = 'fallback';
+
+        if (anchorFoundIdx >= 0) {
+          targetId = pos.anchorBeatmapsetId;
+          hitKind = 'exact';
+        } else {
+          for (const neighborId of pos.contextBeatmapsetIds) {
+            if (acc.some((s) => s.id === neighborId)) {
+              targetId = neighborId;
+              hitKind = 'neighbor';
+              break;
+            }
+          }
+          if (targetId === null) {
+            const fallbackIdx = Math.min(acc.length - 1, Math.floor(acc.length / 2));
+            targetId = acc[fallbackIdx].id;
+          }
+        }
+
+        if (viewMode === 'lazer') {
+          setLazerRestoreTarget({
+            beatmapsetId: targetId,
+            beatmapId: hitKind === 'exact' ? pos.anchorBeatmapId ?? null : null,
+            nonce: Date.now(),
+          });
+        } else {
+          scrollToGridListTarget(targetId);
+        }
+
+        const openSavedAnchorDetail = () => {
+          if (savedAnchorSnap) {
+            openDetail(savedAnchorSnap, { diffId: pos.anchorBeatmapId ?? undefined });
+          } else {
+            void fetchBeatmapsetDetail(pos.anchorBeatmapsetId)
+              .then((detail) => openDetail(detail, { diffId: pos.anchorBeatmapId ?? undefined }))
+              .catch(() => notify('未能加载原谱面详情'));
+          }
+        };
+
+        if (hitKind === 'exact') {
+          notify(`已定位至「${pos.anchorTitle}」`);
+        } else if (hitKind === 'neighbor') {
+          notify(`原曲「${pos.anchorTitle}」排序已变动，已定位到相邻上下文`, {
+            actionLabel: '查看原谱面',
+            onAction: openSavedAnchorDetail,
+          });
+        } else {
+          notify(`未在当前窗口找到「${pos.anchorTitle}」，已恢复筛选与附近页面`, {
+            actionLabel: '查看原谱面',
+            onAction: openSavedAnchorDetail,
+          });
+        }
+      } catch (err) {
+        if (myEpoch === searchEpochRef.current) {
+          setSearchError(err instanceof Error ? err.message : '恢复存档失败');
+        }
+      } finally {
+        if (myEpoch === searchEpochRef.current) {
+          setLoading(false);
+          setRestoringArchiveId(null);
+        }
+      }
+    },
+    [viewMode, runSearch, notify, scrollToGridListTarget, openDetail],
+  );
+
+  const handleLoadEarlierResults = useCallback(async () => {
+    if (loading || loadingMoreRef.current || loadingEarlier || headUpstreamOffset <= 0) return;
+    const prevOffset = Math.max(0, headUpstreamOffset - 24);
+    const reqLimit = headUpstreamOffset - prevOffset;
+    const myEpoch = searchEpochRef.current;
+    setLoadingEarlier(true);
+    try {
+      const res = await searchBeatmapsets({
+        ...filters,
+        offset: prevOffset,
+        limit: Math.max(12, reqLimit),
+      });
+      if (myEpoch !== searchEpochRef.current) return;
+      setResults((prev) => {
+        const existingIds = new Set(prev.map((x) => x.id));
+        const prepended = res.beatmapsets.filter((x) => !existingIds.has(x.id));
+        for (const item of prepended) {
+          batchOffsetsRef.current.set(item.id, res.upstreamOffset);
+        }
+        return [...prepended, ...prev];
+      });
+      setHeadUpstreamOffset(prevOffset);
+      setRestoredContextInfo((prev) =>
+        prev ? { ...prev, headUpstreamOffset: prevOffset } : null,
+      );
+      if (prevOffset === 0) {
+        notify('已向上加载至第 1 页');
+      }
+    } catch (err) {
+      if (myEpoch === searchEpochRef.current) {
+        notify(err instanceof Error ? err.message : '向上加载更早谱面失败');
+      }
+    } finally {
+      if (myEpoch === searchEpochRef.current) {
+        setLoadingEarlier(false);
+      }
+    }
+  }, [loading, loadingEarlier, headUpstreamOffset, filters, notify]);
 
   const handleTogglePlay = useCallback(
     (set: NormalizedBeatmapset) => {
@@ -974,12 +1550,15 @@ export function App() {
         overlayOpen={overlayOpen}
         overlayHotkey={config?.overlayHotkey}
         sidebarCollapsed={sidebarCollapsed}
+        archiveRailCollapsed={archiveRailCollapsed}
+        archiveCount={archives.length}
         activeAccentHex={activeAccentHex}
         onToggleOverlay={() => void handleToggleOverlay()}
         onChangeTheme={(t) => applyTheme(t, true)}
         onBenchmark={handleBenchmark}
         onToggleNav={() => setNavOpen((v) => !v)}
         onToggleSidebar={toggleSidebarCollapsed}
+        onToggleArchiveRail={toggleArchiveRailCollapsed}
       />
 
       <div className="relative z-10 flex min-h-0 flex-1 overflow-hidden">
@@ -993,6 +1572,7 @@ export function App() {
         >
           <div className="h-full w-[var(--sidebar-w)]">
             <SideRail
+              workspaceMode={workspaceMode}
               target={target}
               variant={variant}
               activePresetId={activePresetId}
@@ -1000,6 +1580,7 @@ export function App() {
               downloads={downloads}
               fastBatch={fastBatch}
               launchingClient={launchingClient}
+              onChangeWorkspaceMode={switchWorkspaceMode}
               onChangeTarget={setTarget}
               onChangeVariant={setVariant}
               onSelectPreset={handleSelectPreset}
@@ -1012,71 +1593,42 @@ export function App() {
           </div>
         </aside>
 
-        {/* Narrow Viewport Drawer Rail */}
-        {navOpen && (
-          <div className="modal-backdrop flex lg:hidden" onClick={() => setNavOpen(false)}>
-            <aside
-              className="animate-rail-in h-full w-[var(--sidebar-w)] border-r border-hairline-strong bg-surface-0 shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <SideRail
-                target={target}
-                variant={variant}
-                activePresetId={activePresetId}
-                library={library}
-                downloads={downloads}
-                fastBatch={fastBatch}
-                launchingClient={launchingClient}
-                onChangeTarget={setTarget}
-                onChangeVariant={setVariant}
-                onSelectPreset={handleSelectPreset}
-                onLaunchGame={(c) => {
-                  setNavOpen(false);
-                  void handleLaunchGame(c);
-                }}
-                onOpenLibrarySync={() => {
-                  setNavOpen(false);
-                  setLibrarySyncOpen(true);
-                }}
-                onOpenFastBatch={() => {
-                  setNavOpen(false);
-                  setFastBatchOpen(true);
-                }}
-                onOpenDownloads={() => {
-                  setNavOpen(false);
-                  setDownloadsOpen(true);
-                }}
-                onOpenSettings={() => {
-                  setNavOpen(false);
-                  setSettingsOpen(true);
-                }}
-              />
-            </aside>
-          </div>
-        )}
-
         {/* Main Workspace */}
         <main
           ref={mainScrollRef}
           className={
-            viewMode === 'lazer'
-              ? 'flex min-h-0 flex-1 flex-col overflow-hidden px-3.5 pt-3 pb-3 sm:px-5 sm:pt-3.5 sm:pb-3.5'
-              : `flex-1 overflow-x-hidden overflow-y-auto px-4 pt-4 sm:px-5 ${playingSet ? 'pb-28' : 'pb-8'}`
+            workspaceMode === 'book'
+              ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-0'
+              : viewMode === 'lazer'
+                ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-3.5 pt-3 pb-3 sm:px-5 sm:pt-3.5 sm:pb-3.5'
+                : `min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pt-4 sm:px-5 ${playingSet ? 'pb-28' : 'pb-8'}`
           }
         >
-          <div
-            className={
-              viewMode === 'lazer'
-                ? 'mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-2.5 sm:gap-3'
-                : 'mx-auto max-w-[1440px] space-y-4'
-            }
-          >
+          {workspaceMode === 'book' ? (
+            <BookArchiveMode
+              theme={theme}
+              library={library}
+              onPreviewBeatmap={(setId, diffId, title) =>
+                openManiaPreview(setId, { beatmapId: diffId ?? null, titleHint: title })
+              }
+              onLoadIntoGame={(setId) => void handleLoadIntoGame(setId)}
+              onNotify={notify}
+            />
+          ) : (
+            <div
+              className={
+                viewMode === 'lazer'
+                  ? 'mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-2.5 sm:gap-3'
+                  : 'mx-auto max-w-[1440px] space-y-4'
+              }
+            >
             <FilterPanel
               filters={filters}
               loading={loading}
               collapsed={filterCollapsed}
               floatingAdvanced={viewMode === 'lazer'}
               onToggleCollapsed={toggleFilterCollapsed}
+              onOpenSaveArchive={openSaveArchiveRail}
               onChange={handleFilterChange}
               onSearch={(override) => void runSearch(override || filters, false)}
               onReset={handleResetFilters}
@@ -1207,6 +1759,54 @@ export function App() {
               </div>
             </div>
 
+            {/* Restored Deep-Page Context Bar */}
+            {restoredContextInfo && headUpstreamOffset > 0 && !loading && (
+              <div className="panel-flat flex shrink-0 flex-wrap items-center justify-between gap-2 border-lazer/35 bg-lazer/10 px-3 py-1.5 text-[0.75rem]">
+                <div className="flex min-w-0 items-center gap-2 text-ink-2">
+                  <MapPin className="h-3.5 w-3.5 shrink-0 text-lazer-soft" />
+                  <span className="truncate">
+                    已跳转至存档 <strong className="text-ink">「{restoredContextInfo.archiveName}」</strong>{' '}
+                    第 <span className="font-mono font-bold text-lazer-soft">{headUpstreamOffset}+</span>{' '}
+                    位附近上下文
+                  </span>
+                </div>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={loadingEarlier}
+                    onClick={() => void handleLoadEarlierResults()}
+                    className="btn btn-sm min-h-[24px] border-lazer/45 bg-surface-2/80 px-2.5 text-[0.71875rem] text-lazer-soft hover:bg-lazer/15"
+                  >
+                    {loadingEarlier ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <ArrowUp className="h-3 w-3" />
+                    )}
+                    <span>{loadingEarlier ? '加载中…' : '向上加载更早谱面'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRestoredContextInfo(null);
+                      void runSearch({ ...filters, offset: 0 }, false);
+                    }}
+                    className="btn btn-sm min-h-[24px] px-2 text-[0.71875rem]"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    <span>回到第 1 页</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRestoredContextInfo(null)}
+                    aria-label="关闭上下文提示"
+                    className="flex h-6 w-6 items-center justify-center rounded text-ink-3 hover:bg-tint-hover hover:text-ink"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Song Presentation (Grid / Compact List / Lazer Carousel) */}
             {loading ? (
               viewMode === 'list' ? (
@@ -1271,6 +1871,7 @@ export function App() {
                           activeTask={activeTaskBySet.get(set.id)}
                           batchMode={batchMode}
                           selected={selectedIds.has(set.id)}
+                          highlighted={highlightedSetId === set.id}
                           ppScenario={activePpScenario}
                           onToggleSelect={handleToggleSelectId}
                           onTogglePlay={handleTogglePlay}
@@ -1293,6 +1894,7 @@ export function App() {
                           activeTask={activeTaskBySet.get(set.id)}
                           batchMode={batchMode}
                           selected={selectedIds.has(set.id)}
+                          highlighted={highlightedSetId === set.id}
                           ppScenario={activePpScenario}
                           onToggleSelect={handleToggleSelectId}
                           onTogglePlay={handleTogglePlay}
@@ -1319,8 +1921,12 @@ export function App() {
                       hasAudioDock={Boolean(playingSet)}
                       hasGlobalBg={Boolean(effectiveBgUrl)}
                       filterCollapsed={filterCollapsed}
+                      compactStage={!sidebarCollapsed && !archiveRailCollapsed}
                       ppScenario={activePpScenario}
+                      restoreTarget={lazerRestoreTarget}
+                      carouselScrollTopRef={lazerScrollTopRef}
                       onActiveBeatmapsetChange={setActiveLazerSet}
+                      onActiveDiffIdChange={setActiveLazerDiffId}
                       onToggleSelect={handleToggleSelectId}
                       onTogglePlay={handleTogglePlay}
                       onStartPlay={handleStartPlay}
@@ -1371,16 +1977,127 @@ export function App() {
                 )}
               </>
             )}
-          </div>
+            </div>
+          )}
         </main>
+
+        {/* Desktop Collapsible Right Filter Archive Rail (2xl+ docked; collapsed by default) */}
+        <aside
+          className={`hidden shrink-0 overflow-hidden bg-surface-0/82 backdrop-blur-xl transition-[width,opacity] duration-250 ease-out 2xl:block ${
+            archiveRailCollapsed
+              ? 'pointer-events-none w-0 border-l-0 opacity-0'
+              : 'w-[var(--right-sidebar-w)] border-l border-hairline opacity-100'
+          }`}
+        >
+          <div className="h-full w-[var(--right-sidebar-w)]">
+            <FilterArchiveRail
+              archives={archives}
+              activeArchiveId={activeArchiveId}
+              restoringArchiveId={restoringArchiveId}
+              currentFilters={filters}
+              currentBrowsePreview={currentBrowsePreview}
+              saveInputFocusNonce={saveInputFocusNonce}
+              onSaveNew={handleSaveNewArchive}
+              onRestore={(arch, opts) => void handleRestoreFilterArchive(arch, opts)}
+              onOverwrite={handleOverwriteArchive}
+              onRename={handleRenameArchive}
+              onTogglePin={handleTogglePinArchive}
+              onDelete={handleDeleteArchive}
+              onClose={toggleArchiveRailCollapsed}
+            />
+          </div>
+        </aside>
       </div>
 
-      {/* Floating Back-to-Top in Grid / List Views */}
-      {viewMode !== 'lazer' && showBackToTop && results.length > 0 && (
+      {/* Narrow Viewport Left Navigation Drawer (Root z-50 above TitleBar) */}
+      {navOpen && (
+        <div className="modal-backdrop flex lg:hidden" onClick={() => setNavOpen(false)}>
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="左侧导航栏"
+            className="animate-rail-in h-full w-[var(--sidebar-w)] border-r border-hairline-strong bg-surface-0 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <SideRail
+              workspaceMode={workspaceMode}
+              target={target}
+              variant={variant}
+              activePresetId={activePresetId}
+              library={library}
+              downloads={downloads}
+              fastBatch={fastBatch}
+              launchingClient={launchingClient}
+              onChangeWorkspaceMode={switchWorkspaceMode}
+              onChangeTarget={setTarget}
+              onChangeVariant={setVariant}
+              onSelectPreset={handleSelectPreset}
+              onLaunchGame={(c) => {
+                setNavOpen(false);
+                void handleLaunchGame(c);
+              }}
+              onOpenLibrarySync={() => {
+                setNavOpen(false);
+                setLibrarySyncOpen(true);
+              }}
+              onOpenFastBatch={() => {
+                setNavOpen(false);
+                setFastBatchOpen(true);
+              }}
+              onOpenDownloads={() => {
+                setNavOpen(false);
+                setDownloadsOpen(true);
+              }}
+              onOpenSettings={() => {
+                setNavOpen(false);
+                setSettingsOpen(true);
+              }}
+            />
+          </aside>
+        </div>
+      )}
+
+      {/* Narrow Viewport Right Filter Archive Drawer (<2xl, Root z-50 above TitleBar) */}
+      {!archiveRailCollapsed && (
         <div
-          className={`pointer-events-none fixed right-5 z-30 transition-[bottom] duration-200 ${
+          className="modal-backdrop flex justify-end 2xl:hidden"
+          onClick={toggleArchiveRailCollapsed}
+        >
+          <aside
+            role="dialog"
+            aria-modal="true"
+            aria-label="Filter 存档右侧栏"
+            className="animate-drawer-in h-full w-[min(92vw,336px)] border-l border-hairline-strong bg-surface-0 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <FilterArchiveRail
+              archives={archives}
+              activeArchiveId={activeArchiveId}
+              restoringArchiveId={restoringArchiveId}
+              currentFilters={filters}
+              currentBrowsePreview={currentBrowsePreview}
+              saveInputFocusNonce={saveInputFocusNonce}
+              onSaveNew={handleSaveNewArchive}
+              onRestore={(arch, opts) => {
+                toggleArchiveRailCollapsed();
+                void handleRestoreFilterArchive(arch, opts);
+              }}
+              onOverwrite={handleOverwriteArchive}
+              onRename={handleRenameArchive}
+              onTogglePin={handleTogglePinArchive}
+              onDelete={handleDeleteArchive}
+              onClose={toggleArchiveRailCollapsed}
+            />
+          </aside>
+        </div>
+      )}
+
+      {/* Floating Back-to-Top in Grid / List Views */}
+      {workspaceMode === 'browse' && viewMode !== 'lazer' && showBackToTop && results.length > 0 && (
+        <div
+          className={`pointer-events-none fixed right-5 z-30 transition-[bottom,right] duration-200 ${
             playingSet ? 'bottom-28 sm:bottom-[84px]' : 'bottom-5'
-          }`}
+          } ${!archiveRailCollapsed ? '2xl:right-[calc(var(--right-sidebar-w)+20px)]' : ''}`}
         >
           <button
             type="button"
@@ -1396,18 +2113,21 @@ export function App() {
       )}
 
       {/* Floating Audio Preview Dock */}
-      <AudioPlayerBar
-        beatmapset={playingSet}
-        playing={isPlaying}
-        activeTarget={target}
-        sidebarCollapsed={sidebarCollapsed}
-        onTogglePlay={() => setIsPlaying((p) => !p)}
-        onStop={() => {
-          setIsPlaying(false);
-          setPlayingSet(null);
-        }}
-        onDownload={(s, t) => void handleDownload(s, t)}
-      />
+      {workspaceMode === 'browse' && (
+        <AudioPlayerBar
+          beatmapset={playingSet}
+          playing={isPlaying}
+          activeTarget={target}
+          sidebarCollapsed={sidebarCollapsed}
+          rightRailOpen={!archiveRailCollapsed}
+          onTogglePlay={() => setIsPlaying((p) => !p)}
+          onStop={() => {
+            setIsPlaying(false);
+            setPlayingSet(null);
+          }}
+          onDownload={(s, t) => void handleDownload(s, t)}
+        />
+      )}
 
       {/* Detail Modal */}
       <BeatmapDetailModal

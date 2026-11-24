@@ -10,7 +10,6 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
-  X,
 } from 'lucide-react';
 import {
   OSU_GENRES,
@@ -21,8 +20,6 @@ import {
 } from '../constants';
 import { InstalledFilter, SearchFilters, SearchMode, SearchSource, SearchStatus } from '../types';
 import {
-  PP_SCENARIO_CATEGORY_META,
-  PP_SCENARIO_PRESETS,
   PpScenarioCategory,
   SAVED_PP_SCENARIOS_EVENT,
   SavedPpScenario,
@@ -36,6 +33,7 @@ import {
   saveCustomPpScenario,
 } from '../utils/pp';
 import { PpRangeSlider } from './PpRangeSlider';
+import { PpScenarioLibrary } from './PpScenarioLibrary';
 import { SelectField } from './SelectField';
 import { StarRangeSlider } from './StarRangeSlider';
 
@@ -45,6 +43,7 @@ interface FilterPanelProps {
   collapsed?: boolean;
   floatingAdvanced?: boolean;
   onToggleCollapsed?: () => void;
+  onOpenSaveArchive?: () => void;
   onChange: (next: SearchFilters, autoSearch?: boolean) => void;
   onSearch: (overrideFilters?: SearchFilters) => void;
   onReset: () => void;
@@ -149,6 +148,7 @@ export function FilterPanel({
   collapsed = false,
   floatingAdvanced = false,
   onToggleCollapsed,
+  onOpenSaveArchive,
   onChange,
   onSearch,
   onReset,
@@ -160,9 +160,14 @@ export function FilterPanel({
     inferScenarioCategory(extractPpScenarioFromFilters(filters)),
   );
   const [customScenarioName, setCustomScenarioName] = useState('');
-  const [popoverPos, setPopoverPos] = useState<{ openUpward: boolean; maxHeight: number }>({
+  const [popoverPos, setPopoverPos] = useState<{
+    openUpward: boolean;
+    maxHeight: number;
+    maxWidth: number;
+  }>({
     openUpward: false,
     maxHeight: 540,
+    maxWidth: 560,
   });
   const panelRef = useRef<HTMLElement | null>(null);
   const ppPopoverRef = useRef<HTMLDivElement | null>(null);
@@ -207,7 +212,12 @@ export function FilterPanel({
       const spaceAbove = rect.top - 52;
       const openUpward = spaceBelow < 320 && spaceAbove > spaceBelow;
       const maxHeight = Math.max(230, Math.min(620, openUpward ? spaceAbove : spaceBelow));
-      setPopoverPos({ openUpward, maxHeight });
+      const maxWidth = Math.min(
+        560,
+        window.innerWidth - 28,
+        Math.max(320, Math.floor(rect.right - 12)),
+      );
+      setPopoverPos({ openUpward, maxHeight, maxWidth });
     };
     recalc();
     const onPointerDown = (e: MouseEvent) => {
@@ -351,6 +361,18 @@ export function FilterPanel({
             <span>{loading ? '搜索中' : '搜索'}</span>
           </button>
 
+          {onOpenSaveArchive && (
+            <button
+              type="button"
+              onClick={onOpenSaveArchive}
+              title="保存当前筛选与搜索状态到右侧存档栏"
+              className="btn btn-sm min-h-[32px] rounded-[8px] px-2.5 text-ink-2 hover:border-osu/45 hover:text-osu-soft"
+            >
+              <BookmarkPlus className="h-3.5 w-3.5 text-osu" />
+              <span className="hidden xl:inline">存档</span>
+            </button>
+          )}
+
           {onToggleCollapsed && (
             <button
               type="button"
@@ -423,6 +445,17 @@ export function FilterPanel({
             <RotateCcw className="h-3.5 w-3.5" />
             <span className="hidden md:inline">重置</span>
           </button>
+          {onOpenSaveArchive && (
+            <button
+              type="button"
+              onClick={onOpenSaveArchive}
+              title="保存当前筛选与搜索状态到右侧存档栏"
+              className="btn min-h-[40px] rounded-[8px] px-3 text-ink-2 hover:border-osu/45 hover:text-osu-soft"
+            >
+              <BookmarkPlus className="h-3.5 w-3.5 text-osu" />
+              <span className="hidden md:inline">存档</span>
+            </button>
+          )}
           {onToggleCollapsed && (
             <button
               type="button"
@@ -609,8 +642,11 @@ export function FilterPanel({
           {/* Floating PP Scenario Configurator Popover */}
           {ppPopoverOpen && (
             <div
-              style={{ maxHeight: `${popoverPos.maxHeight}px` }}
-              className={`panel-flat animate-fade-in absolute right-0 z-40 w-[min(94vw,520px)] space-y-3 overflow-y-auto overscroll-contain rounded-[14px] border border-hairline-strong bg-surface-2 p-3.5 shadow-2xl ${
+              style={{
+                maxHeight: `${popoverPos.maxHeight}px`,
+                maxWidth: `${popoverPos.maxWidth}px`,
+              }}
+              className={`panel-flat animate-fade-in absolute right-0 z-40 w-[min(94vw,560px)] space-y-2.5 overflow-y-auto overscroll-contain rounded-[14px] border border-hairline-strong bg-surface-2 p-3 shadow-2xl ${
                 popoverPos.openUpward ? 'bottom-full mb-2' : 'top-full mt-2'
               }`}
             >
@@ -670,109 +706,21 @@ export function FilterPanel({
                 </div>
               </div>
 
-              {/* Mode-Tabbed Scenario Library (NM / DT / HT / Rate / Custom) */}
-              <div className="space-y-2 border-t border-hairline pt-2.5">
-                <div className="flex flex-wrap items-center justify-between gap-1.5">
-                  <span className="field-label">DT / HT / 给定与自定义情景库</span>
-                  <div className="flex flex-wrap gap-1">
-                    {(['nm', 'dt', 'ht', 'rate', 'custom'] as PpScenarioCategory[]).map((tab) => {
-                      const active = scenarioTab === tab;
-                      const countSuffix =
-                        tab === 'custom' && savedScenarios.length > 0
-                          ? ` (${savedScenarios.length})`
-                          : '';
-                      return (
-                        <button
-                          key={tab}
-                          type="button"
-                          onClick={() => setScenarioTab(tab)}
-                          className={`btn btn-sm font-stat min-h-[23px] px-2 text-[0.6875rem] ${
-                            active
-                              ? tab === 'dt'
-                                ? 'border-osu/60 bg-osu/16 text-osu-soft'
-                                : tab === 'ht'
-                                  ? 'border-stable/60 bg-stable/16 text-stable-soft'
-                                  : 'border-lazer/60 bg-lazer/18 text-lazer-soft'
-                              : ''
-                          }`}
-                        >
-                          {PP_SCENARIO_CATEGORY_META[tab].label}
-                          {countSuffix}
-                        </button>
-                      );
-                    })}
-                  </div>
+              {/* Master-Detail Scenario Library (Left Primary Mode Rail / Right Secondary Presets) */}
+              <div className="space-y-1.5 border-t border-hairline pt-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="field-label">情景预设库</span>
+                  <span className="text-[0.6875rem] text-ink-3">左侧选主模式 · 右侧选副词条</span>
                 </div>
-
-                {scenarioTab !== 'custom' ? (
-                  <div className="flex flex-wrap gap-1">
-                    {PP_SCENARIO_PRESETS.filter((p) => p.category === scenarioTab).map((p) => {
-                      const active = matchesScenarioPatch(ppScenario, p.patch);
-                      return (
-                        <button
-                          key={p.id}
-                          type="button"
-                          title={p.desc}
-                          onClick={() => update(p.patch, hasPpFilter)}
-                          className={`btn btn-sm font-stat min-h-[25px] px-2 text-[0.71875rem] ${
-                            active ? 'border-osu/60 bg-osu/15 text-osu-soft' : ''
-                          }`}
-                        >
-                          {p.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : savedScenarios.length === 0 ? (
-                  <p className="rounded-[9px] border border-dashed border-hairline px-2.5 py-2 text-[0.71875rem] text-ink-3">
-                    尚未保存自定义情景 — 可在下方调整 DT/HT 倍速、准度、黄彩比与 Miss 后点击「+ 存为自定义」。
-                  </p>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {savedScenarios.map((item) => {
-                      const active = matchesScenarioPatch(ppScenario, item.patch);
-                      const shortSummary = formatPpScenarioShort({
-                        accuracy: item.patch.ppAccuracy,
-                        rate: item.patch.ppRate,
-                        misses: item.patch.ppMisses,
-                        maRatio: item.patch.ppMaRatio ?? null,
-                        mods: {
-                          classic: item.patch.ppClassic,
-                          ez: item.patch.ppEz,
-                          nf: item.patch.ppNf,
-                        },
-                      });
-                      return (
-                        <div
-                          key={item.id}
-                          className={`inline-flex items-center rounded-[7px] border transition-colors ${
-                            active
-                              ? 'border-osu/60 bg-osu/15 text-osu-soft'
-                              : 'border-hairline bg-surface-1/80 text-ink-2 hover:border-hairline-strong'
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            title={`应用情景 (${shortSummary})`}
-                            onClick={() => update(item.patch, hasPpFilter)}
-                            className="font-stat px-2 py-1 text-[0.71875rem] font-semibold"
-                          >
-                            {item.name}
-                          </button>
-                          <button
-                            type="button"
-                            title="删除该自定义情景"
-                            aria-label={`删除自定义情景 ${item.name}`}
-                            onClick={() => setSavedScenarios(deleteSavedPpScenario(item.id))}
-                            className="flex h-6 w-5 items-center justify-center rounded-r-[7px] border-l border-hairline/70 text-ink-3 hover:bg-bad/15 hover:text-bad"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                <PpScenarioLibrary
+                  variant="compact"
+                  scenarioTab={scenarioTab}
+                  onChangeTab={setScenarioTab}
+                  currentScenario={ppScenario}
+                  savedScenarios={savedScenarios}
+                  onApplyPatch={(patch) => update(patch, hasPpFilter)}
+                  onDeleteSaved={(id) => setSavedScenarios(deleteSavedPpScenario(id))}
+                />
               </div>
 
               {/* Custom Scenario Parameters */}
@@ -818,20 +766,29 @@ export function FilterPanel({
                     aria-label="筛选倍速滑块"
                   />
                   <div className="flex flex-wrap gap-1">
-                    {PP_RATE_QUICK_CHIPS.map((c) => (
-                      <button
-                        key={c.label}
-                        type="button"
-                        onClick={() => update({ ppRate: c.value })}
-                        className={`btn btn-sm font-stat min-h-[22px] px-1.5 text-[0.6875rem] ${
-                          Math.abs(ppScenario.rate - c.value) < 0.01
+                    {PP_RATE_QUICK_CHIPS.map((c) => {
+                      const active = Math.abs(ppScenario.rate - c.value) < 0.01;
+                      const activeCls =
+                        Math.abs(c.value - 0.75) < 0.01
+                          ? 'border-stable/60 bg-stable/16 text-stable-soft'
+                          : Math.abs(c.value - 1) < 0.01
                             ? 'border-lazer/60 bg-lazer/18 text-lazer-soft'
-                            : ''
-                        }`}
-                      >
-                        {c.label}
-                      </button>
-                    ))}
+                            : Math.abs(c.value - 1.5) < 0.01
+                              ? 'border-osu/60 bg-osu/16 text-osu-soft'
+                              : 'border-amber-500/60 bg-amber-500/16 text-warn';
+                      return (
+                        <button
+                          key={c.label}
+                          type="button"
+                          onClick={() => update({ ppRate: c.value })}
+                          className={`btn btn-sm font-stat min-h-[22px] px-1.5 text-[0.6875rem] ${
+                            active ? activeCls : ''
+                          }`}
+                        >
+                          {c.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 

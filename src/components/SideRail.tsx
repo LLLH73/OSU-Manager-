@@ -1,6 +1,8 @@
 import {
   ArrowRightLeft,
+  BookOpen,
   ChevronRight,
+  Compass,
   Download,
   Loader2,
   Play,
@@ -14,9 +16,11 @@ import {
   DownloadVariant,
   FastBatchSnapshot,
   LocalLibraryStatus,
+  WorkspaceMode,
 } from '../types';
 
 interface SideRailProps {
+  workspaceMode: WorkspaceMode;
   target: DownloadTarget;
   variant: DownloadVariant;
   activePresetId: string | null;
@@ -24,6 +28,7 @@ interface SideRailProps {
   downloads: DownloadTask[];
   fastBatch?: FastBatchSnapshot | null;
   launchingClient?: 'stable' | 'lazer' | null;
+  onChangeWorkspaceMode: (mode: WorkspaceMode) => void;
   onChangeTarget: (t: DownloadTarget) => void;
   onChangeVariant: (v: DownloadVariant) => void;
   onSelectPreset: (preset: WorkflowPreset) => void;
@@ -37,6 +42,7 @@ interface SideRailProps {
 const TARGET_ORDER: DownloadTarget[] = ['lazer', 'stable', 'both'];
 
 export function SideRail({
+  workspaceMode,
   target,
   variant,
   activePresetId,
@@ -44,6 +50,7 @@ export function SideRail({
   downloads,
   fastBatch,
   launchingClient,
+  onChangeWorkspaceMode,
   onChangeTarget,
   onChangeVariant,
   onSelectPreset,
@@ -65,7 +72,46 @@ export function SideRail({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-3.5 pt-2.5 pb-2">
+      <div className="flex-1 space-y-2 overflow-x-hidden overflow-y-auto px-3.5 pt-2 pb-1.5">
+        {/* Workspace Mode Switcher: Online Browse vs 3D Local Book Archive */}
+        <section className="space-y-1">
+          <div className="px-0.5">
+            <span className="overline">工作区模式</span>
+          </div>
+          <div className="grid grid-cols-2 rounded-[9px] border border-hairline bg-canvas/55 p-0.5">
+            <button
+              type="button"
+              onClick={() => onChangeWorkspaceMode('browse')}
+              aria-pressed={workspaceMode === 'browse'}
+              className={`flex min-h-[30px] items-center justify-center gap-1.5 rounded-[7px] px-1.5 py-1 text-[0.78125rem] transition-all duration-150 ${
+                workspaceMode === 'browse'
+                  ? 'bg-surface-2 font-bold text-ink shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'font-semibold text-ink-3 hover:text-ink'
+              }`}
+            >
+              <Compass className="h-3.5 w-3.5 shrink-0" />
+              <span>搜图下载</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeWorkspaceMode('book')}
+              aria-pressed={workspaceMode === 'book'}
+              className={`flex min-h-[30px] items-center justify-center gap-1.5 rounded-[7px] px-1.5 py-1 text-[0.78125rem] transition-all duration-150 ${
+                workspaceMode === 'book'
+                  ? 'bg-surface-2 font-bold text-ink shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'font-semibold text-ink-3 hover:text-ink'
+              }`}
+            >
+              <BookOpen
+                className={`h-3.5 w-3.5 shrink-0 ${
+                  workspaceMode === 'book' ? 'text-amber-500' : ''
+                }`}
+              />
+              <span>Book 模式</span>
+            </button>
+          </div>
+        </section>
+
         {/* Download Target (Impeccable machined 3-way pill + underline variant tabs) */}
         <section className="space-y-2">
           <div className="px-0.5">
@@ -130,7 +176,7 @@ export function SideRail({
                   type="button"
                   onClick={() => onSelectPreset(preset)}
                   title={preset.description}
-                  className={`group flex w-full items-center justify-between gap-2 rounded-[8px] px-2.5 py-[5px] text-left transition-colors duration-150 ${
+                  className={`group flex w-full items-center justify-between gap-2 rounded-[8px] px-2.5 py-[3.5px] text-left transition-colors duration-150 ${
                     active
                       ? 'bg-surface-2 font-bold text-ink shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
                       : 'font-medium text-ink-2 hover:bg-tint hover:text-ink'
@@ -142,7 +188,7 @@ export function SideRail({
                         active ? 'bg-osu opacity-100' : 'bg-ink-4 opacity-0 group-hover:opacity-60'
                       }`}
                     />
-                    <span className="truncate text-[0.84375rem]">{preset.label}</span>
+                    <span className="truncate text-[0.8125rem]">{preset.label}</span>
                   </span>
                   <span className="font-mono shrink-0 text-[0.71875rem] font-semibold text-ink-3">
                     {preset.badge}
@@ -154,7 +200,7 @@ export function SideRail({
         </section>
 
         {/* Local Dual-Client Library (Hairline-bounded tabular summary, zero card-in-card) */}
-        <section className="space-y-1.5 border-y border-hairline py-2">
+        <section className="space-y-1 border-y border-hairline py-1.5">
           <div className="px-0.5">
             <span className="overline">本地曲库</span>
           </div>
@@ -248,6 +294,28 @@ export function SideRail({
               <span className="truncate">启动 Lazer</span>
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => onChangeWorkspaceMode('book')}
+            className={`group mt-1 flex w-full items-center justify-between gap-2 rounded-[8px] border px-2.5 py-1.5 text-left text-[0.78125rem] font-semibold transition-colors ${
+              workspaceMode === 'book'
+                ? 'border-amber-500/45 bg-amber-500/10 text-ink'
+                : 'border-hairline bg-canvas/40 text-ink-2 hover:border-hairline-strong hover:bg-tint hover:text-ink'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <BookOpen
+                className={`h-3.5 w-3.5 shrink-0 ${
+                  workspaceMode === 'book'
+                    ? 'text-amber-500'
+                    : 'text-ink-3 group-hover:text-amber-500'
+                }`}
+              />
+              <span>进入 Book 档案库</span>
+            </span>
+            <ChevronRight className="h-3.5 w-3.5 text-ink-4 transition-transform group-hover:translate-x-0.5" />
+          </button>
         </section>
       </div>
 

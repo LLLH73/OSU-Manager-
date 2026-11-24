@@ -6,6 +6,7 @@
 :root {
   --ui-font-scale: 1.2;
   --sidebar-w: clamp(244px, 15.5rem, 280px);
+  --right-sidebar-w: clamp(276px, 18.25rem, 320px);
 }
 
 :root[data-theme="dark"] {
@@ -989,6 +990,11 @@
       var(--gold-glow);
   }
 
+  .card-locate-pulse {
+    border-color: color-mix(in srgb, var(--t-lazer) 80%, var(--t-osu)) !important;
+    animation: locate-pulse 2.2s ease-out 1;
+  }
+
   /* Cover Frame: isolated GPU layer + -1px inset prevents mid-card hover seam flicker */
   .cover-frame {
     position: relative;
@@ -1949,6 +1955,20 @@
   }
 }
 
+@keyframes locate-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--t-lazer) 65%, transparent);
+  }
+  35% {
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--t-lazer) 45%, transparent),
+      0 0 0 6px color-mix(in srgb, var(--t-lazer) 26%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1963,5 +1983,314 @@
   .marquee-viewport:hover > .marquee-run-on-hover {
     animation: none !important;
     transform: none !important;
+  }
+}
+
+/* ------------------------------------------------------------------
+ * Book Mode — RhineLabUI Architectural Minimalist Scope
+ * ------------------------------------------------------------------ */
+.rhine-book-root {
+  --rb-paper: #eae5e1;
+  --rb-paper-rgb: 234, 229, 225;
+  --rb-panel: #f5f2ed;
+  --rb-ink: #121410;
+  --rb-muted: #6f6c64;
+  --rb-line: #bcb6aa;
+  --rb-accent: #a67d48;
+  background-color: var(--rb-paper);
+  color: var(--rb-ink);
+}
+
+.rhine-book-root[data-rhine-dark="true"] {
+  --rb-paper: #11181b;
+  --rb-paper-rgb: 17, 24, 27;
+  --rb-panel: #172024;
+  --rb-ink: #e0e3dc;
+  --rb-muted: #98a4a6;
+  --rb-line: #36454b;
+  --rb-accent: #c5a16b;
+}
+
+.rhine-atmosphere {
+  background:
+    linear-gradient(180deg, rgba(var(--rb-paper-rgb), 0.56), transparent 28%),
+    linear-gradient(0deg, rgba(var(--rb-paper-rgb), 0.72), transparent 22%),
+    radial-gradient(ellipse at 45% 48%, transparent 38%, rgba(var(--rb-paper-rgb), 0.42) 92%);
+}
+
+.rhine-distance-mist {
+  backdrop-filter: blur(3.5px);
+  -webkit-backdrop-filter: blur(3.5px);
+  mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.96) 0%,
+    rgba(0, 0, 0, 0.56) 24%,
+    rgba(0, 0, 0, 0.08) 44%,
+    rgba(0, 0, 0, 0) 56%
+  );
+  -webkit-mask-image: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.96) 0%,
+    rgba(0, 0, 0, 0.56) 24%,
+    rgba(0, 0, 0, 0.08) 44%,
+    rgba(0, 0, 0, 0) 56%
+  );
+}
+
+.rhine-solid-btn {
+  background: var(--rb-ink);
+  color: var(--rb-paper);
+  border: 1px solid var(--rb-ink);
+  transition: opacity 150ms ease, background-color 150ms ease;
+}
+
+.rhine-solid-btn:hover {
+  opacity: 0.88;
+}
+
+.rhine-btn-outline {
+  border: 1px solid var(--rb-line);
+  color: var(--rb-ink);
+  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
+}
+
+.rhine-btn-outline:hover:not(:disabled) {
+  border-color: var(--rb-accent);
+  color: var(--rb-accent);
+}
+
+.rhine-btn-ghost {
+  color: var(--rb-ink);
+  transition: color 150ms ease;
+}
+
+.rhine-btn-ghost:hover {
+  color: var(--rb-accent);
+}
+
+.rhine-tag-stable {
+  border-color: rgba(2, 132, 199, 0.4);
+  background: rgba(2, 132, 199, 0.1);
+  color: #0369a1;
+}
+
+.rhine-book-root[data-rhine-dark="true"] .rhine-tag-stable {
+  color: #7dd3fc;
+}
+
+.rhine-tag-lazer {
+  border-color: rgba(168, 85, 247, 0.42);
+  background: rgba(168, 85, 247, 0.1);
+  color: #6d28d9;
+}
+
+.rhine-book-root[data-rhine-dark="true"] .rhine-tag-lazer {
+  color: #d8b4fe;
+}
+
+.rhine-file-ticks button {
+  position: relative;
+  width: 14px;
+  height: 36px;
+}
+
+.rhine-file-ticks button::before {
+  content: "";
+  position: absolute;
+  left: 6px;
+  top: 12px;
+  width: 2px;
+  height: 12px;
+  background: var(--rb-line);
+  transition: height 280ms cubic-bezier(0.22, 1, 0.36, 1), top 280ms cubic-bezier(0.22, 1, 0.36, 1), background-color 200ms ease;
+}
+
+.rhine-file-ticks button.is-selected::before {
+  top: 2px;
+  height: 32px;
+  background: var(--rb-ink);
+}
+
+.rhine-file-ticks button:hover:not(:disabled)::before {
+  top: 6px;
+  height: 24px;
+  background: var(--rb-accent);
+}
+
+.rhine-spread-backdrop {
+  background: rgba(var(--rb-paper-rgb), 0.78);
+  will-change: opacity;
+  animation: rhine-fade-in 220ms ease-out forwards;
+}
+
+.rhine-spread-backdrop.is-closing {
+  animation: rhine-fade-out 200ms ease-in forwards;
+}
+
+.rhine-book-spread {
+  background: var(--rb-panel);
+  color: var(--rb-ink);
+  border: 1px solid var(--rb-line);
+  box-shadow: 0 32px 90px -24px rgba(0, 0, 0, 0.36);
+  transform-origin: center center;
+  animation: rhine-book-unfold 360ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.rhine-book-spread.is-closing {
+  animation: rhine-book-fold 210ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.rhine-spread-cover-img {
+  will-change: filter, transform;
+  animation: rhine-cover-clarify 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.rhine-spread-cover-img.is-closing {
+  filter: blur(12px);
+  transform: scale(1.04);
+  transition: filter 190ms ease-in, transform 190ms ease-in;
+}
+
+.rhine-scan-ring-1 {
+  animation: rhine-orbit-cw 8s linear infinite;
+}
+
+.rhine-scan-ring-2 {
+  animation: rhine-orbit-ccw 4.5s linear infinite;
+}
+
+.rhine-scan-ring-3 {
+  animation: rhine-orbit-cw 16s linear infinite;
+}
+
+.rhine-cursor-blink {
+  animation: rhine-cursor-blink 0.8s steps(1) infinite;
+}
+
+.rhine-filter-scanline {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--rb-accent) 45%,
+    var(--rb-ink) 75%,
+    transparent 100%
+  );
+  animation: rhine-scan-sweep 0.55s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+
+.rhine-spine-crease {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(50% - 24px);
+  width: 48px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.03) 34%,
+    rgba(0, 0, 0, 0.08) 50%,
+    rgba(0, 0, 0, 0.03) 66%,
+    transparent 100%
+  );
+  z-index: 2;
+}
+
+.rhine-book-root[data-rhine-dark="true"] .rhine-spine-crease {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.16) 36%,
+    rgba(0, 0, 0, 0.36) 50%,
+    rgba(0, 0, 0, 0.16) 64%,
+    transparent 100%
+  );
+}
+
+@keyframes rhine-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rhine-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes rhine-book-unfold {
+  from {
+    opacity: 0;
+    transform: perspective(1600px) rotateX(4deg) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1600px) rotateX(0deg) scale(1);
+  }
+}
+
+@keyframes rhine-book-fold {
+  from {
+    opacity: 1;
+    transform: perspective(1600px) rotateX(0deg) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: perspective(1600px) rotateX(4deg) scale(0.95);
+  }
+}
+
+@keyframes rhine-cover-clarify {
+  from {
+    filter: blur(18px);
+    transform: scale(1.07);
+  }
+  to {
+    filter: blur(0px);
+    transform: scale(1);
+  }
+}
+
+@keyframes rhine-orbit-cw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rhine-orbit-ccw {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes rhine-cursor-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes rhine-scan-sweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(340%);
   }
 }

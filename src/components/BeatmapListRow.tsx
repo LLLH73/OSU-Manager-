@@ -42,6 +42,7 @@ interface BeatmapListRowProps {
   activeTask?: DownloadTask;
   batchMode: boolean;
   selected: boolean;
+  highlighted?: boolean;
   ppScenario?: Partial<PpScenarioInput>;
   onToggleSelect: (id: number) => void;
   onTogglePlay: (set: NormalizedBeatmapset) => void;
@@ -57,6 +58,7 @@ export const BeatmapListRow = memo(function BeatmapListRow({
   activeTask,
   batchMode,
   selected,
+  highlighted = false,
   ppScenario,
   onToggleSelect,
   onTogglePlay,
@@ -109,7 +111,10 @@ export const BeatmapListRow = memo(function BeatmapListRow({
 
   return (
     <article
-      className={`song-list-row group relative flex flex-col gap-2.5 overflow-hidden px-3 py-2.5 transition-[border-color,box-shadow,background-color] duration-200 md:flex-row md:items-center md:gap-3.5 ${rowFrameClass}`}
+      data-set-id={beatmapset.id}
+      className={`song-list-row group relative flex flex-col gap-2.5 overflow-hidden px-3 py-2.5 transition-[border-color,box-shadow,background-color] duration-200 md:flex-row md:items-center md:gap-3.5 ${rowFrameClass} ${
+        highlighted ? 'card-locate-pulse' : ''
+      }`}
     >
       {/* Left: optional batch checkbox + Cover thumbnail */}
       <div className="flex min-w-0 flex-1 items-center gap-3">

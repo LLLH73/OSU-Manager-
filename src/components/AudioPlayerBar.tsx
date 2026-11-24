@@ -10,6 +10,7 @@ interface AudioPlayerBarProps {
   playing: boolean;
   activeTarget: DownloadTarget;
   sidebarCollapsed?: boolean;
+  rightRailOpen?: boolean;
   onTogglePlay: () => void;
   onStop: () => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
@@ -20,6 +21,7 @@ export function AudioPlayerBar({
   playing,
   activeTarget,
   sidebarCollapsed = false,
+  rightRailOpen = false,
   onTogglePlay,
   onStop,
   onDownload,
@@ -70,9 +72,9 @@ export function AudioPlayerBar({
 
   return (
     <div
-      className={`pointer-events-none fixed right-4 bottom-4 left-4 z-40 flex justify-center transition-[left] duration-250 ${
+      className={`pointer-events-none fixed right-4 bottom-4 left-4 z-40 flex justify-center transition-[left,right] duration-250 ${
         sidebarCollapsed ? 'lg:left-4' : 'lg:left-[calc(var(--sidebar-w)+16px)]'
-      }`}
+      } ${rightRailOpen ? '2xl:right-[calc(var(--right-sidebar-w)+16px)]' : ''}`}
     >
       <div className="animate-dock-in pointer-events-auto flex w-full max-w-[740px] flex-wrap items-center gap-3 rounded-2xl border border-hairline-strong bg-surface-2/90 px-3.5 py-2 shadow-[0_18px_44px_-16px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:rounded-full">
         <audio

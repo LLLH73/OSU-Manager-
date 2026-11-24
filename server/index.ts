@@ -24,6 +24,12 @@ import {
   stopFastBatchOnShutdown,
 } from './fastBatch.js';
 import {
+  createFilterArchive,
+  deleteFilterArchive,
+  listFilterArchives,
+  updateFilterArchive,
+} from './filterArchives.js';
+import {
   clearLazerPendingFiles,
   launchGameClient,
   launchLazerBatchImport,
@@ -38,6 +44,13 @@ import {
   libraryEvents,
   rescanLibrary,
 } from './library.js';
+import {
+  getBookDetail,
+  getBooksLibrary,
+  invalidateBooksCache,
+  serveBookAudio,
+  serveBookCover,
+} from './localLibrary.js';
 import { getLogFilePath, logError, logInfo, readRecentLogs } from './logger.js';
 import { serveCover, servePreview } from './media.js';
 import { benchmarkMirrors, getNetworkStatus, networkEvents, resetProxyCache } from './network.js';
@@ -52,6 +65,10 @@ import { listSkins, resolveManiaSkin, serveSkinAsset } from './skins.js';
 import { AppConfig, InstalledFilter, SearchFilters, SearchMode, SearchSource, SearchStatus } from './types.js';
 
 const app = express();
+
+libraryEvents.on('update', () => {
+  invalidateBooksCache();
+});
 
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
@@ -124,6 +141,7 @@ app.put('/api/config', async (req: Request, res: Response) => {
   const updated = saveConfig(body);
   logInfo('config', 'Updated config', { keys: Object.keys(body) });
   resetProxyCache();
+  invalidateBooksCache();
   await rescanLibrary(false);
   res.json(updated);
 });
@@ -420,6 +438,7 @@ app.get('/api/library/status', async (req: Request, res: Response) => {
 });
 
 app.post('/api/library/rescan', async (_req: Request, res: Response) => {
+  invalidateBooksCache();
   const status = await rescanLibrary(true);
   res.json(status);
 });
@@ -427,6 +446,50 @@ app.post('/api/library/rescan', async (_req: Request, res: Response) => {
 app.get('/api/library/diff', async (_req: Request, res: Response) => {
   await getLibraryStatus(false);
   res.json(getLibraryDiff());
+});
+
+// Local Books (Book Mode — unified Stable + Lazer local library, scores & media)
+app.get('/api/books', (req: Request, res: Response) => {
+  try {
+    const refresh = req.query.refresh === 'true';
+    res.json(getBooksLibrary(refresh));
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : '读取本地曲库失败';
+    logError('books', 'Failed to read local books library', { error: msg });
+    res.status(500).json({ error: msg });
+  }
+});
+
+app.get('/api/books/:bookKey', (req: Request, res: Response) => {
+  const bookKey = decodeURIComponent(String(req.params.bookKey || '')).trim();
+  if (!bookKey) {
+    res.status(400).json({ error: 'Invalid bookKey' });
+    return;
+  }
+  const detail = getBookDetail(bookKey);
+  if (!detail) {
+    res.status(404).json({ error: 'Book not found' });
+    return;
+  }
+  res.json(detail);
+});
+
+app.get('/api/books/:bookKey/cover', async (req: Request, res: Response) => {
+  const bookKey = decodeURIComponent(String(req.params.bookKey || '')).trim();
+  if (!bookKey) {
+    res.status(400).end();
+    return;
+  }
+  await serveBookCover(bookKey, res);
+});
+
+app.get('/api/books/:bookKey/audio', async (req: Request, res: Response) => {
+  const bookKey = decodeURIComponent(String(req.params.bookKey || '')).trim();
+  if (!bookKey) {
+    res.status(400).end();
+    return;
+  }
+  await serveBookAudio(bookKey, req, res);
 });
 
 app.post('/api/library/sync-to-lazer', async (req: Request, res: Response) => {
@@ -445,13 +508,20 @@ app.post('/api/library/sync-to-lazer', async (req: Request, res: Response) => {
 app.post('/api/library/open-folder', (req: Request, res: Response) => {
   const cfg = getConfig();
   const which = String(req.body?.which || 'lazerImport');
+  const songsRoot = path.resolve(cfg.stablePath, 'Songs');
   const map: Record<string, string> = {
-    stableSongs: path.join(cfg.stablePath, 'Songs'),
+    stableSongs: songsRoot,
     stableRoot: cfg.stablePath,
     lazerData: cfg.lazerDataPath,
     lazerImport: cfg.lazerImportDir,
   };
-  const targetDir = map[which] || cfg.lazerImportDir;
+  let targetDir = map[which] || cfg.lazerImportDir;
+  if (which === 'stableSongs' && typeof req.body?.subFolder === 'string' && req.body.subFolder.trim()) {
+    const candidate = path.resolve(songsRoot, req.body.subFolder.trim());
+    if (candidate.startsWith(songsRoot + path.sep) && fs.existsSync(candidate)) {
+      targetDir = candidate;
+    }
+  }
   openFolderInExplorer(targetDir);
   res.json({ ok: true, path: targetDir });
 });
@@ -591,6 +661,70 @@ app.post('/api/fast-batch/clear', (_req: Request, res: Response) => {
   } catch (err) {
     res.status(409).json({ error: err instanceof Error ? err.message : '无法清空任务' });
   }
+});
+
+// Filter Archives (saved search states + optional browse positions)
+app.get('/api/filter-archives', (_req: Request, res: Response) => {
+  res.json(listFilterArchives());
+});
+
+app.post('/api/filter-archives', (req: Request, res: Response) => {
+  const body = (req.body || {}) as {
+    name?: string;
+    filters?: SearchFilters;
+    browsePosition?: unknown;
+    pinned?: boolean;
+  };
+  if (!body.filters || typeof body.filters !== 'object' || Array.isArray(body.filters)) {
+    res.status(400).json({ error: '缺少有效的筛选条件 filters 对象' });
+    return;
+  }
+  const created = createFilterArchive({
+    name: body.name,
+    filters: body.filters,
+    browsePosition: body.browsePosition as any,
+    pinned: body.pinned,
+  });
+  res.status(201).json(created);
+});
+
+app.put('/api/filter-archives/:id', (req: Request, res: Response) => {
+  const id = String(req.params.id || '').trim();
+  if (!id) {
+    res.status(400).json({ error: 'Invalid archive ID' });
+    return;
+  }
+  const body = (req.body || {}) as {
+    name?: string;
+    filters?: SearchFilters;
+    browsePosition?: unknown;
+    pinned?: boolean;
+  };
+  const updated = updateFilterArchive(id, {
+    name: body.name,
+    filters: body.filters,
+    browsePosition: body.browsePosition as any,
+    pinned: body.pinned,
+  });
+  if (!updated) {
+    res.status(404).json({ error: 'Filter 存档不存在' });
+    return;
+  }
+  res.json(updated);
+});
+
+app.delete('/api/filter-archives/:id', (req: Request, res: Response) => {
+  const id = String(req.params.id || '').trim();
+  if (!id) {
+    res.status(400).json({ error: 'Invalid archive ID' });
+    return;
+  }
+  const deleted = deleteFilterArchive(id);
+  if (!deleted) {
+    res.status(404).json({ error: 'Filter 存档不存在' });
+    return;
+  }
+  res.json({ ok: true, id });
 });
 
 // SSE realtime events + lightweight running-game watcher

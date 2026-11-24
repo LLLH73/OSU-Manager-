@@ -8,6 +8,8 @@ import {
   Palette,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
   PictureInPicture2,
   Square,
   X,
@@ -21,12 +23,15 @@ interface TitleBarProps {
   overlayOpen?: boolean;
   overlayHotkey?: string;
   sidebarCollapsed?: boolean;
+  archiveRailCollapsed?: boolean;
+  archiveCount?: number;
   activeAccentHex?: string | null;
   onToggleOverlay: () => void;
   onChangeTheme: (t: ThemeId) => void;
   onBenchmark: () => void;
   onToggleNav: () => void;
   onToggleSidebar?: () => void;
+  onToggleArchiveRail?: () => void;
 }
 
 /** Monochrome bold-stroke minimalist emblem for OSU!Downloader! */
@@ -56,12 +61,15 @@ export function TitleBar({
   overlayOpen = false,
   overlayHotkey = 'Alt+Shift+O',
   sidebarCollapsed = false,
+  archiveRailCollapsed = true,
+  archiveCount = 0,
   activeAccentHex = null,
   onToggleOverlay,
   onChangeTheme,
   onBenchmark,
   onToggleNav,
   onToggleSidebar,
+  onToggleArchiveRail,
 }: TitleBarProps) {
   const api = typeof window !== 'undefined' ? window.electronAPI : undefined;
   const isElectron = Boolean(api?.isElectron);
@@ -318,6 +326,32 @@ export function TitleBar({
             <span className={`font-mono ${latencyCls}`}>{latency}ms</span>
           )}
         </button>
+
+        {onToggleArchiveRail && (
+          <button
+            type="button"
+            onClick={onToggleArchiveRail}
+            title={archiveRailCollapsed ? '展开 Filter 存档右侧栏' : '收起 Filter 存档右侧栏'}
+            aria-pressed={!archiveRailCollapsed}
+            className={`app-no-drag flex min-h-[26px] items-center gap-1.5 rounded-full border px-2.5 text-[0.75rem] font-semibold transition-colors ${
+              !archiveRailCollapsed
+                ? 'border-osu/55 bg-osu/15 text-osu-soft'
+                : 'border-hairline bg-tint text-ink-2 hover:border-hairline-strong hover:bg-tint-hover hover:text-ink'
+            }`}
+          >
+            {archiveRailCollapsed ? (
+              <PanelRightOpen className="h-3.5 w-3.5 text-osu" />
+            ) : (
+              <PanelRightClose className="h-3.5 w-3.5 text-osu" />
+            )}
+            <span className="hidden sm:inline">存档</span>
+            {archiveCount > 0 && (
+              <span className="font-mono rounded-full bg-surface-2 px-1.5 py-px text-[0.65625rem] font-bold text-ink tabular-nums">
+                {archiveCount}
+              </span>
+            )}
+          </button>
+        )}
 
         {isElectron && <div className="mx-0.5 h-4 w-px bg-hairline" />}
       </div>

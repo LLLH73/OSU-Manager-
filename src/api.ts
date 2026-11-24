@@ -1,10 +1,14 @@
 import {
   AppConfig,
+  BookDetail,
+  BooksLibraryResponse,
   DownloadTarget,
   DownloadTask,
   DownloadVariant,
   FastBatchSnapshot,
   FastBatchStartOptions,
+  FilterArchive,
+  FilterArchiveBrowsePosition,
   LibraryDiffResult,
   LocalLibraryStatus,
   NetworkStatus,
@@ -241,4 +245,56 @@ export function stopFastBatch(): Promise<FastBatchSnapshot> {
 
 export function clearFastBatch(): Promise<FastBatchSnapshot> {
   return apiJson<FastBatchSnapshot>('/api/fast-batch/clear', { method: 'POST' });
+}
+
+export function fetchFilterArchives(): Promise<FilterArchive[]> {
+  return apiJson<FilterArchive[]>('/api/filter-archives');
+}
+
+export function createFilterArchive(payload: {
+  name: string;
+  filters: SearchFilters;
+  browsePosition?: FilterArchiveBrowsePosition | null;
+  pinned?: boolean;
+}): Promise<FilterArchive> {
+  return apiJson<FilterArchive>('/api/filter-archives', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateFilterArchive(
+  id: string,
+  patch: {
+    name?: string;
+    filters?: SearchFilters;
+    browsePosition?: FilterArchiveBrowsePosition | null;
+    pinned?: boolean;
+  },
+): Promise<FilterArchive> {
+  return apiJson<FilterArchive>(`/api/filter-archives/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deleteFilterArchive(id: string): Promise<{ ok: boolean; id: string }> {
+  return apiJson<{ ok: boolean; id: string }>(`/api/filter-archives/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+}
+
+export function fetchLocalBooks(refresh = false): Promise<BooksLibraryResponse> {
+  return apiJson<BooksLibraryResponse>(`/api/books${refresh ? '?refresh=true' : ''}`);
+}
+
+export function fetchLocalBookDetail(bookKey: string): Promise<BookDetail> {
+  return apiJson<BookDetail>(`/api/books/${encodeURIComponent(bookKey)}`);
+}
+
+export function openStableSongFolder(subFolder: string): Promise<{ ok: boolean; path?: string }> {
+  return apiJson('/api/library/open-folder', {
+    method: 'POST',
+    body: JSON.stringify({ which: 'stableSongs', subFolder }),
+  });
 }

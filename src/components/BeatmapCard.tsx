@@ -42,6 +42,7 @@ interface BeatmapCardProps {
   activeTask?: DownloadTask;
   batchMode: boolean;
   selected: boolean;
+  highlighted?: boolean;
   ppScenario?: Partial<PpScenarioInput>;
   onToggleSelect: (id: number) => void;
   onTogglePlay: (set: NormalizedBeatmapset) => void;
@@ -57,6 +58,7 @@ export const BeatmapCard = memo(function BeatmapCard({
   activeTask,
   batchMode,
   selected,
+  highlighted = false,
   ppScenario,
   onToggleSelect,
   onTogglePlay,
@@ -109,7 +111,10 @@ export const BeatmapCard = memo(function BeatmapCard({
 
   return (
     <article
-      className={`panel song-grid-card group relative flex flex-col overflow-hidden transition-[border-color,box-shadow,background-color] duration-200 ${cardFrameClass}`}
+      data-set-id={beatmapset.id}
+      className={`panel song-grid-card group relative flex flex-col overflow-hidden transition-[border-color,box-shadow,background-color] duration-200 ${cardFrameClass} ${
+        highlighted ? 'card-locate-pulse' : ''
+      }`}
     >
       {/* Cover Banner (isolated layer + -1px bleed avoids subpixel seam line on hover zoom) */}
       <div className="cover-frame h-[134px] w-full">

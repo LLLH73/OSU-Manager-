@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { MutableRefObject } from 'react';
 import {
   ArrowUp,
   Calculator,
@@ -60,8 +61,12 @@ interface LazerSongSelectProps {
   hasAudioDock: boolean;
   hasGlobalBg?: boolean;
   filterCollapsed?: boolean;
+  compactStage?: boolean;
   ppScenario?: Partial<PpScenarioInput>;
+  restoreTarget?: { beatmapsetId: number; beatmapId?: number | null; nonce: number } | null;
+  carouselScrollTopRef?: MutableRefObject<number>;
   onActiveBeatmapsetChange?: (set: NormalizedBeatmapset | null) => void;
+  onActiveDiffIdChange?: (diffId: number | null) => void;
   onToggleSelect: (id: number) => void;
   onTogglePlay: (set: NormalizedBeatmapset) => void;
   onStartPlay: (set: NormalizedBeatmapset) => void;
@@ -467,8 +472,12 @@ export function LazerSongSelect({
   searchError = false,
   hasAudioDock,
   hasGlobalBg = false,
+  compactStage = false,
   ppScenario,
+  restoreTarget = null,
+  carouselScrollTopRef,
   onActiveBeatmapsetChange,
+  onActiveDiffIdChange,
   onToggleSelect,
   onTogglePlay,
   onStartPlay,
@@ -518,6 +527,7 @@ export function LazerSongSelect({
   const activeSetIdRef = useRef<number | null>(activeSetId);
   const prevShowTopRef = useRef(false);
   const prevOffscreenDirRef = useRef<'up' | 'down' | null>(null);
+  const lastHandledRestoreNonceRef = useRef(0);
 
   const markCoverBroken = useCallback((id: number) => {
     setBrokenCovers((prev) => {
@@ -575,6 +585,10 @@ export function LazerSongSelect({
       return activeDiffs[0].id;
     });
   }, [activeSet, activeDiffs]);
+
+  useEffect(() => {
+    onActiveDiffIdChange?.(activeDiffId);
+  }, [activeDiffId, onActiveDiffIdChange]);
 
   const activeDiffIndex = useMemo(() => {
     if (activeDiffs.length === 0) return -1;
@@ -706,7 +720,12 @@ export function LazerSongSelect({
     if (!container) return;
 
     scheduleArcUpdate();
-    const onScroll = () => scheduleArcUpdate();
+    const onScroll = () => {
+      if (carouselScrollTopRef) {
+        carouselScrollTopRef.current = container.scrollTop;
+      }
+      scheduleArcUpdate();
+    };
     container.addEventListener('scroll', onScroll, { passive: true });
 
     const ro = new ResizeObserver(() => scheduleArcUpdate());
@@ -764,6 +783,37 @@ export function LazerSongSelect({
 
     return () => cancelAnimationFrame(frame);
   }, [activeSetId, scrollToSetById]);
+
+  // Restore saved browse target quietly without triggering autoplay
+  useEffect(() => {
+    if (!restoreTarget || restoreTarget.nonce === lastHandledRestoreNonceRef.current) return;
+    const targetSet = results.find((r) => r.id === restoreTarget.beatmapsetId);
+    if (!targetSet) return;
+    lastHandledRestoreNonceRef.current = restoreTarget.nonce;
+
+    setActiveSetId(targetSet.id);
+    const diffs = sortedDiffsMap.get(targetSet.id) ?? getDisplayDiffs(targetSet);
+    if (
+      restoreTarget.beatmapId != null &&
+      diffs.some((d) => d.id === restoreTarget.beatmapId)
+    ) {
+      setActiveDiffId(restoreTarget.beatmapId);
+    } else {
+      setActiveDiffId(diffs[0]?.id ?? null);
+    }
+
+    const frame = requestAnimationFrame(() => {
+      scrollToSetById(targetSet.id, 'smooth');
+    });
+    const timer = window.setTimeout(() => {
+      scheduleArcUpdate();
+    }, 130);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [restoreTarget, results, sortedDiffsMap, scrollToSetById, scheduleArcUpdate]);
 
   // Infinite Auto-Load More when scrolling near the bottom of Lazer carousel
   useEffect(() => {
@@ -952,7 +1002,11 @@ export function LazerSongSelect({
       <div className="lazer-stage-scrim pointer-events-none absolute inset-0" />
 
       <div
-        className="relative z-10 grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,44%)_minmax(0,1fr)] md:grid-cols-[minmax(290px,340px)_minmax(0,1fr)] md:grid-rows-1 lg:grid-cols-[minmax(320px,385px)_minmax(0,1fr)] xl:grid-cols-[minmax(360px,430px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(390px,460px)_minmax(0,1fr)]"
+        className={`relative z-10 grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,44%)_minmax(0,1fr)] md:grid-cols-[minmax(290px,340px)_minmax(0,1fr)] md:grid-rows-1 lg:grid-cols-[minmax(320px,385px)_minmax(0,1fr)] ${
+          compactStage
+            ? 'xl:grid-cols-[minmax(300px,355px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(360px,430px)_minmax(0,1fr)]'
+            : 'xl:grid-cols-[minmax(360px,430px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(390px,460px)_minmax(0,1fr)]'
+        }`}
       >
         {/* LEFT: osu!lazer Wedge Showcase */}
         <div

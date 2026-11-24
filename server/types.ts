@@ -541,3 +541,158 @@ export interface ResolvedManiaSkin {
     lightingL: ManiaSkinAsset | null;
   };
 }
+
+export interface FilterArchiveBrowsePosition {
+  anchorBeatmapsetId: number;
+  anchorBeatmapId?: number | null;
+  anchorTitle: string;
+  anchorArtist: string;
+  anchorCreator?: string;
+  anchorCoverUrl?: string;
+  anchorIndex: number;
+  loadedCount: number;
+  batchUpstreamOffset: number;
+  nextUpstreamOffset: number;
+  provider?: 'osudirect' | 'sayobot';
+  viewMode: SongViewMode;
+  scrollTop?: number;
+  contextBeatmapsetIds: number[];
+  contextSnapshot?: NormalizedBeatmapset[];
+}
+
+export interface FilterArchive {
+  id: string;
+  name: string;
+  createdAt: number;
+  updatedAt: number;
+  filters: SearchFilters;
+  browsePosition?: FilterArchiveBrowsePosition | null;
+  pinned?: boolean;
+}
+
+export type BookGrade = 'XH' | 'X' | 'SH' | 'S' | 'A' | 'B' | 'C' | 'D' | 'F';
+
+export interface BookScoreRecord {
+  id: string;
+  source: 'stable' | 'lazer';
+  beatmapMd5: string;
+  difficultyName: string;
+  modeInt: number;
+  keyCount: number | null;
+  player: string;
+  score: number;
+  legacyScore: number | null;
+  accuracy: number;
+  grade: BookGrade;
+  maxCombo: number;
+  perfect: boolean;
+  mods: string[];
+  rate: number;
+  pp: number | null;
+  ppSource: 'recorded' | 'estimated';
+  isRankedPp: boolean;
+  countMax: number;
+  count300: number;
+  count200: number;
+  count100: number;
+  count50: number;
+  countMiss: number;
+  maRatio: number | null;
+  playedAt: string | null;
+}
+
+export interface BookDifficultyRecord {
+  key: string;
+  beatmapId: number | null;
+  md5: string;
+  version: string;
+  modeInt: number;
+  mode: string;
+  keyCount: number | null;
+  starRating: number;
+  bpm: number;
+  lengthSec: number;
+  od: number;
+  hp: number;
+  ar: number;
+  totalObjects: number;
+  lnCount: number;
+  lnRatio: number | null;
+  status: string;
+  inStable: boolean;
+  inLazer: boolean;
+  playCount: number;
+  bestPp: number | null;
+  bestPpSource: 'recorded' | 'estimated' | null;
+  bestAccuracy: number | null;
+  bestGrade: BookGrade | null;
+  bestScore: number | null;
+  lastPlayedAt: string | null;
+  estimated98Pp: number;
+}
+
+export interface BookSummary {
+  bookKey: string;
+  beatmapsetId: number | null;
+  title: string;
+  titleUnicode: string;
+  artist: string;
+  artistUnicode: string;
+  creator: string;
+  source: string;
+  tags: string[];
+  status: string;
+  inStable: boolean;
+  inLazer: boolean;
+  stableFolder: string | null;
+  modes: number[];
+  keyCounts: number[];
+  has4k: boolean;
+  bpm: number;
+  minStars: number;
+  maxStars: number;
+  lengthSec: number;
+  lnRatioAvg: number | null;
+  difficultyCount: number;
+  playCount: number;
+  stablePlayCount: number;
+  lazerPlayCount: number;
+  bestPp: number | null;
+  bestPpIsRanked: boolean;
+  bestPpSource: 'recorded' | 'estimated' | null;
+  bestAccuracy: number | null;
+  bestGrade: BookGrade | null;
+  bestScore: number | null;
+  lastPlayedAt: string | null;
+  dateAdded: string | null;
+  previewTimeMs: number;
+  coverUrl: string;
+  audioUrl: string;
+  hasLocalCover: boolean;
+  hasLocalAudio: boolean;
+}
+
+export interface BookDetail extends BookSummary {
+  difficulties: BookDifficultyRecord[];
+  scores: BookScoreRecord[];
+  gradeCounts: Record<BookGrade, number>;
+  totalNotesPlayed: number;
+  avgAccuracy: number | null;
+}
+
+export interface BooksLibraryResponse {
+  books: BookSummary[];
+  stats: {
+    totalBooks: number;
+    stableBooks: number;
+    lazerBooks: number;
+    bothBooks: number;
+    playedBooks: number;
+    totalPlays: number;
+    stablePlays: number;
+    lazerPlays: number;
+    highestPp: number | null;
+    highestPpTitle: string | null;
+    scannedAt: string;
+  };
+}
