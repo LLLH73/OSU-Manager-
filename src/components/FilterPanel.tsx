@@ -9,7 +9,6 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
-  X,
 } from 'lucide-react';
 import {
   OSU_GENRES,
@@ -24,6 +23,7 @@ import {
   formatPpScenarioShort,
   isDefaultPpScenario,
 } from '../utils/pp';
+import { PpRangeSlider } from './PpRangeSlider';
 import { SelectField } from './SelectField';
 import { StarRangeSlider } from './StarRangeSlider';
 
@@ -221,13 +221,6 @@ export function FilterPanel({
   const ppScenarioLabel = formatPpScenarioShort(ppScenario);
   const hasStarFilter = filters.minStars != null || filters.maxStars != null;
   const hasPpFilter = filters.minPp != null || filters.maxPp != null;
-
-  const parseOptPp = (raw: string): number | undefined => {
-    const trimmed = raw.trim();
-    if (!trimmed) return undefined;
-    const n = Number(trimmed);
-    return Number.isFinite(n) && n >= 0 ? Math.round(n) : undefined;
-  };
 
   const modeSummary =
     filters.mode === '3'
@@ -512,8 +505,8 @@ export function FilterPanel({
         </div>
       </div>
 
-      {/* Row 3: Lazer Star Range Slider + Scenario PP Range Filter */}
-      <div className="mt-2 grid grid-cols-1 gap-2 border-t border-hairline pt-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+      {/* Row 3: Lazer Star Range Slider + Scenario PP Range Slider */}
+      <div className="mt-2 grid grid-cols-1 gap-2 border-t border-hairline pt-2 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)]">
         <StarRangeSlider
           minStars={filters.minStars}
           maxStars={filters.maxStars}
@@ -521,76 +514,34 @@ export function FilterPanel({
         />
 
         <div ref={ppPopoverRef} className="relative min-w-0">
-          <div className="flex h-full min-w-0 items-center gap-1.5 rounded-[10px] border border-hairline bg-surface-1/65 px-2.5 py-1">
-            <span className="field-label shrink-0">大致 PP</span>
-            <input
-              type="number"
-              min={0}
-              step={10}
-              value={filters.minPp ?? ''}
-              placeholder="最小"
-              onChange={(e) => update({ minPp: parseOptPp(e.target.value) })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  onSearch();
-                }
-              }}
-              aria-label="最小 PP"
-              className="field font-mono min-h-[26px] w-[54px] shrink-0 px-1.5 py-0 text-center text-[0.75rem] tabular-nums sm:w-[62px]"
-            />
-            <span className="text-[0.75rem] text-ink-4">–</span>
-            <input
-              type="number"
-              min={0}
-              step={10}
-              value={filters.maxPp ?? ''}
-              placeholder="最大"
-              onChange={(e) => update({ maxPp: parseOptPp(e.target.value) })}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  onSearch();
-                }
-              }}
-              aria-label="最大 PP"
-              className="field font-mono min-h-[26px] w-[54px] shrink-0 px-1.5 py-0 text-center text-[0.75rem] tabular-nums sm:w-[62px]"
-            />
-
-            {hasPpFilter && (
+          <PpRangeSlider
+            minPp={filters.minPp}
+            maxPp={filters.maxPp}
+            onChange={(minP, maxP, commit) => update({ minPp: minP, maxPp: maxP }, commit)}
+            trailing={
               <button
                 type="button"
-                onClick={() => update({ minPp: undefined, maxPp: undefined }, true)}
-                title="清除 PP 范围"
-                aria-label="清除 PP 范围"
-                className="btn btn-sm btn-icon h-[24px] w-[24px] shrink-0 text-ink-3 hover:text-osu"
-              >
-                <X className="h-3 w-3" />
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => {
-                setAdvancedOpen(false);
-                setPpPopoverOpen((v) => !v);
-              }}
-              title="设定或自定义 PP 计算情景（准度 / 倍速 / 黄彩比 / Mod）"
-              className={`btn btn-sm ml-auto min-h-[26px] shrink-0 px-2 text-[0.71875rem] ${
-                ppPopoverOpen || ppScenarioCustomized
-                  ? 'border-lazer/50 bg-lazer/14 text-lazer-soft'
-                  : ''
-              }`}
-            >
-              <Calculator className="h-3 w-3 shrink-0" />
-              <span>{ppScenarioLabel}</span>
-              <ChevronDown
-                className={`h-3 w-3 shrink-0 transition-transform ${
-                  ppPopoverOpen ? 'rotate-180' : ''
+                onClick={() => {
+                  setAdvancedOpen(false);
+                  setPpPopoverOpen((v) => !v);
+                }}
+                title="设定或自定义 PP 计算情景（准度 / 倍速 / 黄彩比 / Mod）"
+                className={`btn btn-sm min-h-[26px] shrink-0 px-2 text-[0.71875rem] ${
+                  ppPopoverOpen || ppScenarioCustomized
+                    ? 'border-lazer/50 bg-lazer/14 text-lazer-soft'
+                    : ''
                 }`}
-              />
-            </button>
-          </div>
+              >
+                <Calculator className="h-3 w-3 shrink-0" />
+                <span>{ppScenarioLabel}</span>
+                <ChevronDown
+                  className={`h-3 w-3 shrink-0 transition-transform ${
+                    ppPopoverOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            }
+          />
 
           {/* Floating PP Scenario Configurator Popover */}
           {ppPopoverOpen && (

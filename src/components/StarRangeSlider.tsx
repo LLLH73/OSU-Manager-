@@ -169,11 +169,6 @@ export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSlide
     () => getStarColor(maxStars != null ? maxStars : 9.5),
     [maxStars],
   );
-  const minThumbHex = useMemo(() => getStarSpectrum(minTrack), [minTrack]);
-  const maxThumbHex = useMemo(
-    () => (maxStars == null ? '#1f2937' : getStarSpectrum(maxTrack)),
-    [maxStars, maxTrack],
-  );
 
   return (
     <div className="flex min-w-0 items-center gap-2 rounded-[10px] border border-hairline bg-surface-1/65 px-2.5 py-1">
@@ -236,16 +231,16 @@ export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSlide
       >
         {/* Dimmed Full Spectrum Track */}
         <div
-          className="h-[8px] w-full rounded-full border border-black/15 opacity-25"
+          className="h-[12px] w-full rounded-[6px] opacity-25"
           style={{ background: SPECTRUM_GRADIENT }}
         />
 
         {/* Vivid Active Window Clipped Without Shifting Stops */}
         <div
-          className="pointer-events-none absolute right-0 left-0 h-[8px] rounded-full border border-black/20 shadow-[0_1px_4px_rgba(0,0,0,0.2)]"
+          className="pointer-events-none absolute right-0 left-0 h-[12px] rounded-[6px] opacity-90"
           style={{
             background: SPECTRUM_GRADIENT,
-            clipPath: `inset(0 ${(100 - maxPct).toFixed(2)}% 0 ${minPct.toFixed(2)}% round 9999px)`,
+            clipPath: `inset(0 ${(100 - maxPct).toFixed(2)}% 0 ${minPct.toFixed(2)}% round 6px)`,
           }}
         />
 
@@ -259,9 +254,9 @@ export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSlide
           aria-valuenow={minTrack}
           aria-valuetext={`${minTrack.toFixed(1)} 星`}
           onKeyDown={(e) => handleKeyDown('min', e)}
-          style={{ left: `${minPct}%`, backgroundColor: minThumbHex }}
-          className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_1px_5px_rgba(0,0,0,0.45)] transition-transform ${
-            draggingThumb === 'min' ? 'z-20 scale-120' : 'z-10 hover:scale-110'
+          style={{ left: `${minPct}%` }}
+          className={`absolute top-1/2 h-[20px] w-[10px] -translate-x-1/2 -translate-y-1/2 rounded-[4px] bg-osu transition-transform duration-100 ${
+            draggingThumb === 'min' ? 'z-20 scale-x-110 scale-y-115' : 'z-10 hover:scale-y-110'
           }`}
         />
 
@@ -275,9 +270,9 @@ export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSlide
           aria-valuenow={maxTrack}
           aria-valuetext={maxStars == null ? '不限上限' : `${effMax.toFixed(1)} 星`}
           onKeyDown={(e) => handleKeyDown('max', e)}
-          style={{ left: `${maxPct}%`, backgroundColor: maxThumbHex }}
-          className={`absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-[0_1px_5px_rgba(0,0,0,0.45)] transition-transform ${
-            draggingThumb === 'max' ? 'z-20 scale-120' : 'z-10 hover:scale-110'
+          style={{ left: `${maxPct}%` }}
+          className={`absolute top-1/2 h-[20px] w-[10px] -translate-x-1/2 -translate-y-1/2 rounded-[4px] bg-osu transition-transform duration-100 ${
+            draggingThumb === 'max' ? 'z-20 scale-x-110 scale-y-115' : 'z-10 hover:scale-y-110'
           }`}
         />
       </div>
