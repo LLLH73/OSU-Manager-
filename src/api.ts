@@ -201,6 +201,19 @@ export function loadBeatmapIntoGame(
   });
 }
 
+export function launchGameClient(client: 'stable' | 'lazer'): Promise<{
+  ok: boolean;
+  client: 'stable' | 'lazer';
+  alreadyRunning?: boolean;
+  exePath?: string;
+  message: string;
+}> {
+  return apiJson('/api/game/launch', {
+    method: 'POST',
+    body: JSON.stringify({ client }),
+  });
+}
+
 export function fetchFastBatchStatus(): Promise<FastBatchSnapshot> {
   return apiJson<FastBatchSnapshot>('/api/fast-batch/status');
 }

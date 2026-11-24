@@ -27,6 +27,7 @@ import {
   fetchLibraryStatus,
   fetchNetworkStatus,
   importLazerPending,
+  launchGameClient,
   loadBeatmapIntoGame,
   openLocalFolder,
   retryDownloadTask,
@@ -63,6 +64,7 @@ import {
   clearAccentVariables,
   extractDominantColor,
 } from './utils/themeColor';
+import { extractPpScenarioFromFilters } from './utils/pp';
 import {
   AppConfig,
   DownloadTarget,
@@ -177,6 +179,7 @@ export function App() {
   const [librarySyncOpen, setLibrarySyncOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
+  const [launchingClient, setLaunchingClient] = useState<'stable' | 'lazer' | null>(null);
   const [previewState, setPreviewState] = useState<{
     beatmapsetId: number;
     initialBeatmapId?: number | null;
@@ -859,6 +862,50 @@ export function App() {
     }
   };
 
+  const handleLaunchGame = useCallback(
+    async (client: 'stable' | 'lazer') => {
+      if (launchingClient) return;
+      setLaunchingClient(client);
+      try {
+        const res = await launchGameClient(client);
+        if (!res.ok) {
+          notify(res.message, {
+            actionLabel: '打开设置',
+            onAction: () => setSettingsOpen(true),
+          });
+        } else if (
+          client === 'lazer' &&
+          !res.alreadyRunning &&
+          (library?.lazerPendingCount ?? 0) > 0
+        ) {
+          notify(res.message, {
+            actionLabel: `导入 ${library?.lazerPendingCount} 个待导入`,
+            onAction: () => {
+              void importLazerPending().then(async (imp) => {
+                notify(imp.message);
+                setLibrary(await fetchLibraryStatus(true));
+              });
+            },
+          });
+        } else {
+          notify(res.message);
+        }
+        window.setTimeout(() => {
+          void fetchLibraryStatus(true)
+            .then((st) => setLibrary(st))
+            .catch(() => {});
+        }, 1600);
+      } catch (err) {
+        notify(err instanceof Error ? err.message : '启动游戏失败');
+      } finally {
+        setLaunchingClient(null);
+      }
+    },
+    [launchingClient, library?.lazerPendingCount, notify],
+  );
+
+  const activePpScenario = useMemo(() => extractPpScenarioFromFilters(filters), [filters]);
+
   const handlePreviewAppearance = useCallback((patch: Partial<AppConfig> | null) => {
     if (!patch) {
       setAppearancePreview(null);
@@ -952,9 +999,11 @@ export function App() {
               library={library}
               downloads={downloads}
               fastBatch={fastBatch}
+              launchingClient={launchingClient}
               onChangeTarget={setTarget}
               onChangeVariant={setVariant}
               onSelectPreset={handleSelectPreset}
+              onLaunchGame={(c) => void handleLaunchGame(c)}
               onOpenLibrarySync={() => setLibrarySyncOpen(true)}
               onOpenFastBatch={() => setFastBatchOpen(true)}
               onOpenDownloads={() => setDownloadsOpen(true)}
@@ -977,9 +1026,14 @@ export function App() {
                 library={library}
                 downloads={downloads}
                 fastBatch={fastBatch}
+                launchingClient={launchingClient}
                 onChangeTarget={setTarget}
                 onChangeVariant={setVariant}
                 onSelectPreset={handleSelectPreset}
+                onLaunchGame={(c) => {
+                  setNavOpen(false);
+                  void handleLaunchGame(c);
+                }}
                 onOpenLibrarySync={() => {
                   setNavOpen(false);
                   setLibrarySyncOpen(true);
@@ -1217,6 +1271,7 @@ export function App() {
                           activeTask={activeTaskBySet.get(set.id)}
                           batchMode={batchMode}
                           selected={selectedIds.has(set.id)}
+                          ppScenario={activePpScenario}
                           onToggleSelect={handleToggleSelectId}
                           onTogglePlay={handleTogglePlay}
                           onDownload={handleQuickDownload}
@@ -1238,6 +1293,7 @@ export function App() {
                           activeTask={activeTaskBySet.get(set.id)}
                           batchMode={batchMode}
                           selected={selectedIds.has(set.id)}
+                          ppScenario={activePpScenario}
                           onToggleSelect={handleToggleSelectId}
                           onTogglePlay={handleTogglePlay}
                           onDownload={handleQuickDownload}
@@ -1263,6 +1319,7 @@ export function App() {
                       hasAudioDock={Boolean(playingSet)}
                       hasGlobalBg={Boolean(effectiveBgUrl)}
                       filterCollapsed={filterCollapsed}
+                      ppScenario={activePpScenario}
                       onActiveBeatmapsetChange={setActiveLazerSet}
                       onToggleSelect={handleToggleSelectId}
                       onTogglePlay={handleTogglePlay}
@@ -1357,6 +1414,7 @@ export function App() {
         beatmapset={detailState?.set ?? null}
         initialDiffId={detailState?.diffId ?? null}
         focusPp={Boolean(detailState?.focusPp)}
+        ppScenario={activePpScenario}
         network={network}
         defaultTarget={target}
         defaultVariant={variant}

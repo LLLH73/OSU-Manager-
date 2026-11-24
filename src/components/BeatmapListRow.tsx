@@ -26,7 +26,13 @@ import {
   openExternalLink,
 } from '../constants';
 import { DownloadTarget, DownloadTask, NormalizedBeatmapset } from '../types';
-import { formatPp, getBeatmapsetPpBadge, getQuickPpSummary, isRankedForPp } from '../utils/pp';
+import {
+  PpScenarioInput,
+  formatPp,
+  getBeatmapsetPpBadge,
+  getQuickPpSummary,
+  isRankedForPp,
+} from '../utils/pp';
 import { MarqueeText } from './MarqueeText';
 
 interface BeatmapListRowProps {
@@ -36,6 +42,7 @@ interface BeatmapListRowProps {
   activeTask?: DownloadTask;
   batchMode: boolean;
   selected: boolean;
+  ppScenario?: Partial<PpScenarioInput>;
   onToggleSelect: (id: number) => void;
   onTogglePlay: (set: NormalizedBeatmapset) => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
@@ -50,6 +57,7 @@ export const BeatmapListRow = memo(function BeatmapListRow({
   activeTask,
   batchMode,
   selected,
+  ppScenario,
   onToggleSelect,
   onTogglePlay,
   onDownload,
@@ -66,7 +74,7 @@ export const BeatmapListRow = memo(function BeatmapListRow({
 
   const primaryDiff = sourceDiffs[0];
   const lnBadge = primaryDiff ? getLnCategory(primaryDiff.lnRatio) : null;
-  const ppBadge = getBeatmapsetPpBadge(beatmapset);
+  const ppBadge = getBeatmapsetPpBadge(beatmapset, ppScenario);
   const rankedForPp = isRankedForPp(beatmapset.status);
 
   const isInstalled = beatmapset.localStatus.inStable || beatmapset.localStatus.inLazer;

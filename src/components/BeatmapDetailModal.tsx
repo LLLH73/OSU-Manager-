@@ -34,7 +34,7 @@ import {
   NormalizedBeatmapset,
   PreferredMirror,
 } from '../types';
-import { formatPp, getQuickPpSummary, isRankedForPp } from '../utils/pp';
+import { PpScenarioInput, formatPp, getQuickPpSummary, isRankedForPp } from '../utils/pp';
 import { PpCalculatorPanel } from './PpCalculatorPanel';
 import { SelectField } from './SelectField';
 
@@ -42,6 +42,7 @@ interface BeatmapDetailModalProps {
   beatmapset: NormalizedBeatmapset | null;
   initialDiffId?: number | null;
   focusPp?: boolean;
+  ppScenario?: Partial<PpScenarioInput>;
   network: NetworkStatus | null;
   defaultTarget: DownloadTarget;
   defaultVariant: DownloadVariant;
@@ -76,6 +77,7 @@ export function BeatmapDetailModal({
   beatmapset,
   initialDiffId = null,
   focusPp = false,
+  ppScenario,
   network,
   defaultTarget,
   defaultVariant,
@@ -427,6 +429,7 @@ export function BeatmapDetailModal({
               onSelectDiff={(id) => setSelectedDiffId(id)}
               status={beatmapset.status}
               bpm={beatmapset.bpm}
+              initialScenario={ppScenario}
             />
           </div>
 

@@ -37,6 +37,7 @@ import {
 } from '../constants';
 import { DownloadTarget, DownloadTask, NormalizedBeatmap, NormalizedBeatmapset } from '../types';
 import {
+  PpScenarioInput,
   calculateBeatmapPp,
   formatPp,
   getBeatmapsetPpBadge,
@@ -59,6 +60,7 @@ interface LazerSongSelectProps {
   hasAudioDock: boolean;
   hasGlobalBg?: boolean;
   filterCollapsed?: boolean;
+  ppScenario?: Partial<PpScenarioInput>;
   onActiveBeatmapsetChange?: (set: NormalizedBeatmapset | null) => void;
   onToggleSelect: (id: number) => void;
   onTogglePlay: (set: NormalizedBeatmapset) => void;
@@ -96,6 +98,7 @@ interface LazerCarouselSlotProps {
   batchMode: boolean;
   selected: boolean;
   coverBroken: boolean;
+  ppScenario?: Partial<PpScenarioInput>;
   onMarkCoverBroken: (id: number) => void;
   onSelectBeatmapset: (set: NormalizedBeatmapset, scrollIntoView: boolean) => void;
   onSelectDiff: (diffId: number) => void;
@@ -116,6 +119,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
   batchMode,
   selected,
   coverBroken,
+  ppScenario,
   onMarkCoverBroken,
   onSelectBeatmapset,
   onSelectDiff,
@@ -143,7 +147,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
   );
   const setStatusBadge = getStatusBadge(beatmapset.status);
   const rankedForPp = isRankedForPp(beatmapset.status);
-  const ppBadge = getBeatmapsetPpBadge(beatmapset);
+  const ppBadge = getBeatmapsetPpBadge(beatmapset, ppScenario);
   const previewDiffs = diffs.slice(0, 5);
   const extraDiffCount = diffs.length - previewDiffs.length;
   const leadDiff = diffs[0];
@@ -385,7 +389,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                 const keyTag = bm.modeInt === 3 ? `${Math.round(bm.cs)}K` : bm.mode.toUpperCase();
                 const ln = getLnCategory(bm.lnRatio);
                 const pp98 = rankedForPp
-                  ? calculateBeatmapPp(bm, { accuracy: 98, rate: 1 }).pp
+                  ? calculateBeatmapPp(bm, ppScenario || { accuracy: 98, rate: 1 }).pp
                   : null;
                 return (
                   <button
@@ -463,6 +467,7 @@ export function LazerSongSelect({
   searchError = false,
   hasAudioDock,
   hasGlobalBg = false,
+  ppScenario,
   onActiveBeatmapsetChange,
   onToggleSelect,
   onTogglePlay,
@@ -777,7 +782,8 @@ export function LazerSongSelect({
           tag === 'INPUT' ||
           tag === 'TEXTAREA' ||
           tag === 'SELECT' ||
-          targetEl.isContentEditable
+          targetEl.isContentEditable ||
+          targetEl.getAttribute('role') === 'slider'
         ) {
           return;
         }
@@ -1448,6 +1454,7 @@ export function LazerSongSelect({
                     batchMode={batchMode}
                     selected={selectedIds.has(set.id)}
                     coverBroken={brokenCovers.has(set.id)}
+                    ppScenario={ppScenario}
                     onMarkCoverBroken={markCoverBroken}
                     onSelectBeatmapset={selectBeatmapset}
                     onSelectDiff={setActiveDiffId}

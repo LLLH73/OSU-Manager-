@@ -25,6 +25,7 @@ import {
 } from './fastBatch.js';
 import {
   clearLazerPendingFiles,
+  launchGameClient,
   launchLazerBatchImport,
   loadBeatmapIntoRunningGame,
   openFolderInExplorer,
@@ -248,6 +249,16 @@ app.get('/api/search', async (req: Request, res: Response) => {
       maxAr: parseOptNum(q.maxAr),
       minLn: parseOptNum(q.minLn),
       maxLn: parseOptNum(q.maxLn),
+      minPp: parseOptNum(q.minPp),
+      maxPp: parseOptNum(q.maxPp),
+      ppAccuracy: parseOptNum(q.ppAccuracy),
+      ppRate: parseOptNum(q.ppRate),
+      ppMisses: parseOptNum(q.ppMisses),
+      ppMaRatio: parseOptNum(q.ppMaRatio),
+      ppClassic: parseOptBool(q.ppClassic),
+      ppEz: parseOptBool(q.ppEz),
+      ppNf: parseOptBool(q.ppNf),
+      ppIncludeUnranked: parseOptBool(q.ppIncludeUnranked),
       creator: typeof q.creator === 'string' ? q.creator : undefined,
       installedFilter: (typeof q.installedFilter === 'string'
         ? q.installedFilter
@@ -384,6 +395,21 @@ app.post('/api/game/load', async (req: Request, res: Response) => {
     actualClient: result.client,
   });
   res.status(result.ok ? 200 : 400).json(result);
+});
+
+app.post('/api/game/launch', async (req: Request, res: Response) => {
+  const client = req.body?.client;
+  if (client !== 'stable' && client !== 'lazer') {
+    res.status(400).json({ ok: false, client: null, message: '无效的客户端类型 (stable / lazer)' });
+    return;
+  }
+  const result = await launchGameClient(client, getConfig());
+  logInfo('game', 'Launch game client requested', {
+    client,
+    ok: result.ok,
+    alreadyRunning: Boolean(result.alreadyRunning),
+  });
+  res.json(result);
 });
 
 // Local dual-client library & sync

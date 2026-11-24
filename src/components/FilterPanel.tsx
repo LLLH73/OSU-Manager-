@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 import {
   ArrowDownWideNarrow,
   ArrowUpNarrowWide,
+  Calculator,
   ChevronDown,
   ChevronUp,
   RotateCcw,
   Search,
   SlidersHorizontal,
+  X,
 } from 'lucide-react';
 import {
   OSU_GENRES,
@@ -16,7 +19,13 @@ import {
   STATUS_OPTIONS,
 } from '../constants';
 import { InstalledFilter, SearchFilters, SearchMode, SearchSource, SearchStatus } from '../types';
+import {
+  extractPpScenarioFromFilters,
+  formatPpScenarioShort,
+  isDefaultPpScenario,
+} from '../utils/pp';
 import { SelectField } from './SelectField';
+import { StarRangeSlider } from './StarRangeSlider';
 
 interface FilterPanelProps {
   filters: SearchFilters;
@@ -28,6 +37,54 @@ interface FilterPanelProps {
   onSearch: (overrideFilters?: SearchFilters) => void;
   onReset: () => void;
 }
+
+const PP_RANGE_PRESETS: Array<{ label: string; minPp?: number; maxPp?: number }> = [
+  { label: '不限' },
+  { label: '<200', maxPp: 200 },
+  { label: '200–300', minPp: 200, maxPp: 300 },
+  { label: '300–400', minPp: 300, maxPp: 400 },
+  { label: '400–500', minPp: 400, maxPp: 500 },
+  { label: '500–650', minPp: 500, maxPp: 650 },
+  { label: '650+', minPp: 650 },
+];
+
+const PP_SCENARIO_PRESETS: Array<{
+  label: string;
+  patch: Partial<SearchFilters>;
+}> = [
+  {
+    label: 'NM 95%',
+    patch: { ppAccuracy: 95, ppRate: 1, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
+  },
+  {
+    label: 'NM 98%',
+    patch: { ppAccuracy: 98, ppRate: 1, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
+  },
+  {
+    label: 'NM 99%',
+    patch: { ppAccuracy: 99, ppRate: 1, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
+  },
+  {
+    label: 'SS 100%',
+    patch: { ppAccuracy: 100, ppRate: 1, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
+  },
+  {
+    label: 'DT 1.5x 98%',
+    patch: { ppAccuracy: 98, ppRate: 1.5, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
+  },
+  {
+    label: 'HT 0.75x 98%',
+    patch: { ppAccuracy: 98, ppRate: 0.75, ppMisses: 0, ppMaRatio: undefined, ppClassic: false, ppEz: false, ppNf: false },
+  },
+  {
+    label: '98% · 3:1',
+    patch: { ppAccuracy: 98, ppRate: 1, ppMisses: 0, ppMaRatio: 3, ppClassic: false, ppEz: false, ppNf: false },
+  },
+  {
+    label: '99% · 5:1',
+    patch: { ppAccuracy: 99, ppRate: 1, ppMisses: 0, ppMaRatio: 5, ppClassic: false, ppEz: false, ppNf: false },
+  },
+];
 
 function RangeInput({
   label,
@@ -90,7 +147,9 @@ export function FilterPanel({
   onReset,
 }: FilterPanelProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [ppPopoverOpen, setPpPopoverOpen] = useState(false);
   const panelRef = useRef<HTMLElement | null>(null);
+  const ppPopoverRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!floatingAdvanced || !advancedOpen) return;
@@ -112,6 +171,26 @@ export function FilterPanel({
     };
   }, [floatingAdvanced, advancedOpen]);
 
+  useEffect(() => {
+    if (!ppPopoverOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      if (ppPopoverRef.current && !ppPopoverRef.current.contains(e.target as Node)) {
+        setPpPopoverOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('[role="dialog"]')) {
+        setPpPopoverOpen(false);
+      }
+    };
+    window.addEventListener('mousedown', onPointerDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('mousedown', onPointerDown);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [ppPopoverOpen]);
+
   const [sortField, sortDir] = (filters.sort || 'ranked_date:desc').split(':');
 
   const advancedCount = [
@@ -123,7 +202,6 @@ export function FilterPanel({
     filters.featured,
     filters.nsfw,
     filters.includeConverts,
-    filters.minStars != null || filters.maxStars != null,
     filters.minBpm != null || filters.maxBpm != null,
     filters.minLength != null || filters.maxLength != null,
     filters.minOd != null || filters.maxOd != null,
@@ -136,6 +214,19 @@ export function FilterPanel({
   const update = (patch: Partial<SearchFilters>, triggerSearch = false) => {
     const next = { ...filters, ...patch, offset: 0 };
     onChange(next, triggerSearch);
+  };
+
+  const ppScenario = extractPpScenarioFromFilters(filters);
+  const ppScenarioCustomized = !isDefaultPpScenario(ppScenario) || Boolean(filters.ppIncludeUnranked);
+  const ppScenarioLabel = formatPpScenarioShort(ppScenario);
+  const hasStarFilter = filters.minStars != null || filters.maxStars != null;
+  const hasPpFilter = filters.minPp != null || filters.maxPp != null;
+
+  const parseOptPp = (raw: string): number | undefined => {
+    const trimmed = raw.trim();
+    if (!trimmed) return undefined;
+    const n = Number(trimmed);
+    return Number.isFinite(n) && n >= 0 ? Math.round(n) : undefined;
   };
 
   const modeSummary =
@@ -178,6 +269,16 @@ export function FilterPanel({
             <span className="chip">{modeSummary}</span>
             <span className="chip">{statusSummary}</span>
             <span className="chip">{sortSummary}</span>
+            {hasStarFilter && (
+              <span className="chip border-osu/35 bg-osu/10 text-osu-soft">
+                {filters.minStars ?? 0}–{filters.maxStars ?? '∞'}★
+              </span>
+            )}
+            {hasPpFilter && (
+              <span className="chip border-lazer/35 bg-lazer/12 text-lazer-soft">
+                ~{filters.minPp ?? 0}–{filters.maxPp ?? '∞'}pp
+              </span>
+            )}
             {advancedCount > 0 && (
               <span className="chip border-osu/40 bg-osu/12 text-osu-soft">
                 +{advancedCount} 高级
@@ -212,7 +313,7 @@ export function FilterPanel({
   }
 
   return (
-    <section ref={panelRef} className="panel relative z-30 shrink-0 p-3 sm:p-3.5">
+    <section ref={panelRef} className="panel relative z-30 shrink-0 p-2.5 sm:p-3">
       {/* Row 1: Search Bar */}
       <form
         onSubmit={(e) => {
@@ -238,7 +339,10 @@ export function FilterPanel({
           </button>
           <button
             type="button"
-            onClick={() => setAdvancedOpen((v) => !v)}
+            onClick={() => {
+              setPpPopoverOpen(false);
+              setAdvancedOpen((v) => !v);
+            }}
             className={`btn min-h-[40px] rounded-[8px] px-3.5 ${
               advancedOpen || advancedCount > 0
                 ? 'border-osu/45 bg-osu/12 text-osu-soft hover:border-osu/60 hover:bg-osu/18'
@@ -278,7 +382,7 @@ export function FilterPanel({
       </form>
 
       {/* Quick Mania Practice Tags */}
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <span className="overline mr-1">高频词条</span>
         {QUICK_PRACTICE_TAGS.map((tag) => {
           const active = (filters.q || '').trim().toLowerCase() === tag;
@@ -300,7 +404,7 @@ export function FilterPanel({
       </div>
 
       {/* Row 2: Core Official Filters */}
-      <div className="mt-3 grid grid-cols-2 gap-2.5 border-t border-hairline pt-3 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-hairline pt-2.5 sm:grid-cols-3 xl:grid-cols-6">
         <div className="flex min-w-0 flex-col gap-1">
           <label className="field-label">游戏模式 (Mode)</label>
           <SelectField
@@ -408,6 +512,385 @@ export function FilterPanel({
         </div>
       </div>
 
+      {/* Row 3: Lazer Star Range Slider + Scenario PP Range Filter */}
+      <div className="mt-2 grid grid-cols-1 gap-2 border-t border-hairline pt-2 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+        <StarRangeSlider
+          minStars={filters.minStars}
+          maxStars={filters.maxStars}
+          onChange={(minS, maxS, commit) => update({ minStars: minS, maxStars: maxS }, commit)}
+        />
+
+        <div ref={ppPopoverRef} className="relative min-w-0">
+          <div className="flex h-full min-w-0 items-center gap-1.5 rounded-[10px] border border-hairline bg-surface-1/65 px-2.5 py-1">
+            <span className="field-label shrink-0">大致 PP</span>
+            <input
+              type="number"
+              min={0}
+              step={10}
+              value={filters.minPp ?? ''}
+              placeholder="最小"
+              onChange={(e) => update({ minPp: parseOptPp(e.target.value) })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  onSearch();
+                }
+              }}
+              aria-label="最小 PP"
+              className="field font-mono min-h-[26px] w-[54px] shrink-0 px-1.5 py-0 text-center text-[0.75rem] tabular-nums sm:w-[62px]"
+            />
+            <span className="text-[0.75rem] text-ink-4">–</span>
+            <input
+              type="number"
+              min={0}
+              step={10}
+              value={filters.maxPp ?? ''}
+              placeholder="最大"
+              onChange={(e) => update({ maxPp: parseOptPp(e.target.value) })}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  onSearch();
+                }
+              }}
+              aria-label="最大 PP"
+              className="field font-mono min-h-[26px] w-[54px] shrink-0 px-1.5 py-0 text-center text-[0.75rem] tabular-nums sm:w-[62px]"
+            />
+
+            {hasPpFilter && (
+              <button
+                type="button"
+                onClick={() => update({ minPp: undefined, maxPp: undefined }, true)}
+                title="清除 PP 范围"
+                aria-label="清除 PP 范围"
+                className="btn btn-sm btn-icon h-[24px] w-[24px] shrink-0 text-ink-3 hover:text-osu"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setAdvancedOpen(false);
+                setPpPopoverOpen((v) => !v);
+              }}
+              title="设定或自定义 PP 计算情景（准度 / 倍速 / 黄彩比 / Mod）"
+              className={`btn btn-sm ml-auto min-h-[26px] shrink-0 px-2 text-[0.71875rem] ${
+                ppPopoverOpen || ppScenarioCustomized
+                  ? 'border-lazer/50 bg-lazer/14 text-lazer-soft'
+                  : ''
+              }`}
+            >
+              <Calculator className="h-3 w-3 shrink-0" />
+              <span>{ppScenarioLabel}</span>
+              <ChevronDown
+                className={`h-3 w-3 shrink-0 transition-transform ${
+                  ppPopoverOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Floating PP Scenario Configurator Popover */}
+          {ppPopoverOpen && (
+            <div className="panel-flat animate-fade-in absolute top-full right-0 z-40 mt-2 w-[min(92vw,440px)] space-y-3 rounded-[14px] border border-hairline-strong bg-surface-2 p-3.5 shadow-2xl">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Calculator className="h-3.5 w-3.5 text-lazer-soft" />
+                  <span className="font-display text-[0.84375rem] font-bold text-ink">
+                    PP 筛选范围与情景设定
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    update(
+                      {
+                        minPp: undefined,
+                        maxPp: undefined,
+                        ppAccuracy: undefined,
+                        ppRate: undefined,
+                        ppMisses: undefined,
+                        ppMaRatio: undefined,
+                        ppClassic: undefined,
+                        ppEz: undefined,
+                        ppNf: undefined,
+                        ppIncludeUnranked: undefined,
+                      },
+                      hasPpFilter,
+                    )
+                  }
+                  className="text-[0.71875rem] font-semibold text-ink-3 hover:text-osu"
+                >
+                  重置情景
+                </button>
+              </div>
+
+              {/* Quick PP Range Presets */}
+              <div className="space-y-1.5">
+                <span className="field-label block">常用 PP 区间</span>
+                <div className="flex flex-wrap gap-1">
+                  {PP_RANGE_PRESETS.map((p) => {
+                    const active =
+                      (filters.minPp ?? undefined) === p.minPp &&
+                      (filters.maxPp ?? undefined) === p.maxPp;
+                    return (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => update({ minPp: p.minPp, maxPp: p.maxPp }, true)}
+                        className={`btn btn-sm font-mono min-h-[25px] px-2 text-[0.71875rem] ${
+                          active ? 'border-lazer/60 bg-lazer/18 text-lazer-soft' : ''
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Scenario Presets */}
+              <div className="space-y-1.5 border-t border-hairline pt-2.5">
+                <span className="field-label block">给定情景预设</span>
+                <div className="flex flex-wrap gap-1">
+                  {PP_SCENARIO_PRESETS.map((p) => {
+                    const active =
+                      Math.abs((ppScenario.accuracy ?? 98) - (p.patch.ppAccuracy ?? 98)) < 0.05 &&
+                      Math.abs((ppScenario.rate ?? 1) - (p.patch.ppRate ?? 1)) < 0.01 &&
+                      (ppScenario.maRatio ?? undefined) === p.patch.ppMaRatio &&
+                      ppScenario.misses === 0 &&
+                      !ppScenario.mods.classic &&
+                      !ppScenario.mods.ez &&
+                      !ppScenario.mods.nf;
+                    return (
+                      <button
+                        key={p.label}
+                        type="button"
+                        onClick={() => update(p.patch, hasPpFilter)}
+                        className={`btn btn-sm font-stat min-h-[25px] px-2 text-[0.71875rem] ${
+                          active ? 'border-osu/60 bg-osu/15 text-osu-soft' : ''
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Custom Scenario Parameters */}
+              <div className="space-y-2.5 border-t border-hairline pt-2.5">
+                <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                  {/* Accuracy */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[0.71875rem]">
+                      <span className="font-semibold text-ink-2">准度</span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={50}
+                          max={100}
+                          step={0.1}
+                          value={ppScenario.accuracy}
+                          onChange={(e) => {
+                            const v = Number(e.target.value);
+                            if (Number.isFinite(v)) {
+                              update({ ppAccuracy: Math.min(100, Math.max(0, v)) });
+                            }
+                          }}
+                          className="field font-mono min-h-[24px] w-16 px-1.5 py-0 text-right text-[0.75rem]"
+                        />
+                        <span className="font-mono text-ink-3">%</span>
+                      </div>
+                    </div>
+                    <input
+                      type="range"
+                      min={80}
+                      max={100}
+                      step={0.5}
+                      value={Math.max(80, Math.min(100, ppScenario.accuracy))}
+                      onChange={(e) => update({ ppAccuracy: Number(e.target.value) })}
+                      style={
+                        {
+                          '--fill': `${Math.min(100, Math.max(0, ((ppScenario.accuracy - 80) / 20) * 100))}%`,
+                        } as CSSProperties
+                      }
+                      className="slim-range w-full"
+                      aria-label="筛选准度滑块"
+                    />
+                  </div>
+
+                  {/* Rate */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[0.71875rem]">
+                      <span className="font-semibold text-ink-2">倍速</span>
+                      <span className="font-mono font-bold text-ink tabular-nums">
+                        {ppScenario.rate.toFixed(2)}x
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0.5}
+                      max={2}
+                      step={0.05}
+                      value={ppScenario.rate}
+                      onChange={(e) => update({ ppRate: Number(e.target.value) })}
+                      style={
+                        {
+                          '--fill': `${Math.min(100, Math.max(0, ((ppScenario.rate - 0.5) / 1.5) * 100))}%`,
+                        } as CSSProperties
+                      }
+                      className="slim-range w-full"
+                      aria-label="筛选倍速滑块"
+                    />
+                  </div>
+                </div>
+
+                {/* Custom MA Ratio */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-2 text-[0.71875rem]">
+                    <span className="font-semibold text-ink-2">黄彩比 (彩300 : 黄300)</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={0}
+                        max={999}
+                        step={0.1}
+                        value={ppScenario.maRatio !== null ? ppScenario.maRatio : ''}
+                        placeholder="直算"
+                        onChange={(e) => {
+                          const raw = e.target.value.trim();
+                          if (raw === '') {
+                            update({ ppMaRatio: undefined });
+                            return;
+                          }
+                          const v = Number(raw);
+                          if (Number.isFinite(v)) {
+                            update({ ppMaRatio: Math.min(999, Math.max(0, Math.round(v * 100) / 100)) });
+                          }
+                        }}
+                        aria-label="筛选黄彩比数值"
+                        className="field font-mono min-h-[24px] w-16 px-1.5 py-0 text-right text-[0.75rem]"
+                      />
+                      <span className="font-mono text-ink-3">: 1</span>
+                      {ppScenario.maRatio !== null && (
+                        <button
+                          type="button"
+                          onClick={() => update({ ppMaRatio: undefined })}
+                          className="btn btn-sm min-h-[22px] px-1.5 text-[0.6875rem] text-ink-3"
+                        >
+                          直算
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={20}
+                    step={0.1}
+                    value={ppScenario.maRatio !== null ? Math.min(20, Math.max(0, ppScenario.maRatio)) : 20}
+                    onChange={(e) =>
+                      update({ ppMaRatio: Math.round(Number(e.target.value) * 10) / 10 })
+                    }
+                    style={
+                      {
+                        '--fill': `${ppScenario.maRatio !== null ? Math.min(100, Math.max(0, (ppScenario.maRatio / 20) * 100)) : 100}%`,
+                      } as CSSProperties
+                    }
+                    className={`slim-range w-full ${ppScenario.maRatio === null ? 'opacity-60' : ''}`}
+                    aria-label="筛选黄彩比滑块"
+                  />
+                </div>
+
+                {/* Misses & Mods */}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[0.71875rem] font-semibold text-ink-2">Miss</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      value={ppScenario.misses}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        if (Number.isFinite(v)) {
+                          update({ ppMisses: Math.min(100, Math.max(0, Math.round(v))) });
+                        }
+                      }}
+                      aria-label="筛选失误数"
+                      className="field font-mono min-h-[24px] w-14 px-1.5 py-0 text-center text-[0.75rem]"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    <button
+                      type="button"
+                      onClick={() => update({ ppClassic: !ppScenario.mods.classic })}
+                      className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
+                        ppScenario.mods.classic
+                          ? 'border-stable/60 bg-stable/16 text-stable-soft'
+                          : ''
+                      }`}
+                    >
+                      Classic
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => update({ ppEz: !ppScenario.mods.ez })}
+                      className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
+                        ppScenario.mods.ez ? 'border-emerald-500/60 bg-emerald-500/16 text-ok' : ''
+                      }`}
+                    >
+                      EZ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => update({ ppNf: !ppScenario.mods.nf })}
+                      className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
+                        ppScenario.mods.nf ? 'border-amber-500/60 bg-amber-500/16 text-warn' : ''
+                      }`}
+                    >
+                      NF
+                    </button>
+                  </div>
+                </div>
+
+                <label className="flex cursor-pointer items-center gap-2 text-[0.75rem] font-medium text-ink-2">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(filters.ppIncludeUnranked)}
+                    onChange={(e) =>
+                      update({ ppIncludeUnranked: e.target.checked || undefined })
+                    }
+                    className="check check-lazer"
+                  />
+                  <span>含未上架谱面（按模拟上架 PP 筛选）</span>
+                </label>
+              </div>
+
+              <div className="flex items-center justify-between gap-2 border-t border-hairline pt-2.5">
+                <span className="text-[0.6875rem] text-ink-3">
+                  自动推算星数区间并精确过滤
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSearch();
+                    setPpPopoverOpen(false);
+                  }}
+                  className="btn btn-primary btn-sm px-3.5"
+                >
+                  应用并筛选
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Collapsible Full Official + Mania 4K Advanced Filters */}
       {advancedOpen && (
         <div
@@ -497,17 +980,7 @@ export function FilterPanel({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-            <RangeInput
-              label="星数 (Stars)"
-              minVal={filters.minStars}
-              maxVal={filters.maxStars}
-              step="0.1"
-              minPlaceholder="0.0"
-              maxPlaceholder="12.0"
-              onChangeMin={(v) => update({ minStars: v })}
-              onChangeMax={(v) => update({ maxStars: v })}
-            />
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
             <RangeInput
               label="BPM"
               minVal={filters.minBpm}

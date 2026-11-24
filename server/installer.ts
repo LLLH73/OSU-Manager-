@@ -1,8 +1,8 @@
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
-import { PREVIEW_OSZ_CACHE_DIR, TMP_DIR } from './config.js';
+import { detectLazerExePath, PREVIEW_OSZ_CACHE_DIR, TMP_DIR } from './config.js';
 import {
   detectRunningClients,
   getLibraryStatus,
@@ -711,5 +711,143 @@ export async function loadBeatmapIntoRunningGame(
     ok: true,
     client: 'stable',
     message: `已向运行中的 osu!stable 发送导入加载请求 (#${beatmapsetId})`,
+  };
+}
+
+export async function launchGameClient(
+  client: 'stable' | 'lazer',
+  cfg: AppConfig,
+): Promise<{
+  ok: boolean;
+  client: 'stable' | 'lazer';
+  alreadyRunning?: boolean;
+  exePath?: string;
+  message: string;
+}> {
+  let exePath = '';
+  if (client === 'stable') {
+    exePath = cfg.stablePath ? path.join(cfg.stablePath, 'osu!.exe') : '';
+  } else {
+    exePath = cfg.lazerExePath || '';
+    if (!exePath || !fs.existsSync(exePath)) {
+      const fallback = detectLazerExePath();
+      if (fallback && fs.existsSync(fallback)) {
+        exePath = fallback;
+      }
+    }
+  }
+
+  if (!exePath || !fs.existsSync(exePath)) {
+    return {
+      ok: false,
+      client,
+      message:
+        client === 'stable'
+          ? `未找到 osu!stable 可执行文件 (${exePath || '未配置目录'})，请在设置中确认 Stable 目录`
+          : `未找到 osu!lazer 可执行文件 (${exePath || '未配置路径'})，请在设置中确认 Lazer 路径`,
+    };
+  }
+
+  const running = await detectRunningClients(true);
+  const isRunning = client === 'stable' ? running.stableRunning : running.lazerRunning;
+  if (isRunning) {
+    execFile(
+      'powershell',
+      [
+        '-NoProfile',
+        '-NonInteractive',
+        '-Command',
+        "(New-Object -ComObject WScript.Shell).AppActivate('osu!') | Out-Null",
+      ],
+      { timeout: 2000, windowsHide: true },
+      () => {},
+    );
+    libraryEvents.emit('update', await getLibraryStatus(false));
+    return {
+      ok: true,
+      client,
+      alreadyRunning: true,
+      exePath,
+      message:
+        client === 'stable'
+          ? 'osu!stable 已在运行中，已尝试切至前台'
+          : 'osu!lazer 已在运行中，已尝试切至前台',
+    };
+  }
+
+  const cwd = path.dirname(exePath);
+  let launchedOk = await new Promise<boolean>((resolve) => {
+    let settled = false;
+    const child = spawn(exePath, [], {
+      cwd,
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: false,
+    });
+    child.once('spawn', () => {
+      if (!settled) {
+        settled = true;
+        child.unref();
+        resolve(true);
+      }
+    });
+    child.on('error', () => {
+      if (!settled) {
+        settled = true;
+        resolve(false);
+      }
+    });
+  });
+
+  if (!launchedOk) {
+    launchedOk = await new Promise<boolean>((resolve) => {
+      let settled = false;
+      const child = spawn('cmd.exe', ['/c', 'start', '""', '/d', cwd, exePath], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true,
+      });
+      child.once('spawn', () => {
+        if (!settled) {
+          settled = true;
+          child.unref();
+          resolve(true);
+        }
+      });
+      child.on('error', () => {
+        if (!settled) {
+          settled = true;
+          resolve(false);
+        }
+      });
+    });
+  }
+
+  if (!launchedOk) {
+    return {
+      ok: false,
+      client,
+      exePath,
+      message:
+        client === 'stable'
+          ? `启动 osu!stable 失败: ${exePath}`
+          : `启动 osu!lazer 失败: ${exePath}`,
+    };
+  }
+
+  const refreshStatus = () => {
+    void getLibraryStatus(true)
+      .then((st) => libraryEvents.emit('update', st))
+      .catch(() => {});
+  };
+  setTimeout(refreshStatus, 1500);
+  setTimeout(refreshStatus, 4000);
+
+  return {
+    ok: true,
+    client,
+    alreadyRunning: false,
+    exePath,
+    message: client === 'stable' ? '正在启动 osu!stable…' : '正在启动 osu!lazer…',
   };
 }

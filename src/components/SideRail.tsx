@@ -3,6 +3,7 @@ import {
   ChevronRight,
   Download,
   Loader2,
+  Play,
   Settings,
   Zap,
 } from 'lucide-react';
@@ -22,9 +23,11 @@ interface SideRailProps {
   library: LocalLibraryStatus | null;
   downloads: DownloadTask[];
   fastBatch?: FastBatchSnapshot | null;
+  launchingClient?: 'stable' | 'lazer' | null;
   onChangeTarget: (t: DownloadTarget) => void;
   onChangeVariant: (v: DownloadVariant) => void;
   onSelectPreset: (preset: WorkflowPreset) => void;
+  onLaunchGame: (client: 'stable' | 'lazer') => void;
   onOpenLibrarySync: () => void;
   onOpenFastBatch: () => void;
   onOpenDownloads: () => void;
@@ -40,9 +43,11 @@ export function SideRail({
   library,
   downloads,
   fastBatch,
+  launchingClient,
   onChangeTarget,
   onChangeVariant,
   onSelectPreset,
+  onLaunchGame,
   onOpenLibrarySync,
   onOpenFastBatch,
   onOpenDownloads,
@@ -60,9 +65,9 @@ export function SideRail({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-5 overflow-x-hidden overflow-y-auto px-4 pt-4 pb-3">
+      <div className="flex-1 space-y-3 overflow-x-hidden overflow-y-auto px-3.5 pt-2.5 pb-2">
         {/* Download Target (Impeccable machined 3-way pill + underline variant tabs) */}
-        <section className="space-y-2.5">
+        <section className="space-y-2">
           <div className="px-0.5">
             <span className="overline">下载目标</span>
           </div>
@@ -125,7 +130,7 @@ export function SideRail({
                   type="button"
                   onClick={() => onSelectPreset(preset)}
                   title={preset.description}
-                  className={`group flex w-full items-center justify-between gap-2 rounded-[8px] px-2.5 py-[7px] text-left transition-colors duration-150 ${
+                  className={`group flex w-full items-center justify-between gap-2 rounded-[8px] px-2.5 py-[5px] text-left transition-colors duration-150 ${
                     active
                       ? 'bg-surface-2 font-bold text-ink shadow-[0_1px_2px_rgba(0,0,0,0.06)]'
                       : 'font-medium text-ink-2 hover:bg-tint hover:text-ink'
@@ -149,7 +154,7 @@ export function SideRail({
         </section>
 
         {/* Local Dual-Client Library (Hairline-bounded tabular summary, zero card-in-card) */}
-        <section className="space-y-2 border-y border-hairline py-3">
+        <section className="space-y-1.5 border-y border-hairline py-2">
           <div className="px-0.5">
             <span className="overline">本地曲库</span>
           </div>
@@ -191,15 +196,67 @@ export function SideRail({
               </div>
             )}
           </div>
+
+          <div className="grid grid-cols-2 gap-1.5 pt-1">
+            <button
+              type="button"
+              disabled={Boolean(launchingClient)}
+              onClick={() => onLaunchGame('stable')}
+              title={
+                library?.stableRunning
+                  ? 'osu!stable 运行中，点击尝试切至前台'
+                  : library?.stableExeExists === false
+                    ? '未找到 osu!stable 可执行文件，点击检查路径'
+                    : '启动 osu!stable 客户端'
+              }
+              className={`btn btn-sm min-h-[30px] justify-center gap-1.5 px-2 text-[0.75rem] ${
+                library?.stableRunning
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-ok'
+                  : 'hover:border-stable/50 hover:bg-stable/12 hover:text-stable-soft'
+              }`}
+            >
+              {launchingClient === 'stable' ? (
+                <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+              ) : (
+                <Play className="h-3 w-3 shrink-0 fill-current" />
+              )}
+              <span className="truncate">启动 Stable</span>
+            </button>
+
+            <button
+              type="button"
+              disabled={Boolean(launchingClient)}
+              onClick={() => onLaunchGame('lazer')}
+              title={
+                library?.lazerRunning
+                  ? 'osu!lazer 运行中，点击尝试切至前台'
+                  : library?.lazerExeExists === false
+                    ? '未找到 osu!lazer 可执行文件，点击检查路径'
+                    : '启动 osu!lazer 客户端'
+              }
+              className={`btn btn-sm min-h-[30px] justify-center gap-1.5 px-2 text-[0.75rem] ${
+                library?.lazerRunning
+                  ? 'border-emerald-500/40 bg-emerald-500/10 text-ok'
+                  : 'hover:border-lazer/50 hover:bg-lazer/12 hover:text-lazer-soft'
+              }`}
+            >
+              {launchingClient === 'lazer' ? (
+                <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+              ) : (
+                <Play className="h-3 w-3 shrink-0 fill-current" />
+              )}
+              <span className="truncate">启动 Lazer</span>
+            </button>
+          </div>
         </section>
       </div>
 
       {/* Bottom Quiet Editorial Links */}
-      <div className="space-y-0.5 border-t border-hairline px-3 py-2.5">
+      <div className="space-y-0.5 border-t border-hairline px-3 py-2">
         <button
           type="button"
           onClick={onOpenLibrarySync}
-          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1.5 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
+          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
         >
           <span className="flex items-center gap-2">
             <ArrowRightLeft className="h-3.5 w-3.5 text-ink-3 transition-colors group-hover:text-osu" />
@@ -211,7 +268,7 @@ export function SideRail({
         <button
           type="button"
           onClick={onOpenFastBatch}
-          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1.5 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
+          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
         >
           <span className="flex items-center gap-2">
             <Zap
@@ -233,7 +290,7 @@ export function SideRail({
         <button
           type="button"
           onClick={onOpenDownloads}
-          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1.5 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
+          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
         >
           <span className="flex items-center gap-2">
             {activeDownloads.length > 0 ? (
@@ -266,7 +323,7 @@ export function SideRail({
         <button
           type="button"
           onClick={onOpenSettings}
-          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1.5 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
+          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
         >
           <span className="flex items-center gap-2">
             <Settings className="h-3.5 w-3.5 text-ink-3 transition-transform group-hover:rotate-45 group-hover:text-ink" />

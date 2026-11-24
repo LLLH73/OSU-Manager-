@@ -207,6 +207,16 @@ export interface SearchFilters {
   maxAr?: number;
   minLn?: number;
   maxLn?: number;
+  minPp?: number;
+  maxPp?: number;
+  ppAccuracy?: number;
+  ppRate?: number;
+  ppMisses?: number;
+  ppMaRatio?: number;
+  ppClassic?: boolean;
+  ppEz?: boolean;
+  ppNf?: boolean;
+  ppIncludeUnranked?: boolean;
   creator?: string;
   installedFilter?: InstalledFilter;
   source?: SearchSource;
@@ -341,6 +351,7 @@ export interface LocalLibraryStatus {
   stableExists: boolean;
   stableCount: number;
   stableRunning: boolean;
+  stableExeExists: boolean;
   lazerDataPath: string;
   lazerExists: boolean;
   lazerCount: number;

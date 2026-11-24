@@ -23,6 +23,7 @@ import {
   stopFastBatch,
 } from '../api';
 import { STATUS_OPTIONS, TARGET_META, formatBytes } from '../constants';
+import { extractPpScenarioFromFilters, formatPpScenarioShort } from '../utils/pp';
 import {
   AppConfig,
   DownloadTarget,
@@ -87,6 +88,11 @@ function summarizeFilters(f: SearchFilters): string[] {
   }
   if (f.minLn != null || f.maxLn != null) {
     tags.push(`LN ${f.minLn ?? 0}–${f.maxLn ?? 100}%`);
+  }
+  if (f.minPp != null || f.maxPp != null) {
+    tags.push(
+      `~${f.minPp ?? 0}–${f.maxPp ?? '∞'}pp (${formatPpScenarioShort(extractPpScenarioFromFilters(f))})`,
+    );
   }
   if (f.q?.trim()) {
     tags.push(`关键词 "${f.q.trim()}"`);

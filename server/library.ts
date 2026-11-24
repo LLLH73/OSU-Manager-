@@ -379,6 +379,7 @@ export async function getLibraryStatus(refreshProcesses = true): Promise<LocalLi
     stableExists: fs.existsSync(path.join(cfg.stablePath, 'Songs')),
     stableCount: state.stableMap.size,
     stableRunning: running.stableRunning,
+    stableExeExists: Boolean(cfg.stablePath && fs.existsSync(path.join(cfg.stablePath, 'osu!.exe'))),
     lazerDataPath: cfg.lazerDataPath,
     lazerExists: fs.existsSync(path.join(cfg.lazerDataPath, 'client.realm')),
     lazerCount: state.lazerIds.size,

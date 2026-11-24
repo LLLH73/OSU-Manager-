@@ -72,7 +72,7 @@ function clampScrollSpeed(val: unknown, fallback = 28): number {
   return Math.min(40, Math.max(1, Math.round(n)));
 }
 
-function detectLazerExePath(): string {
+export function detectLazerExePath(): string {
   const localAppData = process.env.LOCALAPPDATA || 'C:\\Users\\LLLH\\AppData\\Local';
   const candidates = [
     path.join(localAppData, 'osulazer', 'current', 'osu!.exe'),

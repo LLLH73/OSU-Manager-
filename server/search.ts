@@ -2,6 +2,13 @@ import { getConfig } from './config.js';
 import { getLocalSetsSnapshot } from './library.js';
 import { fetchSmart } from './network.js';
 import {
+  calculateBeatmapPp,
+  deriveStarBoundsFromPpFilter,
+  extractPpScenarioFromFilters,
+  isRankedForPp,
+  shouldAllowUnrankedForPpFilter,
+} from './pp.js';
+import {
   LocalBeatmapsetStatus,
   NormalizedBeatmap,
   NormalizedBeatmapset,
@@ -227,7 +234,7 @@ function normalizeSayobotSet(
   };
 }
 
-function beatmapMatchesFilters(bm: NormalizedBeatmap, f: SearchFilters): boolean {
+function beatmapMatchesFilters(bm: NormalizedBeatmap, f: SearchFilters, setStatus?: string): boolean {
   if (f.mode && f.mode !== 'any') {
     const targetMode = Number(f.mode);
     if (targetMode === 3) {
@@ -262,6 +269,16 @@ function beatmapMatchesFilters(bm: NormalizedBeatmap, f: SearchFilters): boolean
   if (f.maxAr != null && bm.ar > f.maxAr) return false;
   if (f.minLn != null && (bm.lnRatio === null || bm.lnRatio < f.minLn)) return false;
   if (f.maxLn != null && (bm.lnRatio === null || bm.lnRatio > f.maxLn)) return false;
+
+  if (f.minPp != null || f.maxPp != null) {
+    const effectiveStatus = bm.status || setStatus || '';
+    if (!shouldAllowUnrankedForPpFilter(f) && !isRankedForPp(effectiveStatus)) {
+      return false;
+    }
+    const pp = Math.round(calculateBeatmapPp(bm, extractPpScenarioFromFilters(f)).pp);
+    if (f.minPp != null && pp < f.minPp) return false;
+    if (f.maxPp != null && pp > f.maxPp) return false;
+  }
 
   return true;
 }
@@ -301,17 +318,66 @@ function filterAndAnnotateSets(sets: NormalizedBeatmapset[], f: SearchFilters, e
     if (set.beatmaps.length > 0) {
       let anyMatch = false;
       const updatedBeatmaps = set.beatmaps.map((bm) => {
-        const matches = beatmapMatchesFilters(bm, f);
+        const matches = beatmapMatchesFilters(bm, f, set.status);
         if (matches) anyMatch = true;
         return { ...bm, matchesFilter: matches };
       });
       if (!anyMatch) continue;
       out.push({ ...set, beatmaps: updatedBeatmaps });
-    } else {
+    } else if (f.minPp == null && f.maxPp == null) {
       out.push(set);
     }
   }
   return out;
+}
+
+function resolveEffectiveSearchBounds(f: SearchFilters): {
+  upstreamFilters: SearchFilters;
+  impossible: boolean;
+} {
+  const hasPpFilter = f.minPp != null || f.maxPp != null;
+  if (!hasPpFilter) {
+    return {
+      upstreamFilters: f,
+      impossible: f.minStars != null && f.maxStars != null && f.minStars > f.maxStars,
+    };
+  }
+
+  const derived = deriveStarBoundsFromPpFilter(f);
+  if (derived.impossible) {
+    return { upstreamFilters: f, impossible: true };
+  }
+
+  const minStars =
+    f.minStars != null && derived.minStars != null
+      ? Math.max(f.minStars, derived.minStars)
+      : f.minStars ?? derived.minStars;
+  const maxStars =
+    f.maxStars != null && derived.maxStars != null
+      ? Math.min(f.maxStars, derived.maxStars)
+      : f.maxStars ?? derived.maxStars;
+
+  if (minStars != null && maxStars != null && minStars > maxStars) {
+    return { upstreamFilters: f, impossible: true };
+  }
+
+  let effectiveStatus = f.status;
+  if (
+    !shouldAllowUnrankedForPpFilter(f) &&
+    (!f.status || f.status === 'leaderboard' || f.status === 'any')
+  ) {
+    effectiveStatus = 'ranked';
+  }
+
+  return {
+    upstreamFilters: {
+      ...f,
+      minStars,
+      maxStars,
+      status: effectiveStatus,
+    },
+    impossible: false,
+  };
 }
 
 function mapStatusToOsuDirect(status?: SearchFilters['status']): string | undefined {
@@ -400,7 +466,7 @@ async function fetchDirectById(idRef: { type: 'set' | 'map'; id: number }, f: Se
         const normalized = normalizeOsuDirectSet(raw, snapshot);
         const annotated = normalized.beatmaps.map((bm) => ({
           ...bm,
-          matchesFilter: beatmapMatchesFilters(bm, f),
+          matchesFilter: beatmapMatchesFilters(bm, f, normalized.status),
         }));
         return {
           beatmapsets: [{ ...normalized, beatmaps: annotated }],
@@ -453,18 +519,34 @@ async function searchWithOsuDirect(f: SearchFilters): Promise<SearchResult> {
   const seenIds = new Set<number>();
   const snapshot = getLocalSetsSnapshot();
 
-  const statusParam = mapStatusToOsuDirect(f.status);
-  const sortParam = mapSortToOsuDirect(f.sort);
-  const qParam = buildOsuDirectQueryString(f);
+  const bounds = resolveEffectiveSearchBounds(f);
+  if (bounds.impossible) {
+    return {
+      beatmapsets: [],
+      provider: 'osudirect',
+      fallbackUsed: false,
+      upstreamOffset: currentOffset,
+      nextUpstreamOffset: currentOffset,
+      hasMore: false,
+      totalMatchedInBatch: 0,
+    };
+  }
 
+  const upstream = bounds.upstreamFilters;
+  const statusParam = mapStatusToOsuDirect(upstream.status);
+  const sortParam = mapSortToOsuDirect(upstream.sort);
+  const qParam = buildOsuDirectQueryString(upstream);
+
+  const hasPpFilter = f.minPp != null || f.maxPp != null;
   const hasStrictPostFilter =
+    hasPpFilter ||
     f.minLn != null ||
     f.maxLn != null ||
     Boolean(f.installedFilter && f.installedFilter !== 'all') ||
-    (f.mode === '3' && f.keys && f.keys !== 'any' && (f.minStars != null || f.maxStars != null || f.minOd != null));
+    (f.mode === '3' && f.keys && f.keys !== 'any' && (upstream.minStars != null || upstream.maxStars != null || f.minOd != null));
 
   const chunkAmount = hasStrictPostFilter ? 60 : Math.max(limit, 36);
-  const maxChunks = hasStrictPostFilter ? 3 : 2;
+  const maxChunks = hasPpFilter ? 4 : hasStrictPostFilter ? 3 : 2;
   let lastRawCount = 0;
 
   for (let round = 0; round < maxChunks && collected.length < limit; round++) {
@@ -593,55 +675,93 @@ async function searchWithSayobot(f: SearchFilters, fallbackReason?: string): Pro
   let currentOffset = Math.max(0, f.offset || 0);
   const snapshot = getLocalSetsSnapshot();
 
-  const keywordParts = [(f.q || '').trim()];
-  if (f.mode === '3' && f.keys && f.keys !== 'any' && f.keys !== 'other' && !keywordParts[0]) {
-    keywordParts.push(`${f.keys}k`);
+  const bounds = resolveEffectiveSearchBounds(f);
+  if (bounds.impossible) {
+    return {
+      beatmapsets: [],
+      provider: 'sayobot',
+      fallbackUsed: Boolean(fallbackReason),
+      fallbackReason,
+      upstreamOffset: currentOffset,
+      nextUpstreamOffset: currentOffset,
+      hasMore: false,
+      totalMatchedInBatch: 0,
+      totalReported: 0,
+    };
+  }
+
+  const upstream = bounds.upstreamFilters;
+  const hasPpFilter = f.minPp != null || f.maxPp != null;
+  const maxRounds = hasPpFilter ? 2 : 1;
+
+  const keywordParts = [(upstream.q || '').trim()];
+  if (upstream.mode === '3' && upstream.keys && upstream.keys !== 'any' && upstream.keys !== 'other' && !keywordParts[0]) {
+    keywordParts.push(`${upstream.keys}k`);
   }
   const keyword = keywordParts.filter(Boolean).join(' ');
 
-  const body = {
-    cmd: 'beatmaplist',
-    type: keyword ? 'search' : 'new',
-    limit,
-    offset: currentOffset,
-    keyword,
-    mode: mapModeToSayobotBitmask(f.mode),
-    class: mapStatusToSayobotClass(f.status),
-    stars: [f.minStars ?? 0, f.maxStars ?? 100],
-  };
+  const matched: NormalizedBeatmapset[] = [];
+  const seenIds = new Set<number>();
+  let lastRawCount = 0;
+  let totalReported: number | null = null;
 
-  const { response } = await fetchSmart(
-    'https://api.sayobot.cn/?post',
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      timeoutMs: 8000,
-    },
-    'cn_first',
-  );
+  for (let round = 0; round < maxRounds && matched.length < limit; round++) {
+    const body = {
+      cmd: 'beatmaplist',
+      type: keyword ? 'search' : 'new',
+      limit,
+      offset: currentOffset,
+      keyword,
+      mode: mapModeToSayobotBitmask(upstream.mode),
+      class: mapStatusToSayobotClass(upstream.status),
+      stars: [upstream.minStars ?? 0, upstream.maxStars ?? 100],
+    };
 
-  if (!response.ok) {
-    throw new Error(`Sayobot HTTP ${response.status}`);
-  }
+    const { response } = await fetchSmart(
+      'https://api.sayobot.cn/?post',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        timeoutMs: 8000,
+      },
+      'cn_first',
+    );
 
-  const json = (await response.json()) as any;
-  const rawList: any[] = Array.isArray(json?.data) ? json.data : [];
+    if (!response.ok) {
+      throw new Error(`Sayobot HTTP ${response.status}`);
+    }
 
-  // Enrich with beatmapinfo in parallel (concurrency 6)
-  const infos = new Array<any>(rawList.length).fill(null);
-  let idx = 0;
-  await Promise.all(
-    Array.from({ length: Math.min(6, rawList.length) }, async () => {
-      while (idx < rawList.length) {
-        const myIdx = idx++;
-        infos[myIdx] = await fetchSayobotBeatmapInfo(Number(rawList[myIdx].sid));
+    const json = (await response.json()) as any;
+    totalReported = json?.results ?? totalReported;
+    const rawList: any[] = Array.isArray(json?.data) ? json.data : [];
+    lastRawCount = rawList.length;
+    if (rawList.length === 0) break;
+
+    // Enrich with beatmapinfo in parallel (concurrency 6)
+    const infos = new Array<any>(rawList.length).fill(null);
+    let idx = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(6, rawList.length) }, async () => {
+        while (idx < rawList.length) {
+          const myIdx = idx++;
+          infos[myIdx] = await fetchSayobotBeatmapInfo(Number(rawList[myIdx].sid));
+        }
+      }),
+    );
+
+    const normalized = rawList.map((item, i) => normalizeSayobotSet(item, infos[i], snapshot));
+    const roundMatched = filterAndAnnotateSets(normalized, f, true);
+    for (const item of roundMatched) {
+      if (!seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        matched.push(item);
       }
-    }),
-  );
+    }
 
-  const normalized = rawList.map((item, i) => normalizeSayobotSet(item, infos[i], snapshot));
-  const matched = filterAndAnnotateSets(normalized, f, true);
+    currentOffset += rawList.length;
+    if (rawList.length < limit) break;
+  }
 
   // Client-side sort for Sayobot results
   if (f.sort) {
@@ -670,18 +790,16 @@ async function searchWithSayobot(f: SearchFilters, fallbackReason?: string): Pro
     });
   }
 
-  currentOffset += rawList.length;
-
   return {
-    beatmapsets: matched,
+    beatmapsets: matched.slice(0, limit),
     provider: 'sayobot',
     fallbackUsed: Boolean(fallbackReason),
     fallbackReason,
     upstreamOffset: f.offset || 0,
     nextUpstreamOffset: currentOffset,
-    hasMore: rawList.length >= limit,
+    hasMore: lastRawCount >= limit || matched.length > limit,
     totalMatchedInBatch: matched.length,
-    totalReported: json?.results ?? null,
+    totalReported,
   };
 }
 
