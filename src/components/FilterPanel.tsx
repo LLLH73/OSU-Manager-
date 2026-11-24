@@ -506,7 +506,7 @@ export function FilterPanel({
       </div>
 
       {/* Row 3: Lazer Star Range Slider + Scenario PP Range Slider */}
-      <div className="mt-2 grid grid-cols-1 gap-2 border-t border-hairline pt-2 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.2fr)]">
+      <div className="mt-2 grid grid-cols-1 gap-2 border-t border-hairline pt-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.22fr)]">
         <StarRangeSlider
           minStars={filters.minStars}
           maxStars={filters.maxStars}
