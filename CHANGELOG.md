@@ -4,6 +4,18 @@ All notable changes to **OSU!Downloader! (`osu-4k-dual-downloader`)** will be do
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.6.2] - 2026-11-24
+
+### Changed
+- **星数与 PP 滑块升级为更扁长的 `24×14px` 纯色矩形手柄，并提升有限上限至 `15.0★` / `2000pp`**（`src/components/StarRangeSlider.tsx`, `src/components/PpRangeSlider.tsx`, `src/components/FilterPanel.tsx`）：
+  - 将左右滑动手柄由 `10×20px` 竖向短块升级为更扁更长的 `24×14px` 扁平圆角纯色矩形，改用内缩定位以在左右端精准贴齐 `12px` 滑轨且不遮挡数值胶囊；
+  - 将星数滑块与手动输入上限由 `10.0★+` 提升至 `15.0★`（尾段留出 `∞` 档位），将 PP 滑块与手动输入上限提升至 `2000pp`（尾段留出 `∞` 档位），微调第 3 行栅格比例保证窄窗口不挤压轨道。
+
+### Fixed
+- **彻底修复拖动右侧上界滑块在「无穷 (`∞`) ↔ 有限数值」边界反复抽搐跳动的问题**（`src/components/StarRangeSlider.tsx`, `src/components/PpRangeSlider.tsx`）：
+  - 将清除复位图标改为固定占位槽（无条件占位 + 禁用/隐形态切换）、为上下界数值胶囊与编辑框设定等宽 `rem` 尺寸，消除切换 `∞` 与有限值时右侧胶囊/按钮显隐导致 `flex-1` 滑轨宽度跳变引发的坐标反馈震荡；
+  - 同步在拖拽期间冻结滑轨边界矩形并记录手柄抓点偏移量 (`grabOffset`)，命中手柄点击不瞬间跳值，靠近滑轨末段设置清晰的非震荡回滞区 (`15.0★` vs `≥15.2` → `∞`、`2000pp` vs `≥2025` → `∞`)。
+
 ## [1.6.1] - 2026-11-24
 
 ### Changed
