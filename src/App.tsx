@@ -155,7 +155,12 @@ function AppWorkspace({
   notifyBridgeRef: MutableRefObject<((msg: string) => void) | null>;
   pausePreviewBridgeRef: MutableRefObject<(() => void) | null>;
 }) {
-  const musicPlayer = useMusicPlayer();
+  const {
+    isPlaying: musicIsPlaying,
+    currentTrack: musicCurrentTrack,
+    pause: pauseMusic,
+    playTrack: playMusicTrack,
+  } = useMusicPlayer();
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [network, setNetwork] = useState<NetworkStatus | null>(null);
   const [library, setLibrary] = useState<LocalLibraryStatus | null>(null);
@@ -177,6 +182,8 @@ function AppWorkspace({
 
   const [playingSet, setPlayingSet] = useState<NormalizedBeatmapset | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const isPlayingRef = useRef(false);
+  isPlayingRef.current = isPlaying;
 
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -284,7 +291,7 @@ function AppWorkspace({
 
   const openManiaPreview = useCallback(
     (beatmapsetId: number, options?: { beatmapId?: number | null; titleHint?: string }) => {
-      musicPlayer.pause();
+      pauseMusic();
       setIsPlaying(false);
       setPlayingSet(null);
       setPreviewState({
@@ -293,7 +300,7 @@ function AppWorkspace({
         titleHint: options?.titleHint,
       });
     },
-    [musicPlayer],
+    [pauseMusic],
   );
 
   useEffect(() => {
@@ -400,14 +407,14 @@ function AppWorkspace({
   const handleOpenBookInMusicPlayer = useCallback(
     (book?: BookSummary, contextBooks?: BookSummary[]) => {
       if (book) {
-        musicPlayer.playTrack(
+        playMusicTrack(
           book,
           contextBooks && contextBooks.length > 0 ? contextBooks : undefined,
         );
       }
       switchWorkspaceMode('music');
     },
-    [musicPlayer, switchWorkspaceMode],
+    [playMusicTrack, switchWorkspaceMode],
   );
 
   const effectiveConfig = useMemo(() => {
@@ -1330,27 +1337,25 @@ function AppWorkspace({
   const handleTogglePlay = useCallback(
     (set: NormalizedBeatmapset) => {
       if (playingSet?.id === set.id) {
-        setIsPlaying((p) => {
-          const next = !p;
-          if (next) musicPlayer.pause();
-          return next;
-        });
+        const next = !isPlayingRef.current;
+        if (next) pauseMusic();
+        setIsPlaying(next);
       } else {
-        musicPlayer.pause();
+        pauseMusic();
         setPlayingSet(set);
         setIsPlaying(true);
       }
     },
-    [playingSet?.id, musicPlayer],
+    [playingSet?.id, pauseMusic],
   );
 
   const handleStartPlay = useCallback(
     (set: NormalizedBeatmapset) => {
-      musicPlayer.pause();
+      pauseMusic();
       setPlayingSet(set);
       setIsPlaying(true);
     },
-    [musicPlayer],
+    [pauseMusic],
   );
 
   const handleToggleSelectId = useCallback((id: number) => {
@@ -1625,7 +1630,7 @@ function AppWorkspace({
               downloads={downloads}
               fastBatch={fastBatch}
               launchingClient={launchingClient}
-              musicPlaying={musicPlayer.isPlaying}
+              musicPlaying={musicIsPlaying}
               onChangeWorkspaceMode={switchWorkspaceMode}
               onChangeTarget={setTarget}
               onChangeVariant={setVariant}
@@ -1648,7 +1653,7 @@ function AppWorkspace({
               : viewMode === 'lazer'
                 ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-3.5 pt-3 pb-3 sm:px-5 sm:pt-3.5 sm:pb-3.5'
                 : `min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pt-4 sm:px-5 ${
-                    playingSet || musicPlayer.currentTrack ? 'pb-28' : 'pb-8'
+                    playingSet || musicCurrentTrack ? 'pb-28' : 'pb-8'
                   }`
           }
         >
@@ -1656,9 +1661,9 @@ function AppWorkspace({
             <BookArchiveMode
               theme={theme}
               library={library}
-              musicPlaying={musicPlayer.isPlaying}
+              musicPlaying={musicIsPlaying}
               onOpenMusicPlayer={handleOpenBookInMusicPlayer}
-              onPauseBackgroundMusic={musicPlayer.pause}
+              onPauseBackgroundMusic={pauseMusic}
               onPreviewBeatmap={(setId, diffId, title) =>
                 openManiaPreview(setId, { beatmapId: diffId ?? null, titleHint: title })
               }
@@ -1984,7 +1989,7 @@ function AppWorkspace({
                       hasMore={Boolean(searchMeta?.hasMore)}
                       loadingMore={loadingMore}
                       searchError={Boolean(searchError)}
-                      hasAudioDock={Boolean(playingSet || musicPlayer.currentTrack)}
+                      hasAudioDock={Boolean(playingSet || musicCurrentTrack)}
                       hasGlobalBg={Boolean(effectiveBgUrl)}
                       filterCollapsed={filterCollapsed}
                       compactStage={!sidebarCollapsed && !archiveRailCollapsed}
@@ -2094,7 +2099,7 @@ function AppWorkspace({
               downloads={downloads}
               fastBatch={fastBatch}
               launchingClient={launchingClient}
-              musicPlaying={musicPlayer.isPlaying}
+              musicPlaying={musicIsPlaying}
               onChangeWorkspaceMode={switchWorkspaceMode}
               onChangeTarget={setTarget}
               onChangeVariant={setVariant}
@@ -2163,7 +2168,7 @@ function AppWorkspace({
       {workspaceMode === 'browse' && viewMode !== 'lazer' && showBackToTop && results.length > 0 && (
         <div
           className={`pointer-events-none fixed right-5 z-30 transition-[bottom,right] duration-200 ${
-            playingSet || musicPlayer.currentTrack ? 'bottom-28 sm:bottom-[84px]' : 'bottom-5'
+            playingSet || musicCurrentTrack ? 'bottom-28 sm:bottom-[84px]' : 'bottom-5'
           } ${!archiveRailCollapsed ? '2xl:right-[calc(var(--right-sidebar-w)+20px)]' : ''}`}
         >
           <button
@@ -2187,13 +2192,11 @@ function AppWorkspace({
           activeTarget={target}
           sidebarCollapsed={sidebarCollapsed}
           rightRailOpen={!archiveRailCollapsed}
-          onTogglePlay={() =>
-            setIsPlaying((p) => {
-              const next = !p;
-              if (next) musicPlayer.pause();
-              return next;
-            })
-          }
+          onTogglePlay={() => {
+            const next = !isPlayingRef.current;
+            if (next) pauseMusic();
+            setIsPlaying(next);
+          }}
           onStop={() => {
             setIsPlaying(false);
             setPlayingSet(null);
