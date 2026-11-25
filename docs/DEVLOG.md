@@ -4,6 +4,66 @@
 
 ---
 
+## Session 16 — 音乐台左侧栏自动收起与封面顶栏徽标防溢出优化 (`v1.8.0`)
+
+- **日期**：2026-11-25
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **版本**：`v1.8.0`
+- **关联提交**：`f97e0fa`
+- **本次需求**：
+  1. 保持主界面左侧栏默认展开、音乐台内置歌单左侧栏默认关闭，但进入音乐台后主界面左侧栏应主动收起；
+  2. 修复音乐台画幅/唱盘框体右上方同时显示 `STABLE`、`LAZER`、`KIAI` 时 `KIAI` 徽标超出框体的问题。
+- **关键改动**：
+  1. **进入音乐台自动收起主左侧栏**（`src/App.tsx`）：在 `switchWorkspaceMode` 的 `nextMode === 'music'` 分支内调用 `setSidebarCollapsed(true)`（覆写此前 Session 15 中不再收起主左侧栏的设定），确保从左侧栏三段切换、`OSU 音乐台` 按钮、Book 模式或迷你条返回音乐台时主导航栏均主动让出横向空间，同时仍保留标题栏按钮手动重展开能力与音乐台自身歌单栏默认收起态。
+  2. **修复 `STABLE` / `LAZER` / `KIAI` 徽标溢出**（`src/components/music/ConstructivistCoverStage.tsx`）：为外层卡片容器补充 `min-w-0` 并微调内边距至 `p-3 sm:p-3.5`（保留无 `overflow-hidden` 以免裁切「加入歌单」弹出菜单）；将 Swiss Header Strip 改为 `min-w-0 flex-wrap`，左侧 `SET #...` 支持截断，右侧徽标容器设为 `ml-auto flex max-w-full shrink-0 flex-wrap justify-end gap-1` 并调整 `STABLE`/`LAZER`/`KIAI` 字号、字距与 `whitespace-nowrap`。
+- **验证结果**：
+  - `npm run typecheck` 与 `npm run electron:pack`（`v1.8.0`）全部退出码 `0` 通过，生成更新版 `release\win-unpacked\osu-4k-downloader.exe`（`249,978,368` 字节）。
+  - **真实浏览器界面实测**（`http://127.0.0.1:3728`，隔离目录 `%TEMP%\osu-dl-verify-v180`，0 控制台/页面报错）：
+    - `1440×900` 初始主界面左侧栏默认展开（`width: 248px`），切入音乐台后主动收起为 `0px`（标题栏提示切换为 `展开左侧栏`），音乐台内置「曲库与歌单」侧栏默认收起（DOM 数量 `0`）；手动点「展开左侧栏」可恢复 `248px`，再次切入音乐台后重新自动收起至 `0px`。
+    - 选用双端已装曲目 `Dan ~ REFORM ~ JackMap Pack`（`SET #2316976`，`inStable=true, inLazer=true`），分别在 `1440×900`（`xl`，卡片宽 `327px`）与 `1120×760`（`lg`，卡片宽 `277–287px`）下验证 `画幅` 与 `唱盘` 两种模式：DOM `getBoundingClientRect()` 测得 `STABLE`、`LAZER`、`KIAI` 全部满足 `left >= card.left` 且 `right <= card.right`（`0px` 溢出）。
+  - **打包产物冒烟与清理**：启动 `release\win-unpacked\osu-4k-downloader.exe`（`OSU_DL_DATA_DIR=%TEMP%\osu-dl-verify-exe-v180`, `PORT=3729`）实测 `GET /api/health` 返回 `{"ok":true,...}`，随后终止全部测试进程并删除临时目录，确认 `3721`/`3728`/`3729` 端口监听数均为 `0`，用户 `data/config.json` 完整无损。
+
+---
+
+## Session 15 — 品牌更名 `OSU!Manager!` 与构成主义/瑞士风格 OSU! 本地背景音乐播放器 (`v1.8.0`)
+
+- **日期**：2026-11-24
+- **对话 ID**：`56adc306-8af7-44e5-bd61-cdcc0f025dea`
+- **版本**：`v1.7.0` → `v1.8.0`
+- **需求来源**：
+  1. 将左上角品牌标题改为 `OSU!Manager!`；
+  2. 新增可从 Book 模式与左侧栏进入的 OSU! 音乐播放器，支持后台纯播放本地已有歌曲，具备音乐播放/暂停、倍速调整、音量调节、歌单创建、封面展示、节奏跟随与音乐可视化等能力，整体美术采用简约构成主义 / 瑞士国际主义风格。
+- **实现要点**：
+  1. **品牌统一更名与 Electron 后台播控**（`src/components/TitleBar.tsx`, `index.html`, `electron/main.ts`, `electron/preload.cjs`, `src/electron.d.ts`）：
+     - 左上角标题、网页 `<title>`、主窗标题与托盘菜单/提示统一更名为 `OSU!Manager!`（保持 `package.json` `productName: "osu-4k-downloader"` 不变以兼容快捷脚本与历史数据目录）；
+     - 主窗配置 `backgroundThrottling: false`，新增 `window:hideToTray` IPC 与系统托盘「播放 / 暂停音乐」「上一曲」「下一曲」联动。
+  2. **本地 `.osu` 节奏解析与歌单持久化后端**（`server/localLibrary.ts`, `server/playlists.ts`, `server/index.ts`, `server/types.ts`, `src/types.ts`, `src/api.ts`）：
+     - 在 `localLibrary.ts` 补充收集 Lazer `.osu` 路径并新增 `getBookRhythm()` 与 `GET /api/books/:bookKey/rhythm`（解析非继承红线 TimingPoints、Kiai 高潮区间与 72 段物件密度分布，缺失 `.osu` 时自动合成为合成节拍）；
+     - 新增 `server/playlists.ts` 与 `GET/POST/PUT/DELETE /api/playlists` 原子持久化自定义歌单至 `data/playlists.json`（支持置顶、重命名、曲目去重排序）。
+  3. **根级持久化后台音频引擎与构成主义 / 瑞士风格音乐台**（`src/components/music/rhythmEngine.ts`, `src/components/music/MusicPlayerContext.tsx`, `src/components/music/MusicVisualizerCanvas.tsx`, `src/components/music/ConstructivistCoverStage.tsx`, `src/components/music/MusicMiniDock.tsx`, `src/components/music/MusicPlayerMode.tsx`, `src/index.css`）：
+     - `MusicPlayerProvider` 拆分 `MusicControlContext` 与 `MusicTimeContext`，挂载持久化 `<audio>` 与单实例 Web Audio `AnalyserNode`、支持 `0.50×–2.00×` 倍速及「原调锁高 / NC 变调」、滚轮音量/静音、列表/单曲/随机循环、红心收藏、定时关闭（分钟/播完本曲）、Windows MediaSession 媒体键及与搜图试听/谱面预览/Book 试听互斥防串音；
+     - `ConstructivistCoverStage` 提供 `画幅 (PROUN)` 与 `唱盘 (DISC)` 双封面展示及 60fps DOM-ref 实时节拍矩阵（`[01]..[04]`）、倍速等效 BPM 与 Kiai 指示；`MusicVisualizerCanvas` 提供 `频谱` / `构成` / `示波` 三模式高分屏画布（`ResizeObserver` 自动重绘待机网格，后台 `document.hidden` 自动挂起零 GPU 占用）；
+     - 切回搜图或 Book 模式后，通过 `MusicMiniDock` 悬浮迷你条继续后台纯播放（Book 模式下自动抬高至 `bottom-[82px]` 避让底栏刻度）。
+  4. **左侧栏与 Book 模式双入口**（`src/components/SideRail.tsx`, `src/components/book/BookArchiveMode.tsx`, `src/components/book/BookSpreadOverlay.tsx`, `src/App.tsx`）：
+     - `SideRail` 顶部工作区切为 `搜图 | Book | 音乐` 三段，本地曲库下方改为并排 `Book 档案库 | OSU 音乐台`；`BookArchiveMode` 顶栏新增 `音乐台` 按钮，悬浮预览卡及双页展开详情新增 `在音乐台中播放`。
+- **验证结果**：
+  - `npm run typecheck` 与 `npm run electron:pack`（`v1.8.0`）全部退出码 `0` 通过，更新生成 `release\win-unpacked\osu-4k-downloader.exe`。
+  - 隔离数据目录（port `3728`）实测 `/api/books`（`757` 首本地曲目，其中 `664` 首含本地音频）、`/api/books/:bookKey/rhythm`（`200`，含红线与 72 段密度）、`/api/books/:bookKey/audio`（`206`）与 `/api/playlists` CRUD（`201`/`200`）全部通过。
+  - 实时浏览器多分辨率（`1440×900` / `1280×720` / `1040×680`）与 `瓷器白` / `曜石黑` 主题验收：确认 `OSU!Manager!` 标识、播放/暂停、倍速 `1.25×` 与 `NC变调`、音量/静音、歌单创建增删、`画幅`/`唱盘`切换、`频谱`/`构成`/`示波`待机与动态绘制、节奏跟随矩阵、搜图与 Book 模式后台持续播放（`MusicMiniDock` 无遮挡）均正常，0 控制台/页面/HTTP 4xx+ 错误。
+  - 打包产物 `release\win-unpacked\osu-4k-downloader.exe` 在隔离目录与临时端口 `3729` 冒烟验证 `GET /api/health` 返回 `{"ok":true,...}`，随后结束全部测试进程并清理临时目录，`3721`/`3728`/`3729` 端口监听数归 `0`，用户 `data/config.json` 完整保留。
+
+### 追加优化（11 项音源修复、布局收起、唱盘几何与构成主义专注画报重绘）
+- **核心改动**：
+  1. **修复 Lazer 本地长音频截断为 9s / 0s 问题**（`server/realmReader.ts`, `server/localLibrary.ts`, `src/components/music/MusicPlayerContext.tsx`）：拆分 `getUInt` / `getSInt`，修复 `ClusterNodeInner` 键偏移、稀疏键、`ArrayStringLong` 偏移、`BPlusTree`（`>256` 文件）及 `ObjLink` 有符号溢出导致 `>=32,768` 键（`最終鬼畜妹`、`End Time`、`NANO DEATH!!!!!` 等 93 套曲目）丢失或错配本地音轨的 bug；补充 Lazer `.osu` `AudioFilename` 与主音轨扫描回退及 `<audio onDurationChange>` VBR 修正，全部 687 套 Lazer 曲库本地音源 100% 命中。
+  2. **主界左侧栏默认展开 + 音乐台内置左侧栏默认收起**（`src/App.tsx`, `src/components/music/MusicPlayerMode.tsx`）：修复主界面左侧导航栏始终默认展开（切换音乐台不再强制收起主导航栏），仅将音乐台内部的「曲库与歌单」侧栏设为默认收起并支持顶栏/栏内一键切换。
+  3. **几何化 `osu!` 圆形徽标替代红色方块与 Spin 图标**（`src/components/music/OsuMusicMark.tsx`, `SideRail.tsx`, `BookArchiveMode.tsx`, `BookSpreadOverlay.tsx`, `MusicMiniDock.tsx`, `MusicPlayerMode.tsx`, `ConstructivistCoverStage.tsx`）：设计瑞士/构成主义精度圆形 `osu!` 矢量徽标并取代音乐台顶栏红块及各入口旋转碟片图标。
+  4. **对齐底部密度波纹与播放进度条**（`src/components/music/MusicPlayerMode.tsx`, `src/index.css`）：将 72 段物件密度条与 `<input class="swiss-range">` 统一包裹进同一 `flex-1 flex-col` 轨道容器并清除默认滑块外边距，实现零像素错位并对齐 RATE/Volume 滑轨可见性。
+  5. **无框唱盘、精准落针唱臂与切回画幅角度清零**（`src/components/music/ConstructivistCoverStage.tsx`）：为画幅与唱盘节点赋独立 `key` 并在切换及换曲时清零 `discSpinRef.transform`；移除唱盘模式外部方框，按几何坐标标定唱臂枢轴 `(204, 20)` 与 108px 长度，暂停时停靠右侧支座（`2°`），播放时精确扫过黑胶音轨沟槽（`21°→33°`）。
+  6. **移除「构成」可视化并升级横贯全宽的「频谱 / 示波」横轴**（`src/components/music/MusicVisualizerCanvas.tsx`, `MusicPlayerMode.tsx`）：精简为 `FFT // 频谱`（随宽度动态扩展至 60–168 频柱与频率刻度）与 `SCOPE // 示波`（上升沿过零锁定、280–960 点平滑波形），常规模式下横跨封面与歌单列表下方全宽。
+  7. **专注画报直出原图封面 + 快速取色谐振 + 可开关音频律动粒子**（`src/components/music/constructivistRedraw.ts`, `ConstructivistPosterBg.tsx`, `MusicParticleCanvas.tsx`, `MusicPlayerMode.tsx`）：应用户偏好移除画面滤镜转换器，在「专注画报」直接高清展示原始封面与微压边角，保留 48×48 快速 CIE Lab 谐振取色以统一深墨信息卡与宽轴可视化配色（支持左上信息卡一键 `收起 / 展开`）；同步新增可开关的 `MusicParticleCanvas` 音频/节拍响应几何粒子层，在常规模式与专注画报中均可自由启闭。
+
+---
+
 ## Session 14 — 左侧栏 Book 模式入口与 RhineLabUI 风格 3D 本地曲库档案库 (`v1.7.0`)
 
 - **日期**：2026-11-24

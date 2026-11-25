@@ -35,7 +35,7 @@
 ## 3. 代码架构与文件地图
 
 ### 3.1 桌面壳层 (`electron/`)
-- `electron/main.ts`：单实例锁、无边框主窗口 (`frame: false, titleBarStyle: 'hidden'`)、macOS 风格磨砂游戏内浮窗（`backgroundMaterial: 'acrylic'`, `/?mode=overlay`, 置顶 `screen-saver`）、全局快捷键 (`Alt+Shift+O`) 与系统托盘、自动拉起内嵌后端 `dist-server/index.js`（默认端口 `3721`）、注册窗口/浮窗/目录文件选择/外部链接 IPC。
+- `electron/main.ts`：单实例锁、无边框主窗口 (`frame: false, titleBarStyle: 'hidden'`, `backgroundThrottling: false`)、macOS 风格磨砂游戏内浮窗（`backgroundMaterial: 'acrylic'`, `/?mode=overlay`, 置顶 `screen-saver`）、全局快捷键 (`Alt+Shift+O`) 与系统托盘（含音乐播控与 `window:hideToTray` 后台挂机）、自动拉起内嵌后端 `dist-server/index.js`（默认端口 `3721`）、注册窗口/浮窗/目录文件选择/外部链接 IPC。
 - `electron/preload.cjs` & `src/electron.d.ts`：通过 `contextBridge` 暴露 `window.electronAPI`（含主窗控制、文件弹窗及 `toggleOverlay` / `setOverlayOpacity` / `setOverlayCompact` / `setOverlayHotkey` / `openPreviewInMain` 等浮窗 IPC）。
 
 ### 3.2 后端服务 (`server/`, Node + Express v5 + TypeScript ESM)
@@ -52,10 +52,11 @@
 | `server/downloader.ts` | 并发下载队列、Magic Bytes (`PK\x03\x04`) 流首检测、自动切源重试、SSE 实时推送 |
 | `server/fastBatch.ts` | 快速跨页批量下载引擎：多镜像并发负载均衡、自动跨页扫描补齐目标数、跳过已装、IPv6/直连分流、Lazer 15 首合并 IPC 导入与节流 SSE 推送 |
 | `server/filterArchives.ts` | Filter 存档持久化管理：原子读写 `data/filter-archives.json`（上限 100 条、置顶排序、筛选条件与可选浏览位置上下文校验） |
+| `server/playlists.ts` | 音乐台歌单持久化管理：原子读写 `data/playlists.json`（上限 100 份歌单、置顶排序、曲目顺序与去重校验） |
 | `server/installer.ts` | `.osz` ZIP 校验 (`adm-zip` 与 `verifyOszFileFast` 尾目录异步速检)、Stable 解压/直投 `.osz`（`fastInstallToStable`）/运行期临时 IPC、Lazer 极速暂存/批量导入/运行加载、`launchGameClient()` 客户端拉起 |
 | `server/library.ts` | Stable `Songs` 扫描、Lazer `client.realm`/`online.db`/`files` 哈希扫描缓存、进程检测（含 `stableExeExists` / `lazerExeExists`）、双端差异比对 |
 | `server/realmReader.ts` | 零原生依赖只读 Realm v24 (`T-DB`) 二进制解析器（带文件锁临时拷贝回退），读取 Lazer `client.realm` 谱面、难度、元数据、文件映射与游玩成绩 |
-| `server/localLibrary.ts` | 双端本地曲库与成绩聚合器（融合 `osu!.db` / `Songs/` / `scores.db` 与 `client.realm` / `files/`），提供成绩去重、Mania PP 估算、延迟 `.osu` 背景提取与 SVG 回退及音频流输出 |
+| `server/localLibrary.ts` | 双端本地曲库与成绩聚合器（融合 `osu!.db` / `Songs/` / `scores.db` 与 `client.realm` / `files/`），提供成绩去重、Mania PP 估算、延迟 `.osu` 背景提取与 SVG 回退、`.osu` 红线/Kiai/密度节奏解析及音频流输出 |
 | `server/media.ts` | 封面图与 MP3 音频试听代理 + 本地磁盘 LRU 裁剪缓存 |
 | `server/preview.ts` | Mania `.osu` 解析（红线 BPM + 绿线 SV + Barline + NPS 密度）、本地/ZIP/`cache/osz` 音源查找、`206 Range` 音频流与背景图输出 |
 | `server/skins.ts` | 扫描 `D:\OSU\Skins` 与 `osu!.<user>.cfg` 激活皮肤、解析 `[Mania]` `skin.ini`、内置 3 套皮肤、PerCy 超长 LN PNG 无损前 2048 行扫描线裁切 (`cropPngTopRows`) |
@@ -64,7 +65,7 @@
 - 健康与日志：`GET /api/health`、`GET /api/logs?lines=120`
 - 配置与网络：`GET /api/config`、`PUT /api/config`、`POST /api/config/background`、`DELETE /api/config/background`、`GET /api/network/status`、`POST /api/network/benchmark`
 - Filter 存档：`GET /api/filter-archives`、`POST /api/filter-archives`、`PUT /api/filter-archives/:id`、`DELETE /api/filter-archives/:id`
-- 本地 Book 档案库：`GET /api/books`、`GET /api/books/:bookKey`、`GET /api/books/:bookKey/cover`、`GET /api/books/:bookKey/audio`
+- 本地 Book 档案库与音乐台接口：`GET /api/books`、`GET /api/books/:bookKey`、`GET /api/books/:bookKey/cover`、`GET /api/books/:bookKey/audio`、`GET /api/books/:bookKey/rhythm`、`GET/POST/PUT/DELETE /api/playlists`
 - 搜索与媒体：`GET /api/search`（含 `minPp`/`maxPp`/`ppAccuracy`/`ppRate`/`ppMisses`/`ppMaRatio`/`ppClassic`/`ppEz`/`ppNf`/`ppIncludeUnranked`）、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`、`GET /api/media/custom-bg`
 - 预览与皮肤：`GET /api/preview/beatmapset/:setId`、`GET /api/preview/beatmapset/:setId/chart/:index`、`GET /api/preview/beatmapset/:setId/audio/:index`、`GET /api/preview/beatmapset/:setId/bg/:index`、`GET /api/skins`、`GET /api/skins/:skinId/mania`、`GET /api/skins/:skinId/asset`
 - 本地曲库、Lazer 与游戏加载/启动：`GET /api/library/status`、`POST /api/library/rescan`、`GET /api/library/diff`、`POST /api/library/sync-to-lazer`、`POST /api/library/open-folder`（支持 `subFolder`）、`GET /api/lazer/pending`、`POST /api/lazer/import-pending`、`DELETE /api/lazer/pending`、`POST /api/game/load`、`POST /api/game/launch`
@@ -75,7 +76,7 @@
 | :--- | :--- |
 | `src/main.tsx` | 引入离线 `@fontsource` Lazer 风格四字体（`Quicksand`, `Outfit`, `Exo 2`, `Noto Sans SC` 400/500/600/700 + `JetBrains Mono`），按 `?mode=overlay` 路由挂载 `OverlayApp` 或 `App` |
 | `src/index.css` | 8 套主题 CSS Token（默认 `:root[data-theme="light"]` 瓷器白）、Tailwind `@theme inline` 固定 `--spacing: 4px` 与 `--ui-font-scale`（默认 `1.2`）、`.song-list-row` / `.modal-surface` GPU 合成隔离规则、Lazer 字体工具类、`.segmented-compact`/`.segmented-auto`、卡片金框、Lazer 轮盘动效样式 |
-| `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠持久化、主题/视图模式持久化、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
+| `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠与进入音乐台自动收起主左侧栏、主题/视图模式持久化、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
 | `src/constants.ts` | 8 套主题元信息 (`THEME_OPTIONS`)、10 组强调色预设、`DEFAULT_FONT_SCALE = 1.2`、视图选项、工作流预设、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()`、统一 LN% 语义函数 `getLnCategory()` |
 | `src/utils/themeColor.ts` | Canvas 24-bin 色相主色调提取器 (`extractDominantColor`) 与动态强调色 CSS 变量推导/应用 (`deriveAccentVariables`, `applyAccentVariables`, `clearAccentVariables`) |
 | `src/utils/pp.ts` | Ranked PP 准度制计算引擎（含 35 组 `NM / DT / HT / 变速` 情景预设与主/副展示文案、`localStorage` 自定义情景持久化、`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `extractPpScenarioFromFilters`, `formatPpScenarioShort`, `isRankedForPp`） |
@@ -83,8 +84,18 @@
 | `src/utils/maniaEngine.ts` | osu!mania Canvas2D 轨道渲染器（480p 坐标、BPM+SV 时间轴、PerCy `NoteBodyStyle` 0/1/2）与右侧滚动缩略图绘制引擎 |
 | `src/api.ts` | 前端 REST 封装（含 Book 档案库、自定义壁纸、IPv6 网络状态、快速批量下载与游戏客户端启动接口） |
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
-| `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏与右侧存档栏折叠按钮、单色粗线图标 `LaneEmblem` + `OSU!Downloader!`、浮窗开关、8 主题分组弹窗、代理 6174、镜像延迟、窗口控制） |
-| `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（工作区模式切换 `搜图下载 | Book 模式`、`进入 Book 档案库` 入口、目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
+| `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏与右侧存档栏折叠按钮、单色粗线图标 `LaneEmblem` + `OSU!Manager!`、浮窗开关、8 主题分组弹窗、代理 6174、镜像延迟、窗口控制） |
+| `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（三段工作区模式切换 `搜图 \| Book \| 音乐`、并排 `Book 档案库 \| OSU 音乐台` 入口、目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
+| `src/components/music/OsuMusicMark.tsx` | 几何化高精度圆形 `osu!` 矢量徽标组件（随播放态/激活态触发信号色点亮） |
+| `src/components/music/rhythmEngine.ts` | 音乐台节拍计算与 Web Audio 频带能量提取纯函数（`computeBeatState` 精确跟随红线/倍速/Kiai、`extractAudioBands` 分频段能量与瞬态检测） |
+| `src/components/music/MusicPlayerContext.tsx` | 根级持久化音乐播放器上下文（拆分 `MusicControlContext` / `MusicTimeContext`、Web Audio `AnalyserNode`、倍速/原调锁高/NC 变调、歌单与红心、定时关闭、MediaSession 与托盘播控） |
+| `src/components/music/MusicVisualizerCanvas.tsx` | 构成主义/瑞士风格高分屏可视化画布（`FFT // 频谱` 与 `SCOPE // 示波` 双模式，支持暂停态网格重绘与后台零耗挂起） |
+| `src/components/music/ConstructivistCoverStage.tsx` | 构成主义画幅 (`PROUN`) 与 Braun 瑞士唱盘 (`DISC`) 双封面舞台（含自适应换行防溢出的 `STABLE`/`LAZER`/`KIAI` 顶栏、60fps DOM-ref 实时节拍矩阵、有效倍速 BPM 与歌单快捷操作） |
+| `src/components/music/constructivistRedraw.ts` | 专注画报模式快速 CIE Lab 封面谐振取色与构图配色族推导器 |
+| `src/components/music/ConstructivistPosterBg.tsx` | 专注画报 (`ZEN`) 全屏高清原图背景层与自适应谐振配色桥接组件 |
+| `src/components/music/MusicParticleCanvas.tsx` | 跟随低频能量与节拍脉冲的构成主义几何律动粒子画布（常规模式/专注画报均支持独立开关） |
+| `src/components/music/MusicMiniDock.tsx` | 非音乐台视图下的后台纯播放瑞士极简悬浮迷你控制条（兼容搜图与 Book 底部避让） |
+| `src/components/music/MusicPlayerMode.tsx` | 构成主义/瑞士风格 `OSU! AUDIO // 音乐台` 完整工作区（默认收起的歌单目录、封面与全宽可视化、可检索/排序曲库与队列、专注画报及含 `.osu` 密度直方图的底部播放/倍速/音量控制甲板） |
 | `src/components/book/RhineLoadingVeil.tsx` | RhineLabUI 风格同心扫描环加载校准遮罩 (`RhineLoadingVeil`，支持进入/主题校准/刷新) 与顶部筛选切换扫光提示 (`RhineFilterTransitionHud`) |
 | `src/components/book/bookFilters.ts` | 本地 Book 多维筛选与排序纯函数引擎（来源/模式/键数/状态/评级/星数/PP/BPM/时长/LN%/谱师及 8 维度双向排序） |
 | `src/components/book/BookFilterPanel.tsx` | 仿下载页 RhineLabUI 悬浮高级筛选矩阵（复用 `StarRangeSlider`、`PpRangeSlider`、`SelectField` 与 `QUICK_PRACTICE_TAGS`） |

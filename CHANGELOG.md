@@ -1,8 +1,24 @@
 # Changelog
 
-All notable changes to **OSU!Downloader! (`osu-4k-dual-downloader`)** will be documented in this file.
+All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [1.8.0] - 2026-11-24
+
+### Added
+- **构成主义 / 瑞士风格 OSU! 背景音乐播放器 (`OSU! AUDIO // 音乐台`)**（`server/playlists.ts`, `server/localLibrary.ts`, `server/index.ts`, `electron/main.ts`, `src/components/music/*`, `src/components/SideRail.tsx`, `src/components/book/*`, `src/App.tsx`, `src/index.css`）：
+  - **多入口与后台纯播放架构**：新增 `MusicPlayerProvider`（`MusicControlContext` + `MusicTimeContext` 分离降低重渲染）作为根级持久化音频与 Web Audio `AnalyserNode` 引擎；支持从 **左侧栏**（三段工作区模式 `搜图 | Book | 音乐` 与 `OSU 音乐台` 按钮）及 **Book 模式**（顶栏 `音乐台` 按钮与预览浮卡/展开双页内 `在音乐台中播放`）进入，切离后通过 `MusicMiniDock` 悬浮迷你条继续后台纯播放（与搜图试听/谱面预览/Book 试听互斥防串音）；Electron 主窗启用 `backgroundThrottling: false`，支持「后台挂机」隐藏至系统托盘（含托盘播控菜单）及 Windows MediaSession 媒体键联动。
+  - **本地 `.osu` 节奏解析与实时可视化**：新增 `GET /api/books/:bookKey/rhythm`（解析本地 `.osu` 非继承红线 TimingPoints、Kiai 高潮区间与 72 段物件密度分布）及前端 `rhythmEngine.ts`，驱动 `ConstructivistCoverStage`（「构成画幅」与无框「瑞士唱盘」双封面展示、动态节拍矩阵 `[01]..[04]`、有效倍速 BPM、Kiai 高潮徽章、高精度落针唱臂与角度复位保护）及横贯底部的宽轴 `MusicVisualizerCanvas`（`FFT // 频谱` 与 `SCOPE // 示波` 双模式高分屏画布）。
+  - **专注画报 (`ZEN`) 原图直出与可开关音频律动粒子**（`src/components/music/constructivistRedraw.ts`, `ConstructivistPosterBg.tsx`, `MusicParticleCanvas.tsx`, `MusicPlayerMode.tsx`）：在「专注画报」下直接全屏高清展示原始曲目封面并保留 CieLab 快速取色，使前景可收起信息卡与宽轴可视化依据封面色系自适应谐振配色；同步在顶栏新增「`粒子`」开关（支持常规模式与专注画报双重叠加跟随低频与节拍脉动的几何微粒效果，`localStorage` 记忆状态）。
+  - **全套播放控制、歌单持久化与清晰侧栏层级**（`src/App.tsx`, `MusicPlayerMode.tsx`）：主界面左侧导航栏启动默认展开，切入音乐台时主动收起主界面左侧栏（仍可随时通过标题栏开关手动展开），音乐台内置左侧「曲库与歌单」栏默认收起并支持一键折叠；居中齐边双层密度/进度条、几何化 `osu!` 圆形徽标（`OsuMusicMark`）、播放/暂停、上/下一首、列表/单曲/随机循环、`0.50×–2.00×` 连续倍速及「原调锁高 / Nightcore 磁带变调」、滚轮音量与静音、定时关闭；新增 `server/playlists.ts` 与 `GET/POST/PUT/DELETE /api/playlists`（持久化至 `data/playlists.json`）。
+
+### Fixed
+- **修复 Lazer 曲库高索引曲目仅有 9 秒在线试听或 0 秒无法播放完整本地音源的问题**（`server/realmReader.ts`, `server/localLibrary.ts`, `src/components/music/MusicPlayerContext.tsx`）：修复 Realm 二进制解析中簇索引偏移、字符串偏移、`BPlusTree` 长文件列表及 `ObjLink` 误按有符号 16 位读取导致 `>=32,768` 键值（如 `最終鬼畜妹`、`End Time`、`NANO DEATH!!!!!` 等 93 套 Lazer 曲目）溢出回绕成负数并丢失音频哈希的缺陷，并补充 `.osu` `AudioFilename` 与主音轨启发式回退以及 `<audio onDurationChange>` VBR 时长刷新。
+- **修复音乐台封面/唱盘框体右上角 `STABLE` / `LAZER` / `KIAI` 徽标溢出问题**（`src/components/music/ConstructivistCoverStage.tsx`）：调整画幅/唱盘卡片容器内边距与 `min-w-0` 约束，使顶栏信息条支持自适应换行（`flex-wrap`）、长 `SET #...` 编号安全截断，并收紧徽标字距与内边距，确保双端曲目同时展示 `STABLE`、`LAZER`、`KIAI` 时在所有桌面宽度下均不超出框体边界。
+
+### Changed
+- **品牌更名为 `OSU!Manager!`**（`src/components/TitleBar.tsx`, `index.html`, `electron/main.ts`）：将主界面左上角标题、网页标题、Electron 窗口标题与托盘菜单/提示更名为 **`OSU!Manager!`**（保持既有安装包产物名与用户数据目录兼容不变）。
 
 ## [1.7.0] - 2026-11-24
 
