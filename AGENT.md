@@ -28,7 +28,7 @@
 
 > **关键警告**：
 > - `data/` 目录（含用户的 `config.json`、`lazer-scan-cache.json`、封面/试听缓存、`data/logs/server.log`）已被 `.gitignore` 忽略，**绝不要提交到 Git**，测试时也**绝不要覆盖或清空用户的 Stable/Lazer 真实路径或 6174 代理配置**。
-> - Electron 数据目录规则（`electron/main.ts`）：打包态（`app.isPackaged`）若未设置 `OSU_DL_DATA_DIR`，默认读写 `%APPDATA%\osu-4k-downloader\data`；开发态默认读写工作区 `./data`。用打包程序做本地联调时可显式传入 `OSU_DL_DATA_DIR=d:\Code\osumapdownloader\data`。
+> - Electron 数据目录规则（`electron/main.ts`）：打包态（`app.isPackaged`）若未设置 `OSU_DL_DATA_DIR`，默认读写 `%APPDATA%\osu-4k-dual-downloader\data`；开发态默认读写工作区 `./data`。用打包程序做本地联调时可显式传入 `OSU_DL_DATA_DIR=d:\Code\osumapdownloader\data`。
 
 ---
 
@@ -148,7 +148,7 @@
    - 本地 PerCy 皮肤（如 `36f-2`）的长条身体图高度常达 `38039px`，切勿直接传入浏览器 `<canvas>`，必须保留 `server/skins.ts` 的 `cropPngTopRows(buf, 2048)` 无损扫描线裁切；且向运行中 `osu!stable` 传参时务必使用 `TMP_DIR` 临时副本（Stable 会吞并/移动传入的 `.osz`）。
    - Electron 浮窗使用 `transparent: false` + `backgroundColor: '#00000000'` + `backgroundMaterial: 'acrylic'`，且 `electron/main.ts` 中的 `window:setBackgroundColor` 必须继续忽略 `overlayWindow`，避免实底色覆盖 Windows 11 亚克力毛玻璃。
 10. **打包交付与清理检查**：
-   - `start-desktop.bat` 与 `start.bat` 会优先启动 `release\win-unpacked\osu-4k-downloader.exe`，**代码修改后务必执行 `npm run typecheck` 和 `npm run electron:pack` 更新打包目录**（`electron:pack` 会自动运行 `scripts/apply-exe-icon.mjs` 调用本地 `rcedit.exe` 注入 `build/icon.ico` 与版本元数据）。
+   - `start-desktop.bat` 与 `start.bat` 会优先启动 `release\win-unpacked\osu-manager.exe`，**代码修改后务必执行 `npm run typecheck` 和 `npm run electron:pack` 更新打包目录**（`electron-builder` 的 `afterPack` 钩子会自动运行 `scripts/apply-exe-icon.mjs` 调用本地 `rcedit.exe` 注入 `build/icon.ico` 与版本元数据）；构建全套 Windows Release 发行包（`dir`、`zip`、`portable`、`nsis`）请运行 `npm run electron:dist`。
    - 每次通过启动桌面端/后端做完测试后，务必关闭测试进程并确认 `3721` 端口已释放。
 
 ---

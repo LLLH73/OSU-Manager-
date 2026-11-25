@@ -119,7 +119,7 @@ function buildStepMeta(version: string): WizardStepMeta[] {
       eyebrow: `WELCOME // v${version}`,
       title: '欢迎使用 OSU!Manager!',
       subtitle:
-        '跨端 osu!mania 4K 谱面管理、免登录下载、3D Book 档案库与本地音乐台工作台。不同电脑的安装目录和代理环境各有不同，接下来只需 1 分钟即可完成初始化配置。',
+        '跨端 osu!mania 谱面管理、免登录下载、3D Book 档案库与本地音乐台工作台。不同电脑的安装目录和代理环境各有不同，接下来只需 1 分钟即可完成初始化配置。',
       icon: <LaneEmblem className="h-5 w-5 text-osu" />,
     },
     {

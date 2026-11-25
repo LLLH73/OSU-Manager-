@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "main": "dist-electron/main.js",
-  "description": "OSU!Manager! - osu!mania 4K dual-client (stable + lazer) beatmap downloader, 3D book archive & Constructivist music station",
+  "description": "OSU!Manager! - osu!mania dual-client (stable + lazer) beatmap downloader, 3D book archive & Constructivist music station",
   "scripts": {
     "dev": "concurrently -n API,WEB -c cyan,magenta \"tsx watch server/index.ts\" \"vite\"",
     "build:web": "vite build",
@@ -15,12 +15,17 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "electron": "npm run build && electron .",
     "electron:start": "electron .",
-    "electron:pack": "npm run build && electron-builder --win dir && node scripts/apply-exe-icon.mjs"
+    "electron:pack": "npm run build && electron-builder --win dir",
+    "electron:dist": "npm run build && electron-builder --win dir zip portable nsis"
   },
   "build": {
     "appId": "com.osumapdownloader.mania4k",
-    "productName": "osu-4k-downloader",
-    "asar": false,
+    "productName": "osu-manager",
+    "asar": true,
+    "asarUnpack": [
+      "build/**"
+    ],
+    "afterPack": "./scripts/apply-exe-icon.mjs",
     "files": [
       "dist/**/*",
       "dist-server/**/*",
@@ -34,11 +39,31 @@
       "buildResources": "build"
     },
     "win": {
+      "executableName": "osu-manager",
       "target": [
         "dir"
       ],
       "icon": "build/icon.ico",
+      "artifactName": "osu-manager-${version}-win-${arch}.${ext}",
       "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "OSU Manager",
+      "uninstallDisplayName": "OSU!Manager! ${version}",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "packElevateHelper": false,
+      "differentialPackage": false,
+      "artifactName": "osu-manager-${version}-setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "osu-manager-${version}-portable.${ext}"
     }
   },
   "dependencies": {

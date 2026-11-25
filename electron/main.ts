@@ -45,12 +45,25 @@ let quitting = false;
 let hiddenToTray = false;
 
 function resolveAppIconPath(): string {
-  const icoPath = path.resolve(__dirname, '..', 'build', 'icon.ico');
-  const pngPath = path.resolve(__dirname, '..', 'build', 'icon.png');
-  if (process.platform === 'win32' && fs.existsSync(icoPath)) {
-    return icoPath;
+  const baseDir = path.resolve(__dirname, '..');
+  const unpackedBase = baseDir.replace(/([\\/])app\.asar$/i, '$1app.asar.unpacked');
+  const icoCandidates = [
+    path.join(unpackedBase, 'build', 'icon.ico'),
+    path.join(baseDir, 'build', 'icon.ico'),
+  ];
+  const pngCandidates = [
+    path.join(unpackedBase, 'build', 'icon.png'),
+    path.join(baseDir, 'build', 'icon.png'),
+  ];
+  if (process.platform === 'win32') {
+    for (const candidate of icoCandidates) {
+      if (fs.existsSync(candidate)) return candidate;
+    }
   }
-  return pngPath;
+  for (const candidate of pngCandidates) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return pngCandidates[pngCandidates.length - 1];
 }
 
 if (process.platform === 'win32') {

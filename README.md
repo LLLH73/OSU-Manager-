@@ -2,11 +2,12 @@
   <img src="build/icon.svg" width="92" height="92" alt="OSU!Manager! OM Logo" />
   <h1>OSU!Manager!</h1>
   <p>
-    <strong>面向 osu!stable 与 osu!lazer 双端玩家的 osu!mania 4K 谱面管理、免登录下载、3D 档案库与本地音乐台工作台</strong>
+    <strong>面向 osu!stable 与 osu!lazer 双端玩家的 osu!mania 谱面管理、免登录下载、3D 档案库与本地音乐台工作台</strong>
     <br />
-    <sub>Cross-client osu!mania 4K beatmap downloader, library manager, 3D Book Archive & Constructivist Music Station (v1.10.0)</sub>
+    <sub>Cross-client osu!mania beatmap downloader, library manager, 3D Book Archive & Constructivist Music Station (v1.10.0)</sub>
   </p>
   <p>
+    <a href="https://github.com/LLLH73/OSU-Manager-/releases/latest">Releases 下载</a> ·
     <a href="#简体中文">简体中文</a> ·
     <a href="#english">English</a> ·
     <a href="CHANGELOG.md">Changelog</a> ·
@@ -22,7 +23,7 @@
 
 ### 项目介绍
 
-**OSU!Manager!**（`osu-4k-dual-downloader`）是一款专为同时使用 **osu!stable** 与 **osu!lazer** 的 **osu!mania 4K** 玩家打造的跨端桌面工具（支持 Windows Electron 桌面端与本地 Web 服务）。
+**OSU!Manager!**（`osu-4k-dual-downloader`）是一款专为同时使用 **osu!stable** 与 **osu!lazer** 的 **osu!mania** 玩家打造的跨端桌面工具（默认 4K，支持 4K / 7K / 全键数切换与筛选，支持 Windows Electron 桌面端与本地 Web 服务）。
 
 **无需登录 osu! 账号或填写 Cookie**，即可完成多镜像源搜图、试听、PP 情景筛选、Mania 谱面实景预览、1–500 首极速批量扫图、双端曲库零流量同步、游戏内磨砂浮窗搜图装图，并内置 **RhineLab 3D Book 本地曲库档案库** 与 **构成主义/瑞士风格 `OSU! AUDIO` 本地音乐台**。
 
@@ -62,11 +63,17 @@
    - 全局热键 `Alt+Shift+O`（可在设置修改）在无边框游戏中随时呼出亚克力毛玻璃浮窗搜图装图。
    - 内置 4 套暗色 + 4 套纸感浅色主题（默认「瓷器白」）、`85%–125%` 界面字号缩放（默认 `120%`）、离线 `@fontsource` Lazer 字体、Filter 右侧存档栏，以及**首次启动 6 步交互式配置与引导向导**（支持自动扫描不同电脑盘符下的 `osu!stable` / `osu!lazer` 路径与 `storage.ini`，探测 Clash/v2rayN/Sing-box 等本机在线代理端口、设置 IPv6 与下载偏好、实时预览主题字号并保存至配置，之后可在「设置 → 关于与帮助」随时重看）。
 
-### 使用方式
+### 快速开始
 
-#### 1. 直接运行桌面版（推荐）
-- 运行已打包目录中的 `release\win-unpacked\osu-4k-downloader.exe`，或双击根目录 [start-desktop.bat](start-desktop.bat) / [start.bat](start.bat)。
-- **首次使用提示**：打开后会自动弹出 **6 步新手配置向导**，自动探测本机 `osu!stable` / `osu!lazer` 安装路径与在线代理端口（如 `6174` / `7890` / `7897` / `10808` 等，也可随时选择纯直连或手动浏览修改）；全部配置均可随时在左下角「设置」中微调，并在「关于与帮助」查看版本号或重新观看新手引导。
+#### 1. 从 GitHub Releases 直接下载（推荐）
+
+前往 👉 **[GitHub Releases 最新版本](https://github.com/LLLH73/OSU-Manager-/releases/latest)**（或 [查看全部历史版本](https://github.com/LLLH73/OSU-Manager-/releases)），按需选择以下任一 Windows 发行包：
+
+- **安装版 Setup（`osu-manager-1.10.0-setup.exe`）**：标准 Windows 安装向导，支持自定义安装路径，并自动创建桌面与开始菜单快捷方式；
+- **单文件便携版（`osu-manager-1.10.0-portable.exe`）**：单文件免安装可执行程序，下载后双击即可运行；
+- **绿色免安装压缩包（`osu-manager-1.10.0-win-x64.zip`）**：解压后直接运行其中的 `osu-manager.exe`，无自解压开销、启动最快。
+
+> **本地源码目录与首次引导提示**：如果你已拉取并构建本地仓库，也可以直接运行 `release\win-unpacked\osu-manager.exe` 或双击根目录 [start-desktop.bat](start-desktop.bat) / [start.bat](start.bat)。首次启动会自动弹出 **6 步新手配置向导**，自动探测本机 `osu!stable` / `osu!lazer` 安装路径与在线代理端口（如 `6174` / `7890` / `7897` / `10808` 等，也可随时选择纯直连或手动浏览修改）；全部配置均可随时在左下角「设置」中微调，并在「关于与帮助」查看版本号或重新观看新手引导。
 
 #### 2. 源码开发与构建打包
 
@@ -86,11 +93,14 @@ npm run build
 # 启动本地 Electron 开发窗口
 npm run electron
 
-# 打包 Windows 免安装目录版并嵌入 OM 图标 -> release/win-unpacked/osu-4k-downloader.exe
+# 打包 Windows 免安装目录版并自动嵌入 OM 图标 -> release/win-unpacked/osu-manager.exe
 npm run electron:pack
+
+# 一次性构建完整 Release 发行包（win-unpacked/osu-manager.exe + win-x64.zip + portable.exe + setup.exe）
+npm run electron:dist
 ```
 
-> **数据目录说明**：打包运行态下配置、歌单与筛选存档默认存储在 `%APPDATA%\osu-4k-downloader\data`（可通过环境变量 `OSU_DL_DATA_DIR` 自定义）；源码开发态下默认存储在工作区 `./data`（已被 `.gitignore` 忽略，不会上传至 Git）。
+> **数据目录说明**：打包运行态下配置、歌单与筛选存档默认存储在 `%APPDATA%\osu-4k-dual-downloader\data`（可通过环境变量 `OSU_DL_DATA_DIR` 自定义）；源码开发态下默认存储在工作区 `./data`（已被 `.gitignore` 忽略，不会上传至 Git）。
 
 ---
 
@@ -100,7 +110,7 @@ npm run electron:pack
 
 ### Overview
 
-**OSU!Manager!** (`osu-4k-dual-downloader`) is a cross-client desktop companion built for **osu!mania 4K** players who use both **osu!stable** and **osu!lazer**.
+**OSU!Manager!** (`osu-4k-dual-downloader`) is a cross-client desktop companion built for **osu!mania** players (defaults to 4K, with full 4K / 7K / all-key filtering & preview support) who use both **osu!stable** and **osu!lazer**.
 
 No osu! login or session cookie is required. It brings together multi-mirror beatmap search, audio previewing, scenario-aware Ranked PP filtering, a skin-accurate Mania chart previewer, high-concurrency batch downloading, zero-traffic Stable-to-Lazer library sync, an acrylic in-game overlay, a **3D Book Archive** for your local collection, and a **Constructivist / Swiss-style local Music Station**.
 
@@ -125,7 +135,19 @@ No osu! login or session cookie is required. It brings together multi-mirror bea
   - Global shortcut `Alt+Shift+O` toggles a compact acrylic overlay above borderless osu! windows.
   - Includes 4 dark + 4 light themes (default `light`), UI font scaling (`85%–125%`, default `120%`), Filter Archives right rail, and an interactive **6-step first-run setup & onboarding wizard** that auto-detects `osu!stable` / `osu!lazer` directories (including `storage.ini`) and open local proxy ports (`6174`, Clash `7890/7897`, v2rayN `10808/10809`, Sing-box `2080`, etc.), configures IPv6/download/theme preferences, and can be replayed anytime from **Settings → About & Help**.
 
-### Usage & Commands
+### Quick Start
+
+#### Option 1: Download from GitHub Releases (Recommended)
+
+Visit 👉 **[GitHub Releases (Latest)](https://github.com/LLLH73/OSU-Manager-/releases/latest)** (or [browse all releases](https://github.com/LLLH73/OSU-Manager-/releases)) and pick the Windows package you prefer:
+
+- **Installer Setup (`osu-manager-1.10.0-setup.exe`)**: Standard NSIS Windows installer with custom directory selection and Desktop / Start Menu shortcuts.
+- **Single-File Portable (`osu-manager-1.10.0-portable.exe`)**: Self-contained single executable with zero installation required.
+- **Portable ZIP Archive (`osu-manager-1.10.0-win-x64.zip`)**: Extract anywhere and launch `osu-manager.exe` with zero self-extraction overhead.
+
+> If you are running from a local build, launch `release\win-unpacked\osu-manager.exe`, `start-desktop.bat`, or `start.bat`.
+
+#### Option 2: Build from Source
 
 ```bash
 # 1. Install dependencies
@@ -143,11 +165,14 @@ npm run build
 # 5. Launch Electron desktop app locally
 npm run electron
 
-# 6. Package portable Windows directory + embed OM icon -> release/win-unpacked/osu-4k-downloader.exe
+# 6. Package portable Windows directory + embed OM icon -> release/win-unpacked/osu-manager.exe
 npm run electron:pack
+
+# 7. Build all Windows release artifacts (win-unpacked/osu-manager.exe, win-x64.zip, portable.exe, setup.exe)
+npm run electron:dist
 ```
 
-> Or launch directly via `release\win-unpacked\osu-4k-downloader.exe`, `start-desktop.bat`, or `start.bat`.
+> Under packaged builds, app config and playlists default to `%APPDATA%\osu-4k-dual-downloader\data` (override via `OSU_DL_DATA_DIR`).
 
 ---
 
@@ -161,7 +186,7 @@ OSU-Manager-/
 ├── docs/
 │   └── DEVLOG.md             # 按会话记录的开发日志 / Session-by-session devlog
 ├── build/                    # OM 矢量与多分辨率应用图标 (icon.svg / icon.png / icon.ico)
-├── scripts/                  # 打包后 PE 图标与版本信息注入脚本 (apply-exe-icon.mjs)
+├── scripts/                  # 打包后 PE 图标注入 (apply-exe-icon.mjs) 与 GitHub Release 发布脚本 (publish-github-release.mjs)
 ├── electron/                 # Electron 主进程与 preload 桥接
 ├── server/                   # Express v5 后端（搜索、镜像路由、Realm 读取、下载队列、本地曲库/歌单）
 ├── src/                      # React 19 + Vite 6 + Tailwind CSS v4 前端（含 book/ 与 music/ 模块）

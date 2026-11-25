@@ -1018,7 +1018,7 @@ export function SettingsModal({
                     </span>
                   </div>
                   <div className="truncate text-[0.75rem] font-medium text-ink-3">
-                    osu!mania 4K 双端管理下载器 · Book 档案库 · OSU! 音乐台
+                    osu!mania 双端管理下载器 · Book 档案库 · OSU! 音乐台
                   </div>
                 </div>
               </div>
