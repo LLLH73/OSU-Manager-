@@ -11,4 +11,5 @@ Thumbs.db
 .env
 .env.*
 *.local
+*.tsbuildinfo
 ui-prototypes/

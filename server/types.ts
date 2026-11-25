@@ -57,6 +57,7 @@ export interface AppConfig {
   accentColor: string;
   fontScale: number;
   ipFamily: IpFamilyMode;
+  onboardingCompleted?: boolean;
 }
 
 export type RoutePolicy = 'cn_first' | 'global_first' | 'direct_only' | 'proxy_only';

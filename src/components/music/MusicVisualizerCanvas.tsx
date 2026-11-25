@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import type { ThemeId } from '../../types';
 import { useMusicPlayer, type MusicRhythmIntensity, type MusicVisualizerMode } from './MusicPlayerContext';
 import { computeBeatState, extractAudioBands } from './rhythmEngine';
 
@@ -15,6 +16,7 @@ interface MusicVisualizerCanvasProps {
   mode: MusicVisualizerMode;
   isPlaying: boolean;
   isDark: boolean;
+  theme?: ThemeId;
   rhythmFollow: MusicRhythmIntensity;
   playbackRate: number;
   customPalette?: Partial<VisualizerPalette>;
@@ -63,6 +65,7 @@ export function MusicVisualizerCanvas({
   mode,
   isPlaying,
   isDark,
+  theme,
   rhythmFollow,
   playbackRate,
   customPalette,
@@ -89,7 +92,7 @@ export function MusicVisualizerCanvas({
       drawFrameRef.current?.();
     });
     return () => window.cancelAnimationFrame(id);
-  }, [isDark, mode, customPalSig]);
+  }, [isDark, theme, mode, customPalSig]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

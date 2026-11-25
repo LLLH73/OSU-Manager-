@@ -374,7 +374,6 @@ function ZenPosterInfoCard({
   trackIndexLabel,
   isPlaying,
   playbackRate,
-  palette,
   isLiked,
   onToggleLike,
   onExitZen,
@@ -383,7 +382,6 @@ function ZenPosterInfoCard({
   trackIndexLabel: string;
   isPlaying: boolean;
   playbackRate: number;
-  palette: ConstructivistPalette;
   isLiked: boolean;
   onToggleLike: () => void;
   onExitZen: () => void;
@@ -443,10 +441,10 @@ function ZenPosterInfoCard({
       <div
         className="relative z-10 m-3.5 flex w-fit max-w-[min(94%,540px)] flex-wrap items-center gap-2 px-3 py-2 shadow-2xl backdrop-blur-md sm:m-5"
         style={{
-          backgroundColor: palette.plateBg,
-          border: `1.5px solid ${palette.plateBorder}`,
-          borderLeft: `5px solid ${palette.accent}`,
-          color: palette.vizInk,
+          backgroundColor: 'var(--mp-panel)',
+          border: '1.5px solid var(--mp-rule)',
+          borderLeft: '5px solid var(--mp-signal)',
+          color: 'var(--mp-ink)',
         }}
       >
         <OsuMusicMark className="h-3.5 w-3.5 shrink-0" active playing={isPlaying} />
@@ -459,7 +457,7 @@ function ZenPosterInfoCard({
           onClick={() => setCollapsed(false)}
           title="展开曲目信息卡"
           className="inline-flex h-6 items-center gap-1 border px-2 text-[0.6875rem] font-bold transition-colors hover:opacity-85"
-          style={{ borderColor: palette.plateBorder, color: palette.vizInk }}
+          style={{ borderColor: 'var(--mp-rule)', color: 'var(--mp-ink)' }}
         >
           <Maximize2 className="h-3 w-3" />
           <span>展开</span>
@@ -469,7 +467,7 @@ function ZenPosterInfoCard({
           type="button"
           onClick={onExitZen}
           className="inline-flex h-6 items-center gap-1 border px-2 text-[0.6875rem] font-bold transition-colors hover:opacity-85"
-          style={{ borderColor: palette.plateBorder, color: palette.vizInk }}
+          style={{ borderColor: 'var(--mp-rule)', color: 'var(--mp-ink)' }}
         >
           <Minimize2 className="h-3 w-3" />
           <span>退出</span>
@@ -482,16 +480,16 @@ function ZenPosterInfoCard({
     <div
       className="relative z-10 m-3.5 max-w-[min(94%,540px)] shadow-2xl backdrop-blur-md sm:m-5"
       style={{
-        backgroundColor: palette.plateBg,
-        border: `1.5px solid ${palette.plateBorder}`,
-        borderLeft: `5px solid ${palette.accent}`,
-        color: palette.vizInk,
+        backgroundColor: 'var(--mp-panel)',
+        border: '1.5px solid var(--mp-rule)',
+        borderLeft: '5px solid var(--mp-signal)',
+        color: 'var(--mp-ink)',
       }}
     >
       <div className="px-4 py-3 sm:px-5 sm:py-3.5">
         <div
           className="flex flex-wrap items-center justify-between gap-2 font-mono text-[0.625rem] font-bold tracking-[0.12em] uppercase"
-          style={{ color: palette.vizMuted }}
+          style={{ color: 'var(--mp-muted)' }}
         >
           <span className="flex items-center gap-2">
             <OsuMusicMark className="h-3.5 w-3.5" active playing={isPlaying} />
@@ -504,8 +502,8 @@ function ZenPosterInfoCard({
             <span
               ref={kiaiRef}
               data-active="false"
-              className="border px-1.5 py-0.5 text-[0.6rem] transition-colors data-[active=true]:bg-[var(--mp-signal)] data-[active=true]:text-white"
-              style={{ borderColor: palette.plateBorder }}
+              className="border px-1.5 py-0.5 text-[0.6rem] transition-colors data-[active=true]:border-[var(--mp-signal)] data-[active=true]:bg-[var(--mp-signal)] data-[active=true]:text-white"
+              style={{ borderColor: 'var(--mp-rule)' }}
             >
               KIAI
             </span>
@@ -515,7 +513,7 @@ function ZenPosterInfoCard({
               onClick={() => setCollapsed(true)}
               title="收起信息卡（欣赏完整封面）"
               className="border px-1.5 py-0.5 text-[0.6rem] tracking-normal transition-colors hover:opacity-85"
-              style={{ borderColor: palette.plateBorder, color: palette.vizInk }}
+              style={{ borderColor: 'var(--mp-rule)', color: 'var(--mp-ink)' }}
             >
               收起
             </button>
@@ -529,7 +527,7 @@ function ZenPosterInfoCard({
             className="font-display text-[1.25rem] leading-tight font-extrabold tracking-tight sm:text-[1.45rem]"
           />
           {track && (
-            <div className="mt-0.5 truncate text-[0.8125rem]" style={{ color: palette.vizMuted }}>
+            <div className="mt-0.5 truncate text-[0.8125rem]" style={{ color: 'var(--mp-muted)' }}>
               {track.artistUnicode || track.artist} · {track.creator}
               {track.beatmapsetId ? ` · SET #${track.beatmapsetId}` : ''}
             </div>
@@ -538,7 +536,7 @@ function ZenPosterInfoCard({
 
         <div
           className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t pt-2.5"
-          style={{ borderColor: palette.vizLine }}
+          style={{ borderColor: 'var(--mp-line)' }}
         >
           <div className="flex items-center gap-1">
             {Array.from({ length: Math.min(8, meter) }, (_, i) => (
@@ -549,8 +547,8 @@ function ZenPosterInfoCard({
                 }}
                 data-active="false"
                 data-downbeat="false"
-                className="inline-flex h-5 min-w-[22px] items-center justify-center border font-mono text-[0.625rem] font-bold transition-colors duration-75 data-[active=true]:bg-white data-[active=true]:text-black data-[downbeat=true]:border-[var(--mp-signal)] data-[downbeat=true]:bg-[var(--mp-signal)] data-[downbeat=true]:text-white"
-                style={{ borderColor: palette.vizLine, color: palette.vizMuted }}
+                className="inline-flex h-5 min-w-[22px] items-center justify-center border font-mono text-[0.625rem] font-bold transition-colors duration-75 data-[active=true]:border-[var(--mp-ink)] data-[active=true]:bg-[var(--mp-ink)] data-[active=true]:text-[var(--mp-bg)] data-[downbeat=true]:border-[var(--mp-signal)] data-[downbeat=true]:bg-[var(--mp-signal)] data-[downbeat=true]:text-white"
+                style={{ borderColor: 'var(--mp-line)', color: 'var(--mp-muted)' }}
               >
                 {String(i + 1).padStart(2, '0')}
               </span>
@@ -558,12 +556,12 @@ function ZenPosterInfoCard({
           </div>
 
           <div className="flex items-center gap-3 font-mono text-[0.6875rem] tabular-nums">
-            <span ref={barRef} style={{ color: palette.vizMuted }}>
+            <span ref={barRef} style={{ color: 'var(--mp-muted)' }}>
               BAR 001 · B1
             </span>
             <span className="font-bold">
               <span ref={bpmRef}>{effectiveBpm.toFixed(1)}</span>{' '}
-              <span style={{ color: palette.vizSignal }}>BPM</span>
+              <span style={{ color: 'var(--mp-signal)' }}>BPM</span>
             </span>
             {track && (
               <button
@@ -571,9 +569,9 @@ function ZenPosterInfoCard({
                 onClick={onToggleLike}
                 className="inline-flex h-6 items-center gap-1 border px-2 text-[0.6875rem] font-bold transition-colors hover:opacity-85"
                 style={{
-                  borderColor: isLiked ? palette.vizSignal : palette.plateBorder,
-                  backgroundColor: isLiked ? palette.accent : 'transparent',
-                  color: palette.vizInk,
+                  borderColor: isLiked ? 'var(--mp-signal)' : 'var(--mp-rule)',
+                  backgroundColor: isLiked ? 'var(--mp-signal)' : 'transparent',
+                  color: isLiked ? '#ffffff' : 'var(--mp-ink)',
                 }}
               >
                 <Heart className={`h-3 w-3 ${isLiked ? 'fill-current' : ''}`} />
@@ -584,7 +582,7 @@ function ZenPosterInfoCard({
               type="button"
               onClick={onExitZen}
               className="inline-flex h-6 items-center gap-1 border px-2 text-[0.6875rem] font-bold transition-colors hover:opacity-85"
-              style={{ borderColor: palette.plateBorder, color: palette.vizInk }}
+              style={{ borderColor: 'var(--mp-rule)', color: 'var(--mp-ink)' }}
             >
               <Minimize2 className="h-3 w-3" />
               <span>退出</span>
@@ -1176,23 +1174,31 @@ export function MusicPlayerMode({
 
   const zenRootStyle = zenMode
     ? ({
-        '--mp-bg': '#171614',
-        '--mp-panel': posterPalette.plateBg,
-        '--mp-surface-alt': 'rgba(255, 255, 255, 0.06)',
-        '--mp-ink': posterPalette.vizInk,
-        '--mp-ink-2': posterPalette.vizInk,
-        '--mp-muted': posterPalette.vizMuted,
-        '--mp-line': posterPalette.vizLine,
-        '--mp-rule': posterPalette.plateBorder,
-        '--mp-signal': posterPalette.vizSignal,
-        '--mp-ochre': posterPalette.vizOchre,
+        '--mp-bg': 'var(--t-canvas)',
+        '--mp-panel': isDark
+          ? 'color-mix(in srgb, var(--t-surface-1) 82%, transparent)'
+          : 'color-mix(in srgb, var(--t-surface-2) 86%, transparent)',
+        '--mp-surface-alt': isDark
+          ? 'color-mix(in srgb, var(--t-surface-2) 72%, transparent)'
+          : 'color-mix(in srgb, var(--t-surface-1) 78%, transparent)',
+        '--mp-ink': 'var(--t-ink)',
+        '--mp-ink-2': 'var(--t-ink-2)',
+        '--mp-muted': 'var(--t-ink-3)',
+        '--mp-line': isDark
+          ? 'color-mix(in srgb, var(--t-ink) 18%, transparent)'
+          : 'color-mix(in srgb, var(--t-ink) 16%, transparent)',
+        '--mp-rule': isDark
+          ? 'color-mix(in srgb, var(--t-ink) 48%, transparent)'
+          : 'color-mix(in srgb, var(--t-ink) 38%, transparent)',
+        '--mp-signal': isDark ? posterPalette.vizSignal : posterPalette.accent,
+        '--mp-ochre': isDark ? posterPalette.vizOchre : posterPalette.secondary,
       } as CSSProperties)
     : undefined;
 
   return (
     <div
       className="swiss-player-root swiss-grid-bg relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden select-none"
-      data-player-dark={zenMode || isDark ? 'true' : 'false'}
+      data-player-dark={isDark ? 'true' : 'false'}
       style={zenRootStyle}
     >
       {/* Top Swiss Masthead */}
@@ -1455,14 +1461,10 @@ export function MusicPlayerMode({
               <MusicParticleCanvas
                 isPlaying={isPlaying}
                 isDark={isDark}
+                theme={theme}
                 zenMode
                 rhythmFollow={rhythmFollow}
                 playbackRate={playbackRate}
-                customColors={{
-                  primary: posterPalette.vizInk,
-                  accent: posterPalette.vizSignal,
-                  secondary: posterPalette.vizOchre,
-                }}
                 className="pointer-events-none absolute inset-0 z-[5]"
               />
             )}
@@ -1472,7 +1474,6 @@ export function MusicPlayerMode({
               trackIndexLabel={trackIndexLabel}
               isPlaying={isPlaying}
               playbackRate={playbackRate}
-              palette={posterPalette}
               isLiked={Boolean(currentTrack && likedSet.has(currentTrack.bookKey))}
               onToggleLike={() => {
                 if (currentTrack) toggleLike(currentTrack.bookKey);
@@ -1484,24 +1485,22 @@ export function MusicPlayerMode({
             <div
               className="relative z-10 mx-3.5 mb-3 overflow-hidden shadow-2xl backdrop-blur-md sm:mx-5 sm:mb-4"
               style={{
-                backgroundColor: posterPalette.plateBg,
-                border: `1.5px solid ${posterPalette.plateBorder}`,
-                borderTop: `2.5px solid ${posterPalette.accent}`,
+                backgroundColor: 'var(--mp-panel)',
+                border: '1.5px solid var(--mp-rule)',
+                borderTop: '2.5px solid var(--mp-signal)',
               }}
             >
               <MusicVisualizerCanvas
                 mode={visualizerMode}
                 isPlaying={isPlaying}
                 isDark={isDark}
+                theme={theme}
                 rhythmFollow={rhythmFollow}
                 playbackRate={playbackRate}
                 customPalette={{
                   bg: 'transparent',
-                  ink: posterPalette.vizInk,
-                  signal: posterPalette.vizSignal,
-                  ochre: posterPalette.vizOchre,
-                  line: posterPalette.vizLine,
-                  muted: posterPalette.vizMuted,
+                  signal: isDark ? posterPalette.vizSignal : posterPalette.accent,
+                  ochre: isDark ? posterPalette.vizOchre : posterPalette.secondary,
                 }}
                 className="h-[126px] w-full !border-0 !bg-transparent sm:h-[148px]"
               />
@@ -1513,6 +1512,7 @@ export function MusicPlayerMode({
               <MusicParticleCanvas
                 isPlaying={isPlaying}
                 isDark={isDark}
+                theme={theme}
                 zenMode={false}
                 rhythmFollow={rhythmFollow}
                 playbackRate={playbackRate}
@@ -2020,6 +2020,7 @@ export function MusicPlayerMode({
                   mode={visualizerMode}
                   isPlaying={isPlaying}
                   isDark={isDark}
+                  theme={theme}
                   rhythmFollow={rhythmFollow}
                   playbackRate={playbackRate}
                   className="h-full w-full !border-0"

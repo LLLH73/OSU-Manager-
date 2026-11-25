@@ -1,5 +1,8 @@
 import { DownloadTarget, DownloadVariant, SearchFilters, SongViewMode, ThemeId } from './types';
 
+export const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '1.9.0';
+export const PROJECT_REPO_URL = 'https://github.com/LLLH73/OSU-Manager-';
+
 export interface ViewModeMeta {
   id: SongViewMode;
   label: string;

@@ -2,8 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
 import {
   Activity,
+  BookOpen,
+  Check,
+  Copy,
+  ExternalLink,
   FolderOpen,
   ImagePlus,
+  Info,
   Loader2,
   Palette,
   RotateCcw,
@@ -17,12 +22,15 @@ import {
 } from 'lucide-react';
 import {
   ACCENT_PRESETS,
+  APP_VERSION,
   DEFAULT_FONT_SCALE,
   FONT_SCALE_MAX,
   FONT_SCALE_MIN,
   FONT_SCALE_PRESETS,
+  PROJECT_REPO_URL,
   THEME_OPTIONS,
   clampFontScale,
+  openExternalLink,
 } from '../constants';
 import {
   AppConfig,
@@ -38,6 +46,7 @@ import {
   ThemeId,
 } from '../types';
 import { SelectField } from './SelectField';
+import { LaneEmblem } from './TitleBar';
 
 interface SettingsModalProps {
   open: boolean;
@@ -53,6 +62,7 @@ interface SettingsModalProps {
     url?: string;
   }) => Promise<AppConfig>;
   onClearBackground?: () => Promise<AppConfig>;
+  onReplayOnboarding?: () => void;
   onClose: () => void;
   onSave: (patch: Partial<AppConfig>) => Promise<void>;
   onBenchmark: () => void;
@@ -115,6 +125,7 @@ export function SettingsModal({
   onPreviewAppearance,
   onUploadBackground,
   onClearBackground,
+  onReplayOnboarding,
   onClose,
   onSave,
   onBenchmark,
@@ -124,12 +135,14 @@ export function SettingsModal({
   const [bgUploading, setBgUploading] = useState(false);
   const [bgError, setBgError] = useState<string | null>(null);
   const [bgUrlDraft, setBgUrlDraft] = useState('');
+  const [copiedRepo, setCopiedRepo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (open && config) {
       setForm({ ...config, theme });
       setBgError(null);
+      setCopiedRepo(false);
       setBgUrlDraft(
         config.customBgImage && /^https?:\/\//i.test(config.customBgImage)
           ? config.customBgImage
@@ -320,9 +333,14 @@ export function SettingsModal({
               <Settings2 className="h-4 w-4 text-osu-soft" />
             </div>
             <div className="min-w-0">
-              <h2 className="font-display text-[1.0625rem] font-bold text-ink">
-                客户端路径、代理与主题背景设置
-              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-display text-[1.0625rem] font-bold text-ink">
+                  客户端路径、代理与主题背景设置
+                </h2>
+                <span className="font-mono shrink-0 rounded-full border border-osu/35 bg-osu/10 px-2 py-0.5 text-[0.6875rem] font-bold text-osu-soft tabular-nums">
+                  v{APP_VERSION}
+                </span>
+              </div>
               <p className="truncate text-[0.78125rem] font-medium text-ink-3">
                 默认已自动绑定本机 Stable / Lazer 路径及 <span className="font-mono tabular-nums">6174</span> 代理端口
               </p>
@@ -979,17 +997,109 @@ export function SettingsModal({
               className="field font-mono"
             />
           </Section>
+
+          {/* 5. About, Version, Open-Source Repo & Onboarding */}
+          <Section
+            index={5}
+            title="关于与帮助"
+            hint="版本信息、开源仓库与新手引导"
+            icon={<Info className="h-3.5 w-3.5 shrink-0 text-osu-soft" />}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-hairline bg-surface-2/65 px-3.5 py-2.5">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <LaneEmblem className="h-6 w-6 text-ink" />
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-display text-[0.9375rem] font-bold text-ink">
+                      OSU!Manager!
+                    </span>
+                    <span className="font-mono rounded-full border border-osu/35 bg-osu/10 px-2 py-0.5 text-[0.71875rem] font-bold text-osu-soft tabular-nums">
+                      v{APP_VERSION}
+                    </span>
+                  </div>
+                  <div className="truncate text-[0.75rem] font-medium text-ink-3">
+                    osu!mania 4K 双端管理下载器 · Book 档案库 · OSU! 音乐台
+                  </div>
+                </div>
+              </div>
+
+              <span className="chip font-mono border-hairline bg-surface-1 text-ink-2">
+                {isElectron ? 'Electron 桌面版' : 'Web 浏览器版'}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2 rounded-[10px] border border-hairline bg-surface-2/55 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0 space-y-0.5">
+                <div className="field-label">开源项目地址 (GitHub)</div>
+                <a
+                  href={PROJECT_REPO_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(e) => openExternalLink(e, PROJECT_REPO_URL)}
+                  className="font-mono inline-flex max-w-full items-center gap-1.5 truncate text-[0.8125rem] font-semibold text-osu-soft underline-offset-2 hover:underline"
+                >
+                  <span className="truncate">{PROJECT_REPO_URL}</span>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                </a>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  void navigator.clipboard?.writeText(PROJECT_REPO_URL).then(() => {
+                    setCopiedRepo(true);
+                    window.setTimeout(() => setCopiedRepo(false), 2000);
+                  }).catch(() => {});
+                }}
+                className="btn btn-sm shrink-0"
+              >
+                {copiedRepo ? (
+                  <Check className="h-3.5 w-3.5 text-ok" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                <span>{copiedRepo ? '已复制链接' : '复制地址'}</span>
+              </button>
+            </div>
+
+            {onReplayOnboarding && (
+              <div className="flex flex-col gap-2 rounded-[10px] border border-hairline bg-surface-2/55 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0 space-y-0.5">
+                  <div className="font-display text-[0.84375rem] font-bold text-ink">
+                    新手引导
+                  </div>
+                  <p className="text-[0.78125rem] font-medium text-ink-3">
+                    重新浏览 Lazer 选歌、PP 筛选、双端同步、Book 档案库、音乐台与浮窗功能说明
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onReplayOnboarding}
+                  className="btn btn-sm shrink-0 border-osu/35 bg-osu/10 text-osu-soft hover:border-osu/55 hover:bg-osu/16"
+                >
+                  <BookOpen className="h-3.5 w-3.5" />
+                  <span>重新观看新手引导</span>
+                </button>
+              </div>
+            )}
+          </Section>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 border-t border-hairline bg-surface-1/75 px-5 py-3">
-          <button type="button" onClick={handleCloseCancel} className="btn">
-            取消
-          </button>
-          <button type="submit" disabled={saving} className="btn btn-primary px-4">
-            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-            <span>{saving ? '保存中...' : '保存并刷新状态'}</span>
-          </button>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline bg-surface-1/75 px-5 py-3">
+          <span className="font-mono text-[0.75rem] font-medium text-ink-3 tabular-nums">
+            OSU!Manager! · v{APP_VERSION}
+          </span>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={handleCloseCancel} className="btn">
+              取消
+            </button>
+            <button type="submit" disabled={saving} className="btn btn-primary px-4">
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              <span>{saving ? '保存中...' : '保存并刷新状态'}</span>
+            </button>
+          </div>
         </div>
       </form>
     </div>

@@ -34,23 +34,21 @@ interface TitleBarProps {
   onToggleArchiveRail?: () => void;
 }
 
-/** Monochrome bold-stroke minimalist emblem for OSU!Manager! */
+/** Monochrome bold-stroke minimalist "OM" emblem for OSU!Manager! */
 export function LaneEmblem({ className = 'h-[21px] w-[21px]' }: { className?: string }) {
   return (
     <svg
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth="2.3"
       strokeLinecap="round"
       strokeLinejoin="round"
       className={`${className} shrink-0 text-ink`}
       aria-hidden="true"
     >
-      <circle cx="12" cy="12" r="9.5" />
-      <path d="M12 6.6v7.8" />
-      <path d="M8.6 11.4 12 14.8l3.4-3.4" />
-      <path d="M8.4 17.4h7.2" />
+      <rect x="1.75" y="1.75" width="20.5" height="20.5" rx="5" strokeWidth="1.9" />
+      <circle cx="7.9" cy="12" r="3.1" strokeWidth="2.2" />
+      <path d="M13.7 15.1V8.9L16.5 13L19.3 8.9V15.1" strokeWidth="2.2" />
     </svg>
   );
 }

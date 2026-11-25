@@ -1,10 +1,10 @@
 {
   "name": "osu-4k-dual-downloader",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "private": true,
   "type": "module",
   "main": "dist-electron/main.js",
-  "description": "osu!mania 4K dual-client (stable + lazer) beatmap downloader with automatic proxy/mirror routing",
+  "description": "OSU!Manager! - osu!mania 4K dual-client (stable + lazer) beatmap downloader, 3D book archive & Constructivist music station",
   "scripts": {
     "dev": "concurrently -n API,WEB -c cyan,magenta \"tsx watch server/index.ts\" \"vite\"",
     "build:web": "vite build",
@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "electron": "npm run build && electron .",
     "electron:start": "electron .",
-    "electron:pack": "npm run build && electron-builder --win dir"
+    "electron:pack": "npm run build && electron-builder --win dir && node scripts/apply-exe-icon.mjs"
   },
   "build": {
     "appId": "com.osumapdownloader.mania4k",
@@ -26,6 +26,7 @@
       "dist-server/**/*",
       "dist-electron/**/*",
       "build/icon.png",
+      "build/icon.ico",
       "package.json"
     ],
     "directories": {
@@ -36,7 +37,7 @@
       "target": [
         "dir"
       ],
-      "icon": "build/icon.png",
+      "icon": "build/icon.ico",
       "signAndEditExecutable": false
     }
   },

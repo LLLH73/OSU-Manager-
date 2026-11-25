@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import type { ThemeId } from '../../types';
 import { useMusicPlayer, type MusicRhythmIntensity } from './MusicPlayerContext';
 import { computeBeatState, extractAudioBands } from './rhythmEngine';
 
@@ -11,6 +12,7 @@ export interface MusicParticleColors {
 interface MusicParticleCanvasProps {
   isPlaying: boolean;
   isDark: boolean;
+  theme?: ThemeId;
   zenMode: boolean;
   rhythmFollow: MusicRhythmIntensity;
   playbackRate: number;
@@ -97,6 +99,7 @@ function createParticlePool(w: number, h: number, zenMode: boolean): Particle[] 
 export function MusicParticleCanvas({
   isPlaying,
   isDark,
+  theme,
   zenMode,
   rhythmFollow,
   playbackRate,
@@ -121,7 +124,7 @@ export function MusicParticleCanvas({
       colorsRef.current = readParticleColors(canvasRef.current, customColorsRef.current);
     });
     return () => window.cancelAnimationFrame(id);
-  }, [isDark, zenMode, colorSig]);
+  }, [isDark, theme, zenMode, colorSig]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

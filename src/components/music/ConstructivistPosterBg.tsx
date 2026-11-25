@@ -54,10 +54,12 @@ export function ConstructivistPosterBg({
     onPaletteRef.current(pal);
   };
 
+  const tickToneCls = isDark ? 'border-white/30' : 'border-black/25';
+
   return (
     <div
       aria-hidden="true"
-      className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[#121316]"
+      className="pointer-events-none absolute inset-0 z-0 overflow-hidden bg-[var(--t-canvas)]"
     >
       {track?.coverUrl && !imgFailed ? (
         <img
@@ -76,8 +78,9 @@ export function ConstructivistPosterBg({
         <div
           className="h-full w-full"
           style={{
-            background:
-              'radial-gradient(circle at 50% 42%, rgba(44, 46, 54, 0.72), rgba(16, 17, 21, 0.98) 72%)',
+            background: isDark
+              ? 'radial-gradient(circle at 50% 42%, rgba(44, 46, 54, 0.72), rgba(16, 17, 21, 0.98) 72%)'
+              : 'radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--t-surface-2) 92%, transparent), var(--t-canvas) 76%)',
           }}
         />
       )}
@@ -86,15 +89,16 @@ export function ConstructivistPosterBg({
       <div
         className="absolute inset-0"
         style={{
-          background:
-            'linear-gradient(180deg, rgba(10,10,14,0.28) 0%, rgba(10,10,14,0.03) 28%, rgba(10,10,14,0.06) 68%, rgba(10,10,14,0.52) 100%)',
+          background: isDark
+            ? 'linear-gradient(180deg, rgba(10,10,14,0.28) 0%, rgba(10,10,14,0.03) 28%, rgba(10,10,14,0.06) 68%, rgba(10,10,14,0.52) 100%)'
+            : 'linear-gradient(180deg, color-mix(in srgb, var(--t-canvas) 30%, transparent) 0%, transparent 28%, transparent 68%, color-mix(in srgb, var(--t-canvas) 44%, transparent) 100%)',
         }}
       />
 
       {/* Minimal 1px Swiss corner registration ticks */}
-      <div className="absolute top-4 right-4 h-4 w-4 border-t border-r border-white/30" />
-      <div className="absolute bottom-4 left-4 h-4 w-4 border-b border-l border-white/30" />
-      <div className="absolute right-4 bottom-4 h-4 w-4 border-r border-b border-white/30" />
+      <div className={`absolute top-4 right-4 h-4 w-4 border-t border-r ${tickToneCls}`} />
+      <div className={`absolute bottom-4 left-4 h-4 w-4 border-b border-l ${tickToneCls}`} />
+      <div className={`absolute right-4 bottom-4 h-4 w-4 border-r border-b ${tickToneCls}`} />
     </div>
   );
 }

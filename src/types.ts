@@ -58,6 +58,7 @@ export interface AppConfig {
   accentColor: string;
   fontScale: number;
   ipFamily: IpFamilyMode;
+  onboardingCompleted?: boolean;
 }
 
 export interface MirrorHealth {

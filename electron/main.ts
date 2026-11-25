@@ -44,6 +44,19 @@ let overlayCompact = false;
 let quitting = false;
 let hiddenToTray = false;
 
+function resolveAppIconPath(): string {
+  const icoPath = path.resolve(__dirname, '..', 'build', 'icon.ico');
+  const pngPath = path.resolve(__dirname, '..', 'build', 'icon.png');
+  if (process.platform === 'win32' && fs.existsSync(icoPath)) {
+    return icoPath;
+  }
+  return pngPath;
+}
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId('com.osumapdownloader.mania4k');
+}
+
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
@@ -101,7 +114,7 @@ function showMainWindow(): BrowserWindow {
 }
 
 function createOverlayWindow(port: number): BrowserWindow {
-  const iconPath = path.resolve(__dirname, '..', 'build', 'icon.png');
+  const iconPath = resolveAppIconPath();
   const { workArea } = screen.getPrimaryDisplay();
   const width = 440;
   const expandedH = Math.min(Math.max(540, overlayExpandedHeight), workArea.height - 48);
@@ -269,10 +282,14 @@ function updateTrayMenu(): void {
 
 function createTray(): void {
   if (tray) return;
-  const iconPath = path.resolve(__dirname, '..', 'build', 'icon.png');
+  const iconPath = resolveAppIconPath();
   if (!fs.existsSync(iconPath)) return;
-  const iconImg = nativeImage.createFromPath(iconPath).resize({ width: 20, height: 20 });
-  tray = new Tray(iconImg);
+  if (process.platform === 'win32' && iconPath.toLowerCase().endsWith('.ico')) {
+    tray = new Tray(iconPath);
+  } else {
+    const iconImg = nativeImage.createFromPath(iconPath).resize({ width: 20, height: 20 });
+    tray = new Tray(iconImg);
+  }
   tray.setToolTip('OSU!Manager!');
   tray.on('click', () => {
     if (hiddenToTray || !mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) {
@@ -480,7 +497,7 @@ function registerIpcHandlers(): void {
 }
 
 function createWindow(port: number): BrowserWindow {
-  const iconPath = path.resolve(__dirname, '..', 'build', 'icon.png');
+  const iconPath = resolveAppIconPath();
   const win = new BrowserWindow({
     width: 1440,
     height: 920,

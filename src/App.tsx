@@ -56,6 +56,7 @@ import { FilterPanel } from './components/FilterPanel';
 import { LazerSongSelect } from './components/LazerSongSelect';
 import { LibrarySyncModal } from './components/LibrarySyncModal';
 import { ManiaPreviewModal } from './components/ManiaPreviewModal';
+import { OnboardingModal } from './components/OnboardingModal';
 import { SettingsModal } from './components/SettingsModal';
 import { SideRail } from './components/SideRail';
 import { TitleBar } from './components/TitleBar';
@@ -64,6 +65,7 @@ import { MusicMiniDock } from './components/music/MusicMiniDock';
 import { MusicPlayerProvider, useMusicPlayer } from './components/music/MusicPlayerContext';
 import { MusicPlayerMode } from './components/music/MusicPlayerMode';
 import {
+  APP_VERSION,
   DEFAULT_FILTERS,
   DEFAULT_FONT_SCALE,
   THEME_OPTIONS,
@@ -242,6 +244,7 @@ function AppWorkspace({
   const [fastBatch, setFastBatch] = useState<FastBatchSnapshot | null>(null);
   const [librarySyncOpen, setLibrarySyncOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [overlayOpen, setOverlayOpen] = useState(false);
   const [launchingClient, setLaunchingClient] = useState<'stable' | 'lazer' | null>(null);
   const [previewState, setPreviewState] = useState<{
@@ -310,6 +313,22 @@ function AppWorkspace({
       setPlayingSet(null);
     };
   }, [notify, notifyBridgeRef, pausePreviewBridgeRef]);
+
+  const handleCompleteOnboarding = useCallback((openSettingsAfter = false) => {
+    setOnboardingOpen(false);
+    try {
+      localStorage.setItem('osu4k-onboarding-completed', 'true');
+    } catch {
+      // Ignore storage error
+    }
+    setConfig((prev) => (prev ? { ...prev, onboardingCompleted: true } : prev));
+    void updateConfig({ onboardingCompleted: true })
+      .then((cfg) => setConfig(cfg))
+      .catch(() => {});
+    if (openSettingsAfter) {
+      setSettingsOpen(true);
+    }
+  }, []);
 
   const applyTheme = useCallback((nextTheme: ThemeId, persistBackend = true) => {
     setTheme(nextTheme);
@@ -591,6 +610,15 @@ function AppWorkspace({
           fetchFilterArchives().catch(() => [] as FilterArchive[]),
         ]);
         setConfig(cfg);
+        let localSeenOnboarding = false;
+        try {
+          localSeenOnboarding = localStorage.getItem('osu4k-onboarding-completed') === 'true';
+        } catch {
+          localSeenOnboarding = false;
+        }
+        if (!cfg.onboardingCompleted && !localSeenOnboarding) {
+          setOnboardingOpen(true);
+        }
         setArchives(savedArchives);
         if (fb) setFastBatch(fb);
         try {
@@ -697,7 +725,9 @@ function AppWorkspace({
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
-      if (settingsOpen) {
+      if (onboardingOpen) {
+        handleCompleteOnboarding(false);
+      } else if (settingsOpen) {
         setAppearancePreview(null);
         setSettingsOpen(false);
       }
@@ -719,6 +749,8 @@ function AppWorkspace({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
+    onboardingOpen,
+    handleCompleteOnboarding,
     settingsOpen,
     fastBatchOpen,
     librarySyncOpen,
@@ -2310,9 +2342,22 @@ function AppWorkspace({
         onPreviewAppearance={handlePreviewAppearance}
         onUploadBackground={handleUploadBackground}
         onClearBackground={handleClearBackground}
+        onReplayOnboarding={() => {
+          setAppearancePreview(null);
+          setSettingsOpen(false);
+          setOnboardingOpen(true);
+        }}
         onClose={() => setSettingsOpen(false)}
         onSave={handleSaveConfig}
         onBenchmark={handleBenchmark}
+      />
+
+      {/* First-Run Onboarding Walkthrough Modal */}
+      <OnboardingModal
+        open={onboardingOpen}
+        version={APP_VERSION}
+        onClose={() => handleCompleteOnboarding(false)}
+        onOpenSettings={() => handleCompleteOnboarding(true)}
       />
 
       {/* Toast */}

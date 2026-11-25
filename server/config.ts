@@ -119,6 +119,7 @@ export function getDefaultConfig(): AppConfig {
     accentColor: '',
     fontScale: 1.2,
     ipFamily: 'auto',
+    onboardingCompleted: false,
   };
 }
 
@@ -182,6 +183,10 @@ export function loadConfig(): AppConfig {
       accentColor: normalizeAccentColor(parsed.accentColor),
       fontScale: clampFontScale(parsed.fontScale, defaults.fontScale),
       ipFamily: normalizeIpFamily(parsed.ipFamily),
+      onboardingCompleted:
+        typeof parsed.onboardingCompleted === 'boolean'
+          ? parsed.onboardingCompleted
+          : defaults.onboardingCompleted,
     };
   } catch {
     cachedConfig = defaults;
@@ -223,6 +228,7 @@ export function saveConfig(patch: Partial<AppConfig>): AppConfig {
     accentColor: normalizeAccentColor(patch.accentColor ?? current.accentColor),
     fontScale: clampFontScale(patch.fontScale, current.fontScale),
     ipFamily: normalizeIpFamily(patch.ipFamily ?? current.ipFamily),
+    onboardingCompleted: Boolean(patch.onboardingCompleted ?? current.onboardingCompleted),
   };
   ensureDirs(next);
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(next, null, 2), 'utf8');
