@@ -16,6 +16,7 @@ export interface ElectronAPI {
   close: () => Promise<void>;
   isMaximized: () => Promise<boolean>;
   setBackgroundColor: (color: string) => Promise<void>;
+  hideToTray?: () => Promise<boolean>;
   onMaximizedChange: (cb: (maximized: boolean) => void) => () => void;
   selectDirectory: (defaultPath?: string) => Promise<string | null>;
   selectFile: (defaultPath?: string, filters?: FileDialogFilter[]) => Promise<string | null>;
@@ -36,6 +37,7 @@ export interface ElectronAPI {
   openPreviewInMain: (payload: OpenPreviewPayload) => Promise<void>;
   onOverlayStateChange: (cb: (open: boolean) => void) => () => void;
   onOpenPreviewInMain: (cb: (payload: OpenPreviewPayload) => void) => () => void;
+  onMusicCommand?: (cb: (cmd: 'toggle' | 'prev' | 'next') => void) => () => void;
 }
 
 declare global {

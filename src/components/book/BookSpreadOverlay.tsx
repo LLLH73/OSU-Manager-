@@ -15,6 +15,7 @@ import {
   Trophy,
   Volume2,
 } from 'lucide-react';
+import { OsuMusicMark } from '../music/OsuMusicMark';
 import { formatDuration, getLnCategory, getStarColor, getStatusBadge } from '../../constants';
 import {
   BookDetail,
@@ -41,6 +42,8 @@ interface BookSpreadOverlayProps {
   canLoadIntoGame: boolean;
   onClose: () => void;
   onStepBook: (delta: -1 | 1) => void;
+  onPlayInMusicPlayer?: (book: BookSummary) => void;
+  onPauseBackgroundMusic?: () => void;
   onPreviewBeatmap?: (beatmapsetId: number, beatmapId?: number | null, title?: string) => void;
   onLoadIntoGame?: (beatmapsetId: number) => void;
   onFilterByTag?: (tag: string) => void;
@@ -100,6 +103,8 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
   canLoadIntoGame,
   onClose,
   onStepBook,
+  onPlayInMusicPlayer,
+  onPauseBackgroundMusic,
   onPreviewBeatmap,
   onLoadIntoGame,
   onFilterByTag,
@@ -180,6 +185,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
       setAudioPlaying(false);
       return;
     }
+    onPauseBackgroundMusic?.();
     setAudioError(false);
     if (!el.src || !el.src.includes(encodeURIComponent(book.bookKey))) {
       el.src = book.audioUrl;
@@ -546,6 +552,17 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
+                {onPlayInMusicPlayer && (
+                  <button
+                    type="button"
+                    onClick={() => onPlayInMusicPlayer(book)}
+                    className="rhine-solid-btn inline-flex h-8 items-center gap-1.5 px-3 text-[0.75rem] font-semibold"
+                  >
+                    <OsuMusicMark className="h-3.5 w-3.5" active />
+                    <span>在音乐台中播放</span>
+                  </button>
+                )}
+
                 {book.beatmapsetId && bestManiaDiff && onPreviewBeatmap && (
                   <button
                     type="button"

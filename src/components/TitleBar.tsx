@@ -34,7 +34,7 @@ interface TitleBarProps {
   onToggleArchiveRail?: () => void;
 }
 
-/** Monochrome bold-stroke minimalist emblem for OSU!Downloader! */
+/** Monochrome bold-stroke minimalist emblem for OSU!Manager! */
 export function LaneEmblem({ className = 'h-[21px] w-[21px]' }: { className?: string }) {
   return (
     <svg
@@ -130,7 +130,7 @@ export function TitleBar({
 
   return (
     <header className="app-drag relative z-40 flex h-[40px] shrink-0 items-center border-b border-hairline bg-surface-0/82 backdrop-blur-xl">
-      {/* Left: sidebar toggle + monochrome emblem + OSU!Downloader! */}
+      {/* Left: sidebar toggle + monochrome emblem + OSU!Manager! */}
       <div className="flex h-full min-w-0 items-center gap-2 pl-2.5 lg:pl-3">
         <button
           type="button"
@@ -158,7 +158,7 @@ export function TitleBar({
 
         <LaneEmblem />
         <span className="font-display truncate text-[0.875rem] font-bold tracking-tight text-ink">
-          OSU!Downloader!
+          OSU!Manager!
         </span>
       </div>
 

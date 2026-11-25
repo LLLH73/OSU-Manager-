@@ -2294,3 +2294,129 @@
     transform: translateX(340%);
   }
 }
+
+/* ------------------------------------------------------------------
+ * Constructivist / Swiss Music Player Scope
+ * ------------------------------------------------------------------ */
+.swiss-player-root {
+  --mp-bg: color-mix(in srgb, var(--t-canvas) 95%, var(--t-ink) 2%);
+  --mp-panel: color-mix(in srgb, var(--t-surface-1) 96%, var(--t-canvas));
+  --mp-surface-alt: color-mix(in srgb, var(--t-surface-2) 72%, var(--mp-bg));
+  --mp-ink: var(--t-ink);
+  --mp-ink-2: var(--t-ink-2);
+  --mp-muted: var(--t-ink-3);
+  --mp-line: color-mix(in srgb, var(--t-ink) 16%, transparent);
+  --mp-rule: var(--t-ink);
+  --mp-signal: #d62828;
+  --mp-ochre: #b58338;
+  --mp-grid-line: color-mix(in srgb, var(--t-ink) 4.5%, transparent);
+  background-color: var(--mp-bg);
+  color: var(--mp-ink);
+}
+
+.swiss-player-root[data-player-dark="true"] {
+  --mp-bg: color-mix(in srgb, var(--t-canvas) 97%, #000000);
+  --mp-panel: color-mix(in srgb, var(--t-surface-1) 94%, var(--t-canvas));
+  --mp-surface-alt: color-mix(in srgb, var(--t-surface-2) 76%, var(--mp-bg));
+  --mp-line: color-mix(in srgb, var(--t-ink) 18%, transparent);
+  --mp-signal: #ef4444;
+  --mp-ochre: #d4a359;
+  --mp-grid-line: color-mix(in srgb, var(--t-ink) 6%, transparent);
+}
+
+.swiss-grid-bg {
+  background-image:
+    linear-gradient(to right, var(--mp-grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--mp-grid-line) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.swiss-btn {
+  border: 1px solid var(--mp-line);
+  background: transparent;
+  color: var(--mp-ink);
+  border-radius: 2px;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.swiss-btn:hover:not(:disabled) {
+  border-color: var(--mp-ink);
+  background: color-mix(in srgb, var(--mp-ink) 6%, transparent);
+}
+
+.swiss-btn-solid {
+  border: 1px solid var(--mp-ink);
+  background: var(--mp-ink);
+  color: var(--mp-bg);
+  border-radius: 2px;
+  transition: opacity 140ms ease, background-color 140ms ease;
+}
+
+.swiss-btn-solid:hover:not(:disabled) {
+  opacity: 0.88;
+}
+
+.swiss-btn-signal {
+  border: 1px solid var(--mp-signal);
+  background: var(--mp-signal);
+  color: #ffffff;
+  border-radius: 2px;
+  transition: opacity 140ms ease;
+}
+
+.swiss-btn-signal:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.swiss-range {
+  display: block;
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 3px;
+  border-radius: 0;
+  background: linear-gradient(
+    to right,
+    var(--mp-signal) 0%,
+    var(--mp-signal) var(--fill, 0%),
+    var(--mp-line) var(--fill, 0%),
+    var(--mp-line) 100%
+  );
+  cursor: pointer;
+  outline: none;
+}
+
+.swiss-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 14px;
+  border-radius: 1px;
+  background: var(--mp-ink);
+  border: 1px solid var(--mp-bg);
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.swiss-range:hover::-webkit-slider-thumb {
+  background: var(--mp-signal);
+  transform: scaleY(1.1);
+}
+
+.swiss-track-row {
+  contain: layout style paint;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 48px;
+}
+
+.swiss-mini-dock {
+  --mp-signal: #d62828;
+  --mp-ochre: #b58338;
+}
+
+:root[data-theme="dark"] .swiss-mini-dock,
+:root[data-theme="stone"] .swiss-mini-dock,
+:root[data-theme="midnight"] .swiss-mini-dock,
+:root[data-theme="forest"] .swiss-mini-dock {
+  --mp-signal: #ef4444;
+  --mp-ochre: #d4a359;
+}

@@ -46,11 +46,18 @@ import {
 } from './library.js';
 import {
   getBookDetail,
+  getBookRhythm,
   getBooksLibrary,
   invalidateBooksCache,
   serveBookAudio,
   serveBookCover,
 } from './localLibrary.js';
+import {
+  createPlaylist,
+  deletePlaylist,
+  listPlaylists,
+  updatePlaylist,
+} from './playlists.js';
 import { getLogFilePath, logError, logInfo, readRecentLogs } from './logger.js';
 import { serveCover, servePreview } from './media.js';
 import { benchmarkMirrors, getNetworkStatus, networkEvents, resetProxyCache } from './network.js';
@@ -492,6 +499,20 @@ app.get('/api/books/:bookKey/audio', async (req: Request, res: Response) => {
   await serveBookAudio(bookKey, req, res);
 });
 
+app.get('/api/books/:bookKey/rhythm', (req: Request, res: Response) => {
+  const bookKey = decodeURIComponent(String(req.params.bookKey || '')).trim();
+  if (!bookKey) {
+    res.status(400).json({ error: 'Invalid bookKey' });
+    return;
+  }
+  const rhythm = getBookRhythm(bookKey);
+  if (!rhythm) {
+    res.status(404).json({ error: 'Book not found' });
+    return;
+  }
+  res.json(rhythm);
+});
+
 app.post('/api/library/sync-to-lazer', async (req: Request, res: Response) => {
   const setIds = Array.isArray(req.body?.setIds)
     ? req.body.setIds.map((x: unknown) => Number(x)).filter((x: number) => Number.isFinite(x) && x > 0)
@@ -722,6 +743,70 @@ app.delete('/api/filter-archives/:id', (req: Request, res: Response) => {
   const deleted = deleteFilterArchive(id);
   if (!deleted) {
     res.status(404).json({ error: 'Filter 存档不存在' });
+    return;
+  }
+  res.json({ ok: true, id });
+});
+
+// Music Player Playlists (persistent user playlists in data/playlists.json)
+app.get('/api/playlists', (_req: Request, res: Response) => {
+  res.json(listPlaylists());
+});
+
+app.post('/api/playlists', (req: Request, res: Response) => {
+  const body = (req.body || {}) as {
+    name?: string;
+    description?: string;
+    coverBookKey?: string | null;
+    bookKeys?: string[];
+    pinned?: boolean;
+  };
+  const created = createPlaylist({
+    name: body.name,
+    description: body.description,
+    coverBookKey: body.coverBookKey,
+    bookKeys: body.bookKeys,
+    pinned: body.pinned,
+  });
+  res.status(201).json(created);
+});
+
+app.put('/api/playlists/:id', (req: Request, res: Response) => {
+  const id = String(req.params.id || '').trim();
+  if (!id) {
+    res.status(400).json({ error: 'Invalid playlist ID' });
+    return;
+  }
+  const body = (req.body || {}) as {
+    name?: string;
+    description?: string;
+    coverBookKey?: string | null;
+    bookKeys?: string[];
+    pinned?: boolean;
+  };
+  const updated = updatePlaylist(id, {
+    name: body.name,
+    description: body.description,
+    coverBookKey: body.coverBookKey,
+    bookKeys: body.bookKeys,
+    pinned: body.pinned,
+  });
+  if (!updated) {
+    res.status(404).json({ error: '歌单不存在' });
+    return;
+  }
+  res.json(updated);
+});
+
+app.delete('/api/playlists/:id', (req: Request, res: Response) => {
+  const id = String(req.params.id || '').trim();
+  if (!id) {
+    res.status(400).json({ error: 'Invalid playlist ID' });
+    return;
+  }
+  const deleted = deletePlaylist(id);
+  if (!deleted) {
+    res.status(404).json({ error: '歌单不存在' });
     return;
   }
   res.json({ ok: true, id });

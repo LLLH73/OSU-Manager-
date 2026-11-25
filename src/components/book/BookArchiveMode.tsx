@@ -18,6 +18,7 @@ import {
   SlidersHorizontal,
   X,
 } from 'lucide-react';
+import { OsuMusicMark } from '../music/OsuMusicMark';
 import { fetchLocalBookDetail, fetchLocalBooks } from '../../api';
 import {
   BookDetail,
@@ -57,6 +58,9 @@ export type BookDisplayMode = 'shelf' | 'mosaic';
 interface BookArchiveModeProps {
   theme: ThemeId;
   library: LocalLibraryStatus | null;
+  musicPlaying?: boolean;
+  onOpenMusicPlayer?: (book?: BookSummary, contextBooks?: BookSummary[]) => void;
+  onPauseBackgroundMusic?: () => void;
   onPreviewBeatmap?: (beatmapsetId: number, beatmapId?: number | null, title?: string) => void;
   onLoadIntoGame?: (beatmapsetId: number) => void;
   onNotify?: (msg: string) => void;
@@ -82,6 +86,9 @@ function nextAnimationFrame(): Promise<void> {
 export function BookArchiveMode({
   theme,
   library,
+  musicPlaying = false,
+  onOpenMusicPlayer,
+  onPauseBackgroundMusic,
   onPreviewBeatmap,
   onLoadIntoGame,
   onNotify,
@@ -858,6 +865,23 @@ export function BookArchiveMode({
             </button>
           </div>
 
+          {onOpenMusicPlayer && (
+            <button
+              type="button"
+              onClick={() => onOpenMusicPlayer(displayBook ?? undefined, filteredBooks)}
+              title="进入 OSU! 构成主义音乐播放器（播放本地曲目）"
+              className="rhine-btn-outline flex h-8 items-center gap-1.5 bg-[var(--rb-panel)]/92 px-2.5 text-[0.71875rem] font-semibold backdrop-blur-md"
+            >
+              <OsuMusicMark
+                className="h-3.5 w-3.5 text-[var(--rb-ink)]"
+                active
+                playing={musicPlaying}
+              />
+              <span>音乐台</span>
+              {musicPlaying && <span className="h-1.5 w-1.5 rounded-full bg-[#d62828]" />}
+            </button>
+          )}
+
           {/* Search Input */}
           <div className="relative flex h-8 items-center border border-[var(--rb-line)] bg-[var(--rb-panel)]/92 backdrop-blur-md">
             <Search className="ml-2.5 h-3.5 w-3.5 shrink-0 text-[var(--rb-muted)]" />
@@ -1163,14 +1187,31 @@ export function BookArchiveMode({
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleOpenBook(displayIndex)}
-                className="pointer-events-auto group mt-3.5 ml-5 inline-flex items-center gap-6 font-mono text-[0.75rem] font-bold tracking-[0.12em] text-[var(--rb-ink)] transition-colors hover:text-[var(--rb-accent)]"
-              >
-                <span>ACCESS BOOK</span>
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
-              </button>
+              <div className="mt-3.5 ml-5 flex flex-wrap items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleOpenBook(displayIndex)}
+                  className="pointer-events-auto group inline-flex items-center gap-6 font-mono text-[0.75rem] font-bold tracking-[0.12em] text-[var(--rb-ink)] transition-colors hover:text-[var(--rb-accent)]"
+                >
+                  <span>ACCESS BOOK</span>
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-2" />
+                </button>
+
+                {onOpenMusicPlayer && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenMusicPlayer(displayBook, filteredBooks)}
+                    className="pointer-events-auto rhine-btn-outline inline-flex h-7 items-center gap-1.5 px-2.5 font-mono text-[0.6875rem] font-semibold"
+                  >
+                    <OsuMusicMark
+                      className="h-3.5 w-3.5 text-[var(--rb-ink)]"
+                      active
+                      playing={musicPlaying}
+                    />
+                    <span>在音乐台中播放</span>
+                  </button>
+                )}
+              </div>
             </div>
           ))
         )}
@@ -1413,6 +1454,15 @@ export function BookArchiveMode({
         canLoadIntoGame={canLoadIntoGame}
         onClose={handleCloseBook}
         onStepBook={handleStepOpenBook}
+        onPlayInMusicPlayer={
+          onOpenMusicPlayer
+            ? (b) => {
+                handleCloseBook();
+                onOpenMusicPlayer(b, filteredBooks);
+              }
+            : undefined
+        }
+        onPauseBackgroundMusic={onPauseBackgroundMusic}
         onPreviewBeatmap={onPreviewBeatmap}
         onLoadIntoGame={onLoadIntoGame}
         onFilterByTag={(tag) => updateFilters({ q: tag }, true)}

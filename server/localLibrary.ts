@@ -11,9 +11,12 @@ import {
   BookDetail,
   BookDifficultyRecord,
   BookGrade,
+  BookKiaiRange,
+  BookRhythmData,
   BookScoreRecord,
   BooksLibraryResponse,
   BookSummary,
+  BookTimingPoint,
   NormalizedBeatmap,
 } from './types.js';
 
@@ -78,6 +81,7 @@ interface InternalMediaRefs {
   stableAudioFiles: string[];
   lazerBgPaths: string[];
   lazerAudioPaths: string[];
+  lazerOsuPaths: string[];
 }
 
 interface CachedLibraryData {
@@ -129,9 +133,11 @@ const GRADE_ORDER: Record<BookGrade, number> = {
 
 let cachedLibrary: CachedLibraryData | null = null;
 const stableBgCache = new Map<string, string>(); // `${folderPath}|${osuFile}` -> bgFile
+const rhythmCacheByKey = new Map<string, BookRhythmData>();
 
 export function invalidateBooksCache(): void {
   cachedLibrary = null;
+  rhythmCacheByKey.clear();
 }
 
 function windowsTicksToIso(ticks: bigint): string | null {
@@ -940,6 +946,7 @@ function buildLocalBooksData(): CachedLibraryData {
           stableAudioFiles: [],
           lazerBgPaths: [],
           lazerAudioPaths: [],
+          lazerOsuPaths: [],
         },
       };
       booksByKey.set(bookKey, book);
@@ -1140,6 +1147,11 @@ function buildLocalBooksData(): CachedLibraryData {
         book.media.stableDir = folderPath;
         if (leadMeta.audioFile) book.media.stableAudioFiles.push(leadMeta.audioFile);
         if (leadMeta.bgFile) book.media.stableBgFiles.push(leadMeta.bgFile);
+        for (const ofn of osuFiles.slice(0, 4)) {
+          if (!book.media.stableOsuFiles.includes(ofn)) {
+            book.media.stableOsuFiles.push(ofn);
+          }
+        }
 
         for (const ofn of osuFiles) {
           const parsed = parseLightweightOsuHeader(path.join(folderPath, ofn));
@@ -1195,7 +1207,7 @@ function buildLocalBooksData(): CachedLibraryData {
       const fileMap = new Map<string, string>();
       for (const uk of set.fileUsageKeys) {
         const u = realm.fileUsages.get(uk);
-        if (u) fileMap.set(u.filename.toLowerCase(), u.hash);
+        if (u) fileMap.set(normRelName(u.filename), u.hash);
       }
 
       const leadBm = bms[0];
@@ -1234,18 +1246,74 @@ function buildLocalBooksData(): CachedLibraryData {
           const meta = bm.metadataKey !== null ? realm.metadata.get(bm.metadataKey) : undefined;
           if (!meta) continue;
           if (meta.backgroundFile) {
-            const h = fileMap.get(meta.backgroundFile.toLowerCase());
+            const h = fileMap.get(normRelName(meta.backgroundFile));
             if (h) {
               const p = path.join(lazerFilesDir, h[0], h.slice(0, 2), h);
               if (!book.media.lazerBgPaths.includes(p)) book.media.lazerBgPaths.push(p);
             }
           }
           if (meta.audioFile) {
-            const h = fileMap.get(meta.audioFile.toLowerCase());
+            const h = fileMap.get(normRelName(meta.audioFile));
             if (h) {
               const p = path.join(lazerFilesDir, h[0], h.slice(0, 2), h);
               if (!book.media.lazerAudioPaths.includes(p)) book.media.lazerAudioPaths.push(p);
             }
+          }
+        }
+        for (const [fname, h] of fileMap) {
+          if (fname.endsWith('.osu') && book.media.lazerOsuPaths.length < 6) {
+            const p = path.join(lazerFilesDir, h[0], h.slice(0, 2), h);
+            if (!book.media.lazerOsuPaths.includes(p)) book.media.lazerOsuPaths.push(p);
+          }
+        }
+        if (book.media.lazerAudioPaths.length === 0 && book.media.lazerOsuPaths.length > 0) {
+          for (const osuPath of book.media.lazerOsuPaths) {
+            try {
+              const fd = fs.openSync(osuPath, 'r');
+              try {
+                const headerBuf = Buffer.allocUnsafe(2048);
+                const bytesRead = fs.readSync(fd, headerBuf, 0, headerBuf.length, 0);
+                const header = headerBuf.subarray(0, bytesRead).toString('utf8');
+                const afMatch = header.match(/^AudioFilename\s*:\s*(.*)$/m);
+                if (afMatch && afMatch[1]) {
+                  const h = fileMap.get(normRelName(afMatch[1]));
+                  if (h) {
+                    const p = path.join(lazerFilesDir, h[0], h.slice(0, 2), h);
+                    if (fs.existsSync(p) && !book.media.lazerAudioPaths.includes(p)) {
+                      book.media.lazerAudioPaths.push(p);
+                      break;
+                    }
+                  }
+                }
+              } finally {
+                fs.closeSync(fd);
+              }
+            } catch {
+              // Ignore unreadable .osu blob
+            }
+          }
+        }
+        if (book.media.lazerAudioPaths.length === 0) {
+          let bestPath: string | null = null;
+          let bestSize = 0;
+          for (const [fname, h] of fileMap) {
+            if (!/\.(mp3|ogg|flac|m4a)$/i.test(fname)) continue;
+            if (/(?:^|\/)(?:normal|soft|drum|nightcore)-(?:hit|slider|spinner)|(?:^|\/)(?:applause|combobreak|failsound|sectionpass|sectionfail)/i.test(fname)) {
+              continue;
+            }
+            const p = path.join(lazerFilesDir, h[0], h.slice(0, 2), h);
+            try {
+              const st = fs.statSync(p);
+              if (st.isFile() && st.size >= 32768 && st.size > bestSize) {
+                bestSize = st.size;
+                bestPath = p;
+              }
+            } catch {
+              // Ignore missing blob
+            }
+          }
+          if (bestPath) {
+            book.media.lazerAudioPaths.push(bestPath);
           }
         }
       }
@@ -1910,6 +1978,7 @@ function ensureBooksCache(forceRefresh = false): CachedLibraryData {
   if (!forceRefresh && cachedLibrary && cachedLibrary.signature === sig) {
     return cachedLibrary;
   }
+  rhythmCacheByKey.clear();
   cachedLibrary = buildLocalBooksData();
   return cachedLibrary;
 }
@@ -1921,6 +1990,10 @@ export function getBooksLibrary(forceRefresh = false): BooksLibraryResponse {
 export function getBookDetail(bookKey: string): BookDetail | null {
   const cache = ensureBooksCache(false);
   return cache.detailsByKey.get(bookKey) ?? null;
+}
+
+function normRelName(s: string): string {
+  return s.trim().replace(/^["']|["']$/g, '').replace(/\\/g, '/').replace(/^\/+/, '').toLowerCase();
 }
 
 function resolveFileInStableDir(dirPath: string, relFile: string): string | null {
@@ -2114,6 +2187,17 @@ export async function serveBookAudio(
         return;
       }
     }
+    for (const osuFile of media.stableOsuFiles) {
+      const parsed = parseLightweightOsuHeader(path.join(media.stableDir, osuFile));
+      if (parsed?.audioFile) {
+        const fp = resolveFileInStableDir(media.stableDir, parsed.audioFile);
+        if (fp) {
+          const ext = path.extname(fp).toLowerCase();
+          streamAudioFileWithRange(fp, MIME_BY_EXT[ext] || 'audio/mpeg', req, res);
+          return;
+        }
+      }
+    }
   }
 
   for (const fp of media.lazerAudioPaths) {
@@ -2129,4 +2213,272 @@ export async function serveBookAudio(
   }
 
   res.status(404).json({ error: 'Local audio not found' });
+}
+
+interface ParsedRhythmInternal {
+  audioFilename: string;
+  previewTimeMs: number;
+  timingPoints: BookTimingPoint[];
+  kiaiRanges: BookKiaiRange[];
+  hitTimes: number[];
+  maxTimeMs: number;
+  baseBpm: number;
+}
+
+function parseRhythmFromOsuText(rawText: string): ParsedRhythmInternal {
+  const text = rawText.replace(/^\uFEFF/, '');
+  const lines = text.split(/\r?\n/);
+
+  let section = '';
+  let audioFilename = '';
+  let previewTimeMs = 0;
+
+  const timingPoints: BookTimingPoint[] = [];
+  const rawTimingEvents: Array<{ timeMs: number; kiai: boolean }> = [];
+  const hitTimes: number[] = [];
+  let maxTimeMs = 0;
+
+  for (const rawLine of lines) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('//')) continue;
+
+    if (line.startsWith('[') && line.endsWith(']')) {
+      section = line.slice(1, -1).trim();
+      continue;
+    }
+
+    if (section === 'General') {
+      const colonIdx = line.indexOf(':');
+      if (colonIdx === -1) continue;
+      const key = line.slice(0, colonIdx).trim();
+      const val = line.slice(colonIdx + 1).trim();
+      if (key === 'AudioFilename') audioFilename = val;
+      else if (key === 'PreviewTime') {
+        const pt = Number(val);
+        if (Number.isFinite(pt) && pt > 0) previewTimeMs = Math.round(pt);
+      }
+      continue;
+    }
+
+    if (section === 'TimingPoints') {
+      const parts = line.split(',');
+      if (parts.length < 2) continue;
+      const timeMs = Number(parts[0]);
+      const beatLengthRaw = Number(parts[1]);
+      if (!Number.isFinite(timeMs) || !Number.isFinite(beatLengthRaw)) continue;
+      const meter = Math.min(16, Math.max(1, Number.parseInt(parts[2] ?? '4', 10) || 4));
+      const uninherited = parts.length >= 7 ? parts[6].trim() === '1' : beatLengthRaw > 0;
+      const effects = parts.length >= 8 ? Number.parseInt(parts[7] ?? '0', 10) || 0 : 0;
+      rawTimingEvents.push({ timeMs, kiai: (effects & 1) !== 0 });
+
+      if (uninherited && beatLengthRaw > 0) {
+        const beatLengthMs = Math.min(10000, Math.max(30, beatLengthRaw));
+        const bpm = Math.round((60000 / beatLengthMs) * 100) / 100;
+        timingPoints.push({
+          timeMs: Math.round(timeMs * 100) / 100,
+          beatLengthMs: Math.round(beatLengthMs * 1000) / 1000,
+          bpm,
+          meter,
+        });
+      }
+      if (timeMs > maxTimeMs) maxTimeMs = timeMs;
+      continue;
+    }
+
+    if (section === 'HitObjects') {
+      const parts = line.split(',');
+      if (parts.length < 4) continue;
+      const t = Number(parts[2]);
+      if (!Number.isFinite(t)) continue;
+      const clampedT = Math.max(0, t);
+      hitTimes.push(clampedT);
+      if (clampedT > maxTimeMs) maxTimeMs = clampedT;
+    }
+  }
+
+  timingPoints.sort((a, b) => a.timeMs - b.timeMs);
+  // Deduplicate identical-timestamp timing points, keeping the later entry
+  const dedupedTiming: BookTimingPoint[] = [];
+  for (const tp of timingPoints) {
+    const prev = dedupedTiming[dedupedTiming.length - 1];
+    if (prev && Math.abs(prev.timeMs - tp.timeMs) < 0.5) {
+      dedupedTiming[dedupedTiming.length - 1] = tp;
+    } else {
+      dedupedTiming.push(tp);
+    }
+  }
+
+  rawTimingEvents.sort((a, b) => a.timeMs - b.timeMs);
+  const kiaiRanges: BookKiaiRange[] = [];
+  let kiaiOpenStart: number | null = null;
+  for (const ev of rawTimingEvents) {
+    if (ev.kiai && kiaiOpenStart === null) {
+      kiaiOpenStart = Math.max(0, Math.round(ev.timeMs));
+    } else if (!ev.kiai && kiaiOpenStart !== null) {
+      const endMs = Math.max(kiaiOpenStart, Math.round(ev.timeMs));
+      if (endMs > kiaiOpenStart) {
+        kiaiRanges.push({ startMs: kiaiOpenStart, endMs });
+      }
+      kiaiOpenStart = null;
+    }
+  }
+  if (kiaiOpenStart !== null) {
+    const fallbackEnd = Math.max(kiaiOpenStart + 5000, Math.round(maxTimeMs + 2000));
+    kiaiRanges.push({ startMs: kiaiOpenStart, endMs: fallbackEnd });
+  }
+
+  let baseBpm = 120;
+  if (dedupedTiming.length > 0) {
+    let bestSpan = -1;
+    const spanEnd = Math.max(maxTimeMs + 2000, dedupedTiming[dedupedTiming.length - 1].timeMs + 4000);
+    for (let i = 0; i < dedupedTiming.length; i += 1) {
+      const nextTime = i + 1 < dedupedTiming.length ? dedupedTiming[i + 1].timeMs : spanEnd;
+      const span = Math.max(0, nextTime - dedupedTiming[i].timeMs);
+      if (span > bestSpan) {
+        bestSpan = span;
+        baseBpm = dedupedTiming[i].bpm;
+      }
+    }
+  }
+
+  return {
+    audioFilename,
+    previewTimeMs,
+    timingPoints: dedupedTiming,
+    kiaiRanges,
+    hitTimes,
+    maxTimeMs,
+    baseBpm,
+  };
+}
+
+export function getBookRhythm(bookKey: string): BookRhythmData | null {
+  const cache = ensureBooksCache(false);
+  const cached = rhythmCacheByKey.get(bookKey);
+  if (cached) return cached;
+
+  const detail = cache.detailsByKey.get(bookKey);
+  const media = cache.mediaByKey.get(bookKey);
+  if (!detail) return null;
+
+  const candidatePaths: string[] = [];
+  if (media?.stableDir && fs.existsSync(media.stableDir)) {
+    for (const rel of media.stableOsuFiles) {
+      const fp = resolveFileInStableDir(media.stableDir, rel);
+      if (fp && !candidatePaths.includes(fp)) candidatePaths.push(fp);
+    }
+    if (candidatePaths.length === 0) {
+      try {
+        for (const entry of fs.readdirSync(media.stableDir, { withFileTypes: true })) {
+          if (entry.isFile() && entry.name.toLowerCase().endsWith('.osu')) {
+            candidatePaths.push(path.join(media.stableDir, entry.name));
+            if (candidatePaths.length >= 3) break;
+          }
+        }
+      } catch {
+        // Ignore directory read error
+      }
+    }
+  }
+
+  if (media) {
+    for (const lp of media.lazerOsuPaths) {
+      if (candidatePaths.length >= 4) break;
+      if (fs.existsSync(lp) && !candidatePaths.includes(lp)) {
+        candidatePaths.push(lp);
+      }
+    }
+  }
+
+  let bestParsed: ParsedRhythmInternal | null = null;
+  let bestScore = -1;
+  const preferredAudioNames = new Set(
+    (media?.stableAudioFiles ?? []).map((n) => n.toLowerCase()),
+  );
+
+  for (const fp of candidatePaths.slice(0, 3)) {
+    try {
+      const raw = fs.readFileSync(fp, 'utf8');
+      const parsed = parseRhythmFromOsuText(raw);
+      const audioMatchBonus =
+        parsed.audioFilename && preferredAudioNames.has(parsed.audioFilename.toLowerCase())
+          ? 10000
+          : 0;
+      const score = audioMatchBonus + parsed.hitTimes.length + parsed.timingPoints.length * 10;
+      if (score > bestScore) {
+        bestScore = score;
+        bestParsed = parsed;
+      }
+    } catch {
+      // Ignore single .osu parse failure
+    }
+  }
+
+  const BINS = 72;
+  const densityProfile = new Array<number>(BINS).fill(0);
+
+  if (bestParsed && (bestParsed.timingPoints.length > 0 || bestParsed.hitTimes.length > 0)) {
+    const durationMs = Math.max(
+      detail.lengthSec * 1000,
+      bestParsed.maxTimeMs + 1000,
+      10000,
+    );
+    for (const t of bestParsed.hitTimes) {
+      const bin = Math.min(BINS - 1, Math.max(0, Math.floor((t / durationMs) * BINS)));
+      densityProfile[bin] += 1;
+    }
+    const maxBin = Math.max(1, ...densityProfile);
+    for (let i = 0; i < BINS; i += 1) {
+      densityProfile[i] = Math.round((densityProfile[i] / maxBin) * 1000) / 1000;
+    }
+
+    const fallbackBpm = detail.bpm > 0 ? detail.bpm : 120;
+    const timingPoints =
+      bestParsed.timingPoints.length > 0
+        ? bestParsed.timingPoints
+        : [
+            {
+              timeMs: 0,
+              beatLengthMs: Math.round((60000 / fallbackBpm) * 1000) / 1000,
+              bpm: fallbackBpm,
+              meter: 4,
+            },
+          ];
+
+    const result: BookRhythmData = {
+      bookKey,
+      baseBpm: bestParsed.timingPoints.length > 0 ? bestParsed.baseBpm : fallbackBpm,
+      firstBeatMs: timingPoints[0].timeMs,
+      previewTimeMs: bestParsed.previewTimeMs || detail.previewTimeMs || 0,
+      timingPoints,
+      kiaiRanges: bestParsed.kiaiRanges,
+      densityProfile,
+      hasExactTiming: bestParsed.timingPoints.length > 0,
+    };
+    rhythmCacheByKey.set(bookKey, result);
+    return result;
+  }
+
+  const safeBpm = detail.bpm > 0 && Number.isFinite(detail.bpm) ? detail.bpm : 120;
+  const beatMs = Math.round((60000 / safeBpm) * 1000) / 1000;
+  const phaseOffset = detail.previewTimeMs > 0 ? Math.round((detail.previewTimeMs % beatMs) * 100) / 100 : 0;
+  const fallback: BookRhythmData = {
+    bookKey,
+    baseBpm: safeBpm,
+    firstBeatMs: phaseOffset,
+    previewTimeMs: detail.previewTimeMs || 0,
+    timingPoints: [
+      {
+        timeMs: phaseOffset,
+        beatLengthMs: beatMs,
+        bpm: safeBpm,
+        meter: 4,
+      },
+    ],
+    kiaiRanges: [],
+    densityProfile,
+    hasExactTiming: false,
+  };
+  rhythmCacheByKey.set(bookKey, fallback);
+  return fallback;
 }

@@ -37,6 +37,7 @@ import {
   launchGameClient,
   loadBeatmapIntoGame,
   openLocalFolder,
+  openStableSongFolder,
   retryDownloadTask,
   runNetworkBenchmark,
   searchBeatmapsets,
@@ -59,6 +60,9 @@ import { SettingsModal } from './components/SettingsModal';
 import { SideRail } from './components/SideRail';
 import { TitleBar } from './components/TitleBar';
 import { BookArchiveMode } from './components/book/BookArchiveMode';
+import { MusicMiniDock } from './components/music/MusicMiniDock';
+import { MusicPlayerProvider, useMusicPlayer } from './components/music/MusicPlayerContext';
+import { MusicPlayerMode } from './components/music/MusicPlayerMode';
 import {
   DEFAULT_FILTERS,
   DEFAULT_FONT_SCALE,
@@ -78,6 +82,7 @@ import {
 import { extractPpScenarioFromFilters } from './utils/pp';
 import {
   AppConfig,
+  BookSummary,
   DownloadTarget,
   DownloadTask,
   DownloadVariant,
@@ -94,6 +99,7 @@ import {
   ThemeId,
   WorkspaceMode,
 } from './types';
+import type { MutableRefObject } from 'react';
 
 function readInitialTheme(): ThemeId {
   try {
@@ -142,7 +148,14 @@ const VIEW_MODE_ICONS: Record<SongViewMode, typeof LayoutGrid> = {
   lazer: Disc3,
 };
 
-export function App() {
+function AppWorkspace({
+  notifyBridgeRef,
+  pausePreviewBridgeRef,
+}: {
+  notifyBridgeRef: MutableRefObject<((msg: string) => void) | null>;
+  pausePreviewBridgeRef: MutableRefObject<(() => void) | null>;
+}) {
+  const musicPlayer = useMusicPlayer();
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [network, setNetwork] = useState<NetworkStatus | null>(null);
   const [library, setLibrary] = useState<LocalLibraryStatus | null>(null);
@@ -169,9 +182,14 @@ export function App() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   const [navOpen, setNavOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() =>
-    readBoolStorage('osu4k-sidebar-collapsed', false),
-  );
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      localStorage.removeItem('osu4k-sidebar-collapsed');
+    } catch {
+      // Ignore storage error
+    }
+    return false;
+  });
   const [filterCollapsed, setFilterCollapsed] = useState<boolean>(() =>
     readBoolStorage('osu4k-filter-collapsed', false),
   );
@@ -266,6 +284,7 @@ export function App() {
 
   const openManiaPreview = useCallback(
     (beatmapsetId: number, options?: { beatmapId?: number | null; titleHint?: string }) => {
+      musicPlayer.pause();
       setIsPlaying(false);
       setPlayingSet(null);
       setPreviewState({
@@ -274,8 +293,16 @@ export function App() {
         titleHint: options?.titleHint,
       });
     },
-    [],
+    [musicPlayer],
   );
+
+  useEffect(() => {
+    notifyBridgeRef.current = notify;
+    pausePreviewBridgeRef.current = () => {
+      setIsPlaying(false);
+      setPlayingSet(null);
+    };
+  }, [notify, notifyBridgeRef, pausePreviewBridgeRef]);
 
   const applyTheme = useCallback((nextTheme: ThemeId, persistBackend = true) => {
     setTheme(nextTheme);
@@ -311,15 +338,7 @@ export function App() {
   }, []);
 
   const toggleSidebarCollapsed = useCallback(() => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('osu4k-sidebar-collapsed', String(next));
-      } catch {
-        // Ignore storage error
-      }
-      return next;
-    });
+    setSidebarCollapsed((prev) => !prev);
   }, []);
 
   const toggleFilterCollapsed = useCallback(() => {
@@ -363,8 +382,12 @@ export function App() {
   const switchWorkspaceMode = useCallback((nextMode: WorkspaceMode) => {
     setWorkspaceMode(nextMode);
     setNavOpen(false);
-    if (nextMode === 'book') {
+    if (nextMode === 'book' || nextMode === 'music') {
       setIsPlaying(false);
+      if (nextMode === 'music') {
+        setPlayingSet(null);
+        setSidebarCollapsed(true);
+      }
       setArchiveRailCollapsed(true);
       try {
         localStorage.setItem('osu4k-archive-rail-collapsed', 'true');
@@ -373,6 +396,19 @@ export function App() {
       }
     }
   }, []);
+
+  const handleOpenBookInMusicPlayer = useCallback(
+    (book?: BookSummary, contextBooks?: BookSummary[]) => {
+      if (book) {
+        musicPlayer.playTrack(
+          book,
+          contextBooks && contextBooks.length > 0 ? contextBooks : undefined,
+        );
+      }
+      switchWorkspaceMode('music');
+    },
+    [musicPlayer, switchWorkspaceMode],
+  );
 
   const effectiveConfig = useMemo(() => {
     const merged = {
@@ -1294,19 +1330,28 @@ export function App() {
   const handleTogglePlay = useCallback(
     (set: NormalizedBeatmapset) => {
       if (playingSet?.id === set.id) {
-        setIsPlaying((p) => !p);
+        setIsPlaying((p) => {
+          const next = !p;
+          if (next) musicPlayer.pause();
+          return next;
+        });
       } else {
+        musicPlayer.pause();
         setPlayingSet(set);
         setIsPlaying(true);
       }
     },
-    [playingSet?.id],
+    [playingSet?.id, musicPlayer],
   );
 
-  const handleStartPlay = useCallback((set: NormalizedBeatmapset) => {
-    setPlayingSet(set);
-    setIsPlaying(true);
-  }, []);
+  const handleStartPlay = useCallback(
+    (set: NormalizedBeatmapset) => {
+      musicPlayer.pause();
+      setPlayingSet(set);
+      setIsPlaying(true);
+    },
+    [musicPlayer],
+  );
 
   const handleToggleSelectId = useCallback((id: number) => {
     setSelectedIds((prev) => {
@@ -1580,6 +1625,7 @@ export function App() {
               downloads={downloads}
               fastBatch={fastBatch}
               launchingClient={launchingClient}
+              musicPlaying={musicPlayer.isPlaying}
               onChangeWorkspaceMode={switchWorkspaceMode}
               onChangeTarget={setTarget}
               onChangeVariant={setVariant}
@@ -1597,21 +1643,41 @@ export function App() {
         <main
           ref={mainScrollRef}
           className={
-            workspaceMode === 'book'
+            workspaceMode === 'book' || workspaceMode === 'music'
               ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-0'
               : viewMode === 'lazer'
                 ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-3.5 pt-3 pb-3 sm:px-5 sm:pt-3.5 sm:pb-3.5'
-                : `min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pt-4 sm:px-5 ${playingSet ? 'pb-28' : 'pb-8'}`
+                : `min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 pt-4 sm:px-5 ${
+                    playingSet || musicPlayer.currentTrack ? 'pb-28' : 'pb-8'
+                  }`
           }
         >
           {workspaceMode === 'book' ? (
             <BookArchiveMode
               theme={theme}
               library={library}
+              musicPlaying={musicPlayer.isPlaying}
+              onOpenMusicPlayer={handleOpenBookInMusicPlayer}
+              onPauseBackgroundMusic={musicPlayer.pause}
               onPreviewBeatmap={(setId, diffId, title) =>
                 openManiaPreview(setId, { beatmapId: diffId ?? null, titleHint: title })
               }
               onLoadIntoGame={(setId) => void handleLoadIntoGame(setId)}
+              onNotify={notify}
+            />
+          ) : workspaceMode === 'music' ? (
+            <MusicPlayerMode
+              theme={theme}
+              canLoadIntoGame={Boolean(library?.lazerRunning || library?.stableRunning)}
+              onPreviewBeatmap={(setId, diffId, title) =>
+                openManiaPreview(setId, { beatmapId: diffId ?? null, titleHint: title })
+              }
+              onLoadIntoGame={(setId) => void handleLoadIntoGame(setId)}
+              onOpenFolder={(subFolder) => {
+                void openStableSongFolder(subFolder).catch((err) =>
+                  notify(err instanceof Error ? err.message : '打开本地文件夹失败'),
+                );
+              }}
               onNotify={notify}
             />
           ) : (
@@ -1918,7 +1984,7 @@ export function App() {
                       hasMore={Boolean(searchMeta?.hasMore)}
                       loadingMore={loadingMore}
                       searchError={Boolean(searchError)}
-                      hasAudioDock={Boolean(playingSet)}
+                      hasAudioDock={Boolean(playingSet || musicPlayer.currentTrack)}
                       hasGlobalBg={Boolean(effectiveBgUrl)}
                       filterCollapsed={filterCollapsed}
                       compactStage={!sidebarCollapsed && !archiveRailCollapsed}
@@ -2028,6 +2094,7 @@ export function App() {
               downloads={downloads}
               fastBatch={fastBatch}
               launchingClient={launchingClient}
+              musicPlaying={musicPlayer.isPlaying}
               onChangeWorkspaceMode={switchWorkspaceMode}
               onChangeTarget={setTarget}
               onChangeVariant={setVariant}
@@ -2096,7 +2163,7 @@ export function App() {
       {workspaceMode === 'browse' && viewMode !== 'lazer' && showBackToTop && results.length > 0 && (
         <div
           className={`pointer-events-none fixed right-5 z-30 transition-[bottom,right] duration-200 ${
-            playingSet ? 'bottom-28 sm:bottom-[84px]' : 'bottom-5'
+            playingSet || musicPlayer.currentTrack ? 'bottom-28 sm:bottom-[84px]' : 'bottom-5'
           } ${!archiveRailCollapsed ? '2xl:right-[calc(var(--right-sidebar-w)+20px)]' : ''}`}
         >
           <button
@@ -2120,12 +2187,28 @@ export function App() {
           activeTarget={target}
           sidebarCollapsed={sidebarCollapsed}
           rightRailOpen={!archiveRailCollapsed}
-          onTogglePlay={() => setIsPlaying((p) => !p)}
+          onTogglePlay={() =>
+            setIsPlaying((p) => {
+              const next = !p;
+              if (next) musicPlayer.pause();
+              return next;
+            })
+          }
           onStop={() => {
             setIsPlaying(false);
             setPlayingSet(null);
           }}
           onDownload={(s, t) => void handleDownload(s, t)}
+        />
+      )}
+
+      {/* Persistent Background Music Mini Dock (shown outside Music Player Mode) */}
+      {workspaceMode !== 'music' && !playingSet && (
+        <MusicMiniDock
+          sidebarCollapsed={sidebarCollapsed}
+          rightRailOpen={!archiveRailCollapsed}
+          inBookMode={workspaceMode === 'book'}
+          onOpenPlayer={() => switchWorkspaceMode('music')}
         />
       )}
 
@@ -2248,6 +2331,23 @@ export function App() {
         </div>
       )}
     </div>
+  );
+}
+
+export function App() {
+  const notifyBridgeRef = useRef<((msg: string) => void) | null>(null);
+  const pausePreviewBridgeRef = useRef<(() => void) | null>(null);
+
+  return (
+    <MusicPlayerProvider
+      onNotify={(msg) => notifyBridgeRef.current?.(msg)}
+      onBeforeStartPlayback={() => pausePreviewBridgeRef.current?.()}
+    >
+      <AppWorkspace
+        notifyBridgeRef={notifyBridgeRef}
+        pausePreviewBridgeRef={pausePreviewBridgeRef}
+      />
+    </MusicPlayerProvider>
   );
 }
 

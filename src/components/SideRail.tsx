@@ -9,6 +9,7 @@ import {
   Settings,
   Zap,
 } from 'lucide-react';
+import { OsuMusicMark } from './music/OsuMusicMark';
 import { TARGET_META, VARIANT_OPTIONS, WORKFLOW_PRESETS, WorkflowPreset } from '../constants';
 import {
   DownloadTarget,
@@ -28,6 +29,7 @@ interface SideRailProps {
   downloads: DownloadTask[];
   fastBatch?: FastBatchSnapshot | null;
   launchingClient?: 'stable' | 'lazer' | null;
+  musicPlaying?: boolean;
   onChangeWorkspaceMode: (mode: WorkspaceMode) => void;
   onChangeTarget: (t: DownloadTarget) => void;
   onChangeVariant: (v: DownloadVariant) => void;
@@ -50,6 +52,7 @@ export function SideRail({
   downloads,
   fastBatch,
   launchingClient,
+  musicPlaying = false,
   onChangeWorkspaceMode,
   onChangeTarget,
   onChangeVariant,
@@ -72,31 +75,31 @@ export function SideRail({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-2 overflow-x-hidden overflow-y-auto px-3.5 pt-2 pb-1.5">
-        {/* Workspace Mode Switcher: Online Browse vs 3D Local Book Archive */}
+      <div className="flex-1 space-y-1.5 overflow-x-hidden overflow-y-auto px-3.5 pt-1.5 pb-1">
+        {/* Workspace Mode Switcher: Online Browse / 3D Book Archive / Swiss Music Player */}
         <section className="space-y-1">
           <div className="px-0.5">
             <span className="overline">工作区模式</span>
           </div>
-          <div className="grid grid-cols-2 rounded-[9px] border border-hairline bg-canvas/55 p-0.5">
+          <div className="grid grid-cols-3 rounded-[9px] border border-hairline bg-canvas/55 p-0.5">
             <button
               type="button"
               onClick={() => onChangeWorkspaceMode('browse')}
               aria-pressed={workspaceMode === 'browse'}
-              className={`flex min-h-[30px] items-center justify-center gap-1.5 rounded-[7px] px-1.5 py-1 text-[0.78125rem] transition-all duration-150 ${
+              className={`flex min-h-[28px] items-center justify-center gap-1 rounded-[7px] px-1 py-0.5 text-[0.75rem] transition-all duration-150 ${
                 workspaceMode === 'browse'
                   ? 'bg-surface-2 font-bold text-ink shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
                   : 'font-semibold text-ink-3 hover:text-ink'
               }`}
             >
               <Compass className="h-3.5 w-3.5 shrink-0" />
-              <span>搜图下载</span>
+              <span>搜图</span>
             </button>
             <button
               type="button"
               onClick={() => onChangeWorkspaceMode('book')}
               aria-pressed={workspaceMode === 'book'}
-              className={`flex min-h-[30px] items-center justify-center gap-1.5 rounded-[7px] px-1.5 py-1 text-[0.78125rem] transition-all duration-150 ${
+              className={`flex min-h-[28px] items-center justify-center gap-1 rounded-[7px] px-1 py-0.5 text-[0.75rem] transition-all duration-150 ${
                 workspaceMode === 'book'
                   ? 'bg-surface-2 font-bold text-ink shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
                   : 'font-semibold text-ink-3 hover:text-ink'
@@ -107,13 +110,33 @@ export function SideRail({
                   workspaceMode === 'book' ? 'text-amber-500' : ''
                 }`}
               />
-              <span>Book 模式</span>
+              <span>Book</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onChangeWorkspaceMode('music')}
+              aria-pressed={workspaceMode === 'music'}
+              className={`flex min-h-[28px] items-center justify-center gap-1 rounded-[7px] px-1 py-0.5 text-[0.75rem] transition-all duration-150 ${
+                workspaceMode === 'music'
+                  ? 'bg-surface-2 font-bold text-ink shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
+                  : 'font-semibold text-ink-3 hover:text-ink'
+              }`}
+            >
+              <OsuMusicMark
+                className="h-3.5 w-3.5 text-ink"
+                active={workspaceMode === 'music'}
+                playing={musicPlaying}
+              />
+              <span>音乐</span>
+              {musicPlaying && workspaceMode !== 'music' && (
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#d62828]" />
+              )}
             </button>
           </div>
         </section>
 
         {/* Download Target (Impeccable machined 3-way pill + underline variant tabs) */}
-        <section className="space-y-2">
+        <section className="space-y-1.5">
           <div className="px-0.5">
             <span className="overline">下载目标</span>
           </div>
@@ -295,16 +318,16 @@ export function SideRail({
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={() => onChangeWorkspaceMode('book')}
-            className={`group mt-1 flex w-full items-center justify-between gap-2 rounded-[8px] border px-2.5 py-1.5 text-left text-[0.78125rem] font-semibold transition-colors ${
-              workspaceMode === 'book'
-                ? 'border-amber-500/45 bg-amber-500/10 text-ink'
-                : 'border-hairline bg-canvas/40 text-ink-2 hover:border-hairline-strong hover:bg-tint hover:text-ink'
-            }`}
-          >
-            <span className="flex items-center gap-2">
+          <div className="mt-1 grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => onChangeWorkspaceMode('book')}
+              className={`group flex items-center justify-center gap-1.5 rounded-[8px] border px-2 py-1.5 text-[0.75rem] font-semibold transition-colors ${
+                workspaceMode === 'book'
+                  ? 'border-amber-500/45 bg-amber-500/10 text-ink'
+                  : 'border-hairline bg-canvas/40 text-ink-2 hover:border-hairline-strong hover:bg-tint hover:text-ink'
+              }`}
+            >
               <BookOpen
                 className={`h-3.5 w-3.5 shrink-0 ${
                   workspaceMode === 'book'
@@ -312,19 +335,35 @@ export function SideRail({
                     : 'text-ink-3 group-hover:text-amber-500'
                 }`}
               />
-              <span>进入 Book 档案库</span>
-            </span>
-            <ChevronRight className="h-3.5 w-3.5 text-ink-4 transition-transform group-hover:translate-x-0.5" />
-          </button>
+              <span className="truncate">Book 档案库</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onChangeWorkspaceMode('music')}
+              className={`group flex items-center justify-center gap-1.5 rounded-[8px] border px-2 py-1.5 text-[0.75rem] font-semibold transition-colors ${
+                workspaceMode === 'music'
+                  ? 'border-[#d62828]/50 bg-[#d62828]/10 text-ink'
+                  : 'border-hairline bg-canvas/40 text-ink-2 hover:border-hairline-strong hover:bg-tint hover:text-ink'
+              }`}
+            >
+              <OsuMusicMark
+                className="h-3.5 w-3.5 text-ink"
+                active={workspaceMode === 'music'}
+                playing={musicPlaying}
+              />
+              <span className="truncate">OSU 音乐台</span>
+            </button>
+          </div>
         </section>
       </div>
 
       {/* Bottom Quiet Editorial Links */}
-      <div className="space-y-0.5 border-t border-hairline px-3 py-2">
+      <div className="space-y-0.5 border-t border-hairline px-3 py-1.5">
         <button
           type="button"
           onClick={onOpenLibrarySync}
-          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
+          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-[3px] text-left text-[0.8125rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
         >
           <span className="flex items-center gap-2">
             <ArrowRightLeft className="h-3.5 w-3.5 text-ink-3 transition-colors group-hover:text-osu" />
@@ -336,7 +375,7 @@ export function SideRail({
         <button
           type="button"
           onClick={onOpenFastBatch}
-          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
+          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-[3px] text-left text-[0.8125rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
         >
           <span className="flex items-center gap-2">
             <Zap
@@ -358,7 +397,7 @@ export function SideRail({
         <button
           type="button"
           onClick={onOpenDownloads}
-          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
+          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-[3px] text-left text-[0.8125rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
         >
           <span className="flex items-center gap-2">
             {activeDownloads.length > 0 ? (
@@ -391,7 +430,7 @@ export function SideRail({
         <button
           type="button"
           onClick={onOpenSettings}
-          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-1 text-left text-[0.84375rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
+          className="group flex w-full items-center justify-between gap-2 rounded-[7px] px-2 py-[3px] text-left text-[0.8125rem] font-semibold text-ink-2 transition-colors hover:bg-tint hover:text-ink"
         >
           <span className="flex items-center gap-2">
             <Settings className="h-3.5 w-3.5 text-ink-3 transition-transform group-hover:rotate-45 group-hover:text-ink" />

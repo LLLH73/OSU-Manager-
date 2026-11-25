@@ -170,7 +170,7 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
     return { ref, isInner, hasRefs, ctxFlag, wtype, width, size, dataOff: ref + 8 };
   };
 
-  const getInt = (n: NodeHeader | null, i: number): number => {
+  const getUInt = (n: NodeHeader | null, i: number): number => {
     if (!n || n.width === 0 || i < 0 || i >= n.size) return 0;
     if (n.wtype === 0 && n.width < 8) {
       const bp = i * n.width;
@@ -181,29 +181,40 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
     const stride = n.wtype === 0 ? n.width >> 3 : n.width;
     const off = n.dataOff + i * stride;
     if (off + stride > buf.length) return 0;
-    if (n.hasRefs) {
-      if (stride === 1) return buf.readUInt8(off);
-      if (stride === 2) return buf.readUInt16LE(off);
-      if (stride === 4) return buf.readUInt32LE(off);
-      if (stride === 8) return Number(buf.readBigUInt64LE(off));
-    } else {
-      if (stride === 1) return buf.readInt8(off);
-      if (stride === 2) return buf.readInt16LE(off);
-      if (stride === 4) return buf.readInt32LE(off);
-      if (stride === 8) return Number(buf.readBigInt64LE(off));
-    }
+    if (stride === 1) return buf.readUInt8(off);
+    if (stride === 2) return buf.readUInt16LE(off);
+    if (stride === 4) return buf.readUInt32LE(off);
+    if (stride === 8) return Number(buf.readBigUInt64LE(off));
     return 0;
   };
 
-  const getBigInt = (n: NodeHeader | null, i: number): bigint => {
+  const getSInt = (n: NodeHeader | null, i: number): number => {
+    if (!n || n.width === 0 || i < 0 || i >= n.size) return 0;
+    if (n.wtype === 0 && n.width < 8) {
+      const bp = i * n.width;
+      const byteOff = n.dataOff + (bp >> 3);
+      if (byteOff >= buf.length) return 0;
+      return (buf[byteOff] >> (bp & 7)) & ((1 << n.width) - 1);
+    }
+    const stride = n.wtype === 0 ? n.width >> 3 : n.width;
+    const off = n.dataOff + i * stride;
+    if (off + stride > buf.length) return 0;
+    if (stride === 1) return buf.readInt8(off);
+    if (stride === 2) return buf.readInt16LE(off);
+    if (stride === 4) return buf.readInt32LE(off);
+    if (stride === 8) return Number(buf.readBigInt64LE(off));
+    return 0;
+  };
+
+  const getBigInt = (n: NodeHeader | null, i: number, unsigned = false): bigint => {
     if (!n || n.width === 0 || i < 0 || i >= n.size) return 0n;
     const stride = n.wtype === 0 ? n.width >> 3 : n.width;
     if (stride === 8) {
       const off = n.dataOff + i * 8;
       if (off + 8 > buf.length) return 0n;
-      return n.hasRefs ? buf.readBigUInt64LE(off) : buf.readBigInt64LE(off);
+      return unsigned || n.hasRefs ? buf.readBigUInt64LE(off) : buf.readBigInt64LE(off);
     }
-    return BigInt(getInt(n, i));
+    return BigInt(unsigned ? getUInt(n, i) : getSInt(n, i));
   };
 
   const readStrings = (ref: number): Array<string | null> => {
@@ -234,15 +245,15 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
       return out;
     }
     if (n.hasRefs && !n.ctxFlag && n.size >= 2 && n.size <= 3) {
-      const offsets = hdr(getInt(n, 0));
-      const blobs = hdr(getInt(n, 1));
-      const nulls = n.size === 3 && getInt(n, 2) ? hdr(getInt(n, 2)) : null;
+      const offsets = hdr(getUInt(n, 0));
+      const blobs = hdr(getUInt(n, 1));
+      const nulls = n.size === 3 && getUInt(n, 2) ? hdr(getUInt(n, 2)) : null;
       if (!offsets || !blobs) return [];
       const out: Array<string | null> = [];
       let prev = 0;
       for (let i = 0; i < offsets.size; i++) {
-        const end = getInt(offsets, i);
-        if (nulls && getInt(nulls, i)) {
+        const end = getUInt(offsets, i);
+        if (nulls && getUInt(nulls, i)) {
           out.push(null);
         } else if (end > prev && blobs.dataOff + end - 1 <= buf.length) {
           out.push(buf.subarray(blobs.dataOff + prev, blobs.dataOff + end - 1).toString('utf8'));
@@ -256,7 +267,7 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
     if (n.hasRefs && n.ctxFlag) {
       const out: Array<string | null> = [];
       for (let i = 0; i < n.size; i++) {
-        const bref = getInt(n, i);
+        const bref = getUInt(n, i);
         const bn = bref ? hdr(bref) : null;
         if (!bn || bn.dataOff + Math.max(0, bn.size - 1) > buf.length) {
           out.push(null);
@@ -279,16 +290,26 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
       if (!arr) return new Array(nrows).fill([]);
       const out: number[][] = [];
       for (let i = 0; i < nrows; i++) {
-        const subRef = getInt(arr, i);
+        const subRef = getUInt(arr, i);
         const sub = subRef ? hdr(subRef) : null;
         if (!sub) {
           out.push([]);
           continue;
         }
         const items: number[] = [];
-        for (let j = 0; j < sub.size; j++) {
-          items.push(getInt(sub, j));
-        }
+        const walkList = (node: NodeHeader | null) => {
+          if (!node) return;
+          if (node.isInner) {
+            for (let c = 3; c < node.size; c++) {
+              walkList(hdr(getUInt(node, c)));
+            }
+          } else {
+            for (let j = 0; j < node.size; j++) {
+              items.push(getUInt(node, j));
+            }
+          }
+        };
+        walkList(sub);
         out.push(items);
       }
       return out;
@@ -298,24 +319,36 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
       return readStrings(colRef);
     }
 
-    if (colType === 0 || colType === 1 || colType === 12) {
+    if (colType === 12) {
       const n = hdr(colRef);
       if (!n) return new Array(nrows).fill(null);
-      if (isNullable && (colType === 0 || colType === 1) && n.size === nrows + 1) {
-        const nullVal = getBigInt(n, 0);
+      const out: Array<number | null> = [];
+      for (let i = 0; i < nrows; i++) {
+        const v = getUInt(n, i);
+        out.push(v === 0 ? null : v - 1);
+      }
+      return out;
+    }
+
+    if (colType === 0 || colType === 1) {
+      const n = hdr(colRef);
+      if (!n) return new Array(nrows).fill(null);
+      if (isNullable && n.size === nrows + 1) {
+        const nullVal = getBigInt(n, 0, colType === 1);
         const out: Array<number | boolean | null> = [];
         for (let i = 0; i < nrows; i++) {
-          const v = getBigInt(n, i + 1);
+          const v = getBigInt(n, i + 1, colType === 1);
           out.push(v === nullVal ? null : colType === 1 ? v !== 0n : Number(v));
         }
         return out;
       }
       const out: Array<number | boolean | null> = [];
       for (let i = 0; i < nrows; i++) {
-        const v = getInt(n, i);
-        if (colType === 12) out.push(v === 0 ? null : v - 1);
-        else if (colType === 1) out.push(v !== 0);
-        else out.push(v);
+        if (colType === 1) {
+          out.push(getUInt(n, i) !== 0);
+        } else {
+          out.push(getSInt(n, i));
+        }
       }
       return out;
     }
@@ -340,7 +373,7 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
     if (colType === 8) {
       const n = hdr(colRef);
       if (!n || n.size < 2) return new Array(nrows).fill(null);
-      const secNode = hdr(getInt(n, 0));
+      const secNode = hdr(getUInt(n, 0));
       if (!secNode) return new Array(nrows).fill(null);
       const hasNull = secNode.size === nrows + 1;
       const nullVal = hasNull ? getBigInt(secNode, 0) : null;
@@ -366,22 +399,22 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
     const top = hdr(topRef);
     if (!top) return empty;
 
-    const tableNames = readStrings(getInt(top, 0));
-    const tablesNode = hdr(getInt(top, 1));
+    const tableNames = readStrings(getUInt(top, 0));
+    const tablesNode = hdr(getUInt(top, 1));
     if (!tablesNode) return empty;
 
     const readTable = (tableName: string, wantCols?: Set<string>): Map<number, Record<string, unknown>> => {
       const idx = tableNames.indexOf(tableName);
       if (idx < 0) return new Map();
-      const t = hdr(getInt(tablesNode, idx));
+      const t = hdr(getUInt(tablesNode, idx));
       if (!t || t.size < 3) return new Map();
-      const spec = hdr(getInt(t, 0));
+      const spec = hdr(getUInt(t, 0));
       if (!spec || spec.size < 6) return new Map();
 
-      const colTypes = hdr(getInt(spec, 0));
-      const colNames = readStrings(getInt(spec, 1));
-      const colAttrs = hdr(getInt(spec, 2));
-      const colKeys = hdr(getInt(spec, 5));
+      const colTypes = hdr(getUInt(spec, 0));
+      const colNames = readStrings(getUInt(spec, 1));
+      const colAttrs = hdr(getUInt(spec, 2));
+      const colKeys = hdr(getUInt(spec, 5));
       if (!colTypes || !colAttrs || !colKeys) return new Map();
 
       const colMeta: Array<{ name: string; type: number; attr: number; leafSlot: number }> = [];
@@ -391,12 +424,12 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
         if (wantCols && !wantCols.has(name)) continue;
         const stride = colKeys.wtype === 0 ? colKeys.width >> 3 : colKeys.width;
         const off = colKeys.dataOff + i * stride;
-        const ck = stride === 8 ? buf.readBigInt64LE(off) : BigInt(getInt(colKeys, i));
+        const ck = stride === 8 ? buf.readBigInt64LE(off) : BigInt(getUInt(colKeys, i));
         const leafColIdx = Number(ck & 0xffffn);
         colMeta.push({
           name,
-          type: getInt(colTypes, i),
-          attr: getInt(colAttrs, i),
+          type: getUInt(colTypes, i),
+          attr: getUInt(colAttrs, i),
           leafSlot: 1 + leafColIdx,
         });
       }
@@ -406,14 +439,14 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
         const c = hdr(ref);
         if (!c) return;
         if (c.isInner) {
-          const keysArr = getInt(c, 0) ? hdr(getInt(c, 0)) : null;
+          const keysArr = getUInt(c, 0) ? hdr(getUInt(c, 0)) : null;
           for (let i = 0; i < c.size - 3; i++) {
-            const childOff = keysArr && i < keysArr.size ? keyOffset + getInt(keysArr, i) : keyOffset;
-            walk(getInt(c, 3 + i), childOff);
+            const childOff = keysArr && i < keysArr.size ? keyOffset + getUInt(keysArr, i) : keyOffset;
+            walk(getUInt(c, 3 + i), childOff);
           }
           return;
         }
-        const k0 = getInt(c, 0);
+        const k0 = getUInt(c, 0);
         const keys: number[] = [];
         if ((k0 & 1) === 1) {
           const nr = k0 >> 1;
@@ -421,14 +454,14 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
         } else if (k0) {
           const kn = hdr(k0);
           if (kn) {
-            for (let i = 0; i < kn.size; i++) keys.push(keyOffset + getInt(kn, i));
+            for (let i = 0; i < kn.size; i++) keys.push(keyOffset + getUInt(kn, i));
           }
         }
         if (keys.length === 0) return;
         const cols: Record<string, unknown[]> = {};
         for (const cm of colMeta) {
           if (cm.leafSlot < c.size) {
-            cols[cm.name] = readCol(getInt(c, cm.leafSlot), cm.type, cm.attr, keys.length);
+            cols[cm.name] = readCol(getUInt(c, cm.leafSlot), cm.type, cm.attr, keys.length);
           }
         }
         for (let r = 0; r < keys.length; r++) {
@@ -440,7 +473,7 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
         }
       };
 
-      walk(getInt(t, 2), 0);
+      walk(getUInt(t, 2), 0);
       return rows;
     };
 

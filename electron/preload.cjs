@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
   setBackgroundColor: (color) =>
     ipcRenderer.invoke('window:setBackgroundColor', color),
+  hideToTray: () => ipcRenderer.invoke('window:hideToTray'),
   onMaximizedChange: (cb) => {
     const handler = (_event, val) => cb(Boolean(val));
     ipcRenderer.on('window:maximized', handler);
@@ -42,5 +43,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     const handler = (_event, payload) => cb(payload);
     ipcRenderer.on('main:openPreview', handler);
     return () => ipcRenderer.removeListener('main:openPreview', handler);
+  },
+  onMusicCommand: (cb) => {
+    const handler = (_event, cmd) => cb(cmd);
+    ipcRenderer.on('music:command', handler);
+    return () => ipcRenderer.removeListener('music:command', handler);
   },
 });

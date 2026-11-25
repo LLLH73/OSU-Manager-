@@ -1,6 +1,7 @@
 import {
   AppConfig,
   BookDetail,
+  BookRhythmData,
   BooksLibraryResponse,
   DownloadTarget,
   DownloadTask,
@@ -11,6 +12,7 @@ import {
   FilterArchiveBrowsePosition,
   LibraryDiffResult,
   LocalLibraryStatus,
+  MusicPlaylist,
   NetworkStatus,
   NormalizedBeatmapset,
   ParsedManiaChart,
@@ -296,5 +298,48 @@ export function openStableSongFolder(subFolder: string): Promise<{ ok: boolean; 
   return apiJson('/api/library/open-folder', {
     method: 'POST',
     body: JSON.stringify({ which: 'stableSongs', subFolder }),
+  });
+}
+
+export function fetchBookRhythm(bookKey: string): Promise<BookRhythmData> {
+  return apiJson<BookRhythmData>(`/api/books/${encodeURIComponent(bookKey)}/rhythm`);
+}
+
+export function fetchPlaylists(): Promise<MusicPlaylist[]> {
+  return apiJson<MusicPlaylist[]>('/api/playlists');
+}
+
+export function createPlaylist(payload: {
+  name?: string;
+  description?: string;
+  coverBookKey?: string | null;
+  bookKeys?: string[];
+  pinned?: boolean;
+}): Promise<MusicPlaylist> {
+  return apiJson<MusicPlaylist>('/api/playlists', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updatePlaylist(
+  id: string,
+  patch: {
+    name?: string;
+    description?: string;
+    coverBookKey?: string | null;
+    bookKeys?: string[];
+    pinned?: boolean;
+  },
+): Promise<MusicPlaylist> {
+  return apiJson<MusicPlaylist>(`/api/playlists/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(patch),
+  });
+}
+
+export function deletePlaylist(id: string): Promise<{ ok: boolean; id: string }> {
+  return apiJson<{ ok: boolean; id: string }>(`/api/playlists/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
   });
 }

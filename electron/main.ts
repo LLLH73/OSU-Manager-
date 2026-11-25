@@ -42,6 +42,7 @@ let overlayPinned = true;
 let overlayExpandedHeight = 660;
 let overlayCompact = false;
 let quitting = false;
+let hiddenToTray = false;
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -89,6 +90,7 @@ function notifyOverlayState(isOpen: boolean): void {
 }
 
 function showMainWindow(): BrowserWindow {
+  hiddenToTray = false;
   if (!mainWindow || mainWindow.isDestroyed()) {
     return createWindow(serverPort);
   }
@@ -208,9 +210,34 @@ function toggleOverlayWindow(): boolean {
   return openOverlayWindow();
 }
 
+function sendMusicCommand(cmd: 'toggle' | 'prev' | 'next'): void {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('music:command', cmd);
+  }
+}
+
 function updateTrayMenu(): void {
   if (!tray) return;
   const menu = Menu.buildFromTemplate([
+    {
+      label: '播放 / 暂停音乐',
+      click: () => {
+        sendMusicCommand('toggle');
+      },
+    },
+    {
+      label: '上一曲',
+      click: () => {
+        sendMusicCommand('prev');
+      },
+    },
+    {
+      label: '下一曲',
+      click: () => {
+        sendMusicCommand('next');
+      },
+    },
+    { type: 'separator' },
     {
       label: `切换游戏内浮窗 (${currentHotkey})`,
       click: () => {
@@ -225,7 +252,7 @@ function updateTrayMenu(): void {
     },
     { type: 'separator' },
     {
-      label: '退出 OSU!Downloader!',
+      label: '退出 OSU!Manager!',
       click: () => {
         quitting = true;
         if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.destroy();
@@ -246,9 +273,13 @@ function createTray(): void {
   if (!fs.existsSync(iconPath)) return;
   const iconImg = nativeImage.createFromPath(iconPath).resize({ width: 20, height: 20 });
   tray = new Tray(iconImg);
-  tray.setToolTip('OSU!Downloader!');
+  tray.setToolTip('OSU!Manager!');
   tray.on('click', () => {
-    toggleOverlayWindow();
+    if (hiddenToTray || !mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) {
+      showMainWindow();
+    } else {
+      toggleOverlayWindow();
+    }
   });
   updateTrayMenu();
 }
@@ -326,6 +357,15 @@ function registerIpcHandlers(): void {
     if (typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color)) {
       win.setBackgroundColor(color);
     }
+  });
+
+  ipcMain.handle('window:hideToTray', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      hiddenToTray = true;
+      mainWindow.hide();
+      return true;
+    }
+    return false;
   });
 
   ipcMain.handle('dialog:selectDirectory', async (event, defaultPath?: string) => {
@@ -446,6 +486,7 @@ function createWindow(port: number): BrowserWindow {
     height: 920,
     minWidth: 1040,
     minHeight: 680,
+    title: 'OSU!Manager!',
     frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: initialMainBg,
@@ -456,6 +497,7 @@ function createWindow(port: number): BrowserWindow {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
+      backgroundThrottling: false,
     },
   });
 

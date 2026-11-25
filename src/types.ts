@@ -15,7 +15,7 @@ export type ThemeId =
   | 'latte'
   | 'sakura';
 export type SongViewMode = 'grid' | 'list' | 'lazer';
-export type WorkspaceMode = 'browse' | 'book';
+export type WorkspaceMode = 'browse' | 'book' | 'music';
 
 export type MirrorId =
   | 'sayobot-auto'
@@ -680,4 +680,38 @@ export interface BooksLibraryResponse {
     highestPpTitle: string | null;
     scannedAt: string;
   };
+}
+
+export interface BookTimingPoint {
+  timeMs: number;
+  beatLengthMs: number;
+  bpm: number;
+  meter: number;
+}
+
+export interface BookKiaiRange {
+  startMs: number;
+  endMs: number;
+}
+
+export interface BookRhythmData {
+  bookKey: string;
+  baseBpm: number;
+  firstBeatMs: number;
+  previewTimeMs: number;
+  timingPoints: BookTimingPoint[];
+  kiaiRanges: BookKiaiRange[];
+  densityProfile: number[];
+  hasExactTiming: boolean;
+}
+
+export interface MusicPlaylist {
+  id: string;
+  name: string;
+  description: string;
+  coverBookKey: string | null;
+  bookKeys: string[];
+  pinned: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
