@@ -4,6 +4,35 @@
 
 ---
 
+## Session 21 — 全量中英文双语切换、动态代理端口测速修复、音乐台增量视窗优化与 README 截图展区 (`v1.11.0`)
+
+- **日期**：2026-11-25
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **版本**：`v1.11.0`
+- **关联代码提交**：`f0ee92c`
+- **本次需求**：
+  1. 在不更新线上 GitHub Releases 的前提下，全量实现前端、后端及 Electron 的英文版本并在设置中添加中英文切换开关；
+  2. 修复点击右上角测速检查后写死提示 `6174` 代理端口（未随用户实配端口动态变化）的 Bug；
+  3. 丰富 `README.md` 展示多张 UI 与功能截图，并更新本地打包目录 `osu-manager.exe` 推送 `main`。
+- **关键改动与踩坑记录**：
+  1. **零依赖双语系统与全量本地化**（`src/i18n.tsx`, `server/i18n.ts`, `server/sources.ts`, `server/config.ts`, `electron/main.ts`, `electron/preload.cjs`, `src/electron.d.ts`, `src/constants.ts`, `src/utils/*`, `src/components/*`）：
+     - `AppConfig` 新增 `language: 'zh' | 'en'`（默认 `'zh'`），通过 `I18nProvider` / `useI18n()` / `tx()` 与 `st()` 实现全端覆盖，并经 `app:setLanguage` IPC 同步更新系统托盘菜单。
+  2. **动态代理端口文本修复**（`src/App.tsx`, `src/components/TitleBar.tsx`, `src/components/SettingsModal.tsx`）：
+     - 将 `handleBenchmark`、TitleBar 代理胶囊与设置页副标题统一绑定至当前配置的 `proxyPort` / `proxyMode`，支持 `Direct` 与任意自定义端口（如 `7890`）。
+  3. **实测排查并修复的 3 项隐蔽 Bug**：
+     - **React Hook #310**：浏览器打开详情弹窗时捕获 `BeatmapDetailModal.tsx` 与 `LazerSongSelect.tsx` 中 `useMemo(() => getTargetMeta(lang), [lang])` 位于 `if (...) return null` 之后，已移至组件顶层声明；
+     - **音乐台进入卡顿 (`OP_TIMEOUT`)**：本地 `821` 首曲目一次性全量渲染 DOM 且粒子画布暂停期 60fps 空转导致主线程堵塞；在 `MusicPlayerMode.tsx` 引入 `TRACK_RENDER_BATCH = 60` 滚底/点击增量视窗（保留全量筛选、队列计数与播放列表），并在 `MusicParticleCanvas.tsx` 暂停态节流重绘；
+     - **设置保存语言回弹竞态 & 按钮截断**：`SettingsModal` 提交保存时调用的 `App.tsx` `onClose` 持有未更新的旧 `config` 闭包并触发 `syncConfigLanguage(config)`，导致改语言首次点保存被回滚；移除 `onClose` 与 `handleCompleteOnboarding` 异步 `.then` 的 `syncConfigLanguage`（保留 `Cancel`/`Esc`/蒙层取消回滚），同步通过 `.segmented-auto` 修复 `简体中...` 截断并调整侧栏入口为 `3D Books` / `OSU! Audio`。
+  4. **9 张实机截图与 `README.md` 增强**（`docs/screenshots/01..09*.png`, `README.md`, `AGENT.md`）：
+     - 采编 9 张覆盖搜图轮盘、Obsidian 英文界面、PP 计算器、PerCy 预览、3D 书脊、平铺毛玻璃、音乐台、浅色专注画报及新手向导的高清截图并写入 `README.md` 双语展区（保留快速开始指向 Releases 最新正式版，不发布 `v1.11.0` 线上 Release）。
+- **验证结果**：
+  - **静态与 AST 审计**：`npm run typecheck` 通过；TypeScript AST 全量扫描 `73` 个 `.ts`/`.tsx` 文件确认仅保留 `3` 处语言切换按钮固有字面量（`0` 处未本地化 UI 泄漏）。
+  - **浏览器全流程实测**（隔离服务 `http://127.0.0.1:3728`，`1440×900` 与 `1280×720`，全程 `0` console errors / `0` page errors / `0` 失败请求）：
+    - 音乐台秒开且主侧栏自动收起、`STABLE / LAZER / KIAI` 无溢出、浅色专注画报与全局主题同步正常；
+    - 设置页 `简体中文` / `English` 单次点击保存即生效无回滚，取消准确回滚；
+    - 将代理改为 `7890` 后，测速 Toast 实时展示 `Checking proxy :7890 & all mirror latencies...`（EN）与 `正在检测代理 7890 与全部镜像源延迟...`（ZH），无任何 `6174` 残留。
+  - **本地打包与隔离 `osu-manager.exe` 冒烟**：`npm run electron:pack` 退出码 `0`（`release\win-unpacked\osu-manager.exe` `249,975,808` 字节，`ProductName=OSU!Manager!`, `FileVersion=1.11.0`，含 `OM` 图标）；以隔离 `OSU_DL_DATA_DIR` + `PORT=3729` 启动 `1.69s` 内就绪，`/` (`200`)、`/api/health` (`200`)、`PUT /api/config` (`language="en"`) 与 `/api/network/status` 全英文镜像返回（`hasCJK=False`）全通过；清理后 `3721`/`3728`/`3729` 监听数 `0`，用户 `data\config.json`（`898` 字节）完好无损。
+
 ## Session 20 — EXE 更名 `osu-manager`、`asar` 打包优化、GitHub Releases 全格式发行与 README 更新 (`v1.10.0`)
 
 - **日期**：2026-11-25

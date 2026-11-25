@@ -24,7 +24,7 @@
 | **Lazer 待导入目录** | `D:\OSU\Downloads\lazer-import` | Lazer 未运行时暂存 `.osz`，支持一键批量导入 |
 | **本地代理** | `127.0.0.1:6174` (`proxyMode: "auto"`) | 国内镜像直连优先，海外源优先探测 `6174` 代理 |
 | **账号要求** | **完全免登录** | 必须保证不填任何 osu! 账号 / Cookie 即可搜索、试听、下载 |
-| **界面审美与习惯** | Impeccable 克制极简 | 中文界面，默认瓷器白 (`light`) + Lazer 视图 + 75% 全窗封面背景动态取色 + 8 套主题 + 默认 120% 字号 (`85%–125%`) |
+| **界面审美与习惯** | Impeccable 克制极简 | 默认中文 (`language: 'zh'`)，支持在设置/引导内无缝切换 `简体中文 / English`；默认瓷器白 (`light`) + Lazer 视图 + 75% 全窗封面背景动态取色 + 8 套主题 + 默认 120% 字号 (`85%–125%`) |
 
 > **关键警告**：
 > - `data/` 目录（含用户的 `config.json`、`lazer-scan-cache.json`、封面/试听缓存、`data/logs/server.log`）已被 `.gitignore` 忽略，**绝不要提交到 Git**，测试时也**绝不要覆盖或清空用户的 Stable/Lazer 真实路径或 6174 代理配置**。
@@ -42,11 +42,12 @@
 | 文件 | 职责 |
 | :--- | :--- |
 | `server/index.ts` | Express 路由入口、SSE `/api/events`、托管生产构建 `dist/`、`startServer()` |
-| `server/config.ts` | 读写 `config.json`，规范化 `proxyPort` / `concurrency` / `viewMode` / `onboardingCompleted`，初始化 `data/` 及 `data/logs/` |
+| `server/config.ts` | 读写 `config.json`，规范化 `proxyPort` / `concurrency` / `viewMode` / `language` (`zh`\|`en`) / `onboardingCompleted`，初始化 `data/` 及 `data/logs/` |
+| `server/i18n.ts` | 后端轻量双语助手（`getServerLang`, `isServerEn`, `st(zh, en)`），读取已配置 `language` 供 API 提示、镜像名称与错误信息随动切换 |
 | `server/envDetect.ts` | 跨机器本机环境与端口探测器：扫描多盘符 Stable 目录、解析 Lazer `storage.ini`、识别 `osu!.exe`、并发 TCP 探测代理端口与 IPv6 就绪状态 |
-| `server/types.ts` | 后端核心类型（`AppConfig`, `DetectedEnvironment`, `SongViewMode`, `ThemeId`, `SearchFilters`, `NormalizedBeatmapset`, `DownloadTask` 等） |
+| `server/types.ts` | 后端核心类型（`AppConfig`, `UiLanguage`, `DetectedEnvironment`, `SongViewMode`, `ThemeId`, `SearchFilters`, `NormalizedBeatmapset`, `DownloadTask` 等） |
 | `server/logger.ts` | 零依赖结构化运行日志，输出至控制台与 `data/logs/server.log`（>2 MB 自动轮转至 `.1`），提供 `readRecentLogs()` |
-| `server/sources.ts` | 7 个下载镜像定义：`sayobot-auto`, `sayobot-txy`, `nekoha`, `osudirect`, `beatconnect`, `nerinyan`, `official` |
+| `server/sources.ts` | 7 个下载镜像中英双语定义（含 `nameEn`/`shortNameEn`/`descriptionEn` 与 `getLocalizedMirrorInfo()`）：`sayobot-auto`, `sayobot-txy`, `nekoha`, `osudirect`, `beatconnect`, `nerinyan`, `official` |
 | `server/network.ts` | `undici` 多 IP 协议族直连（DNS 缓存 + IPv6 优先/双栈 Happy Eyeballs）/代理路由、`6174` 端口 TCP 探测、并发镜像测速 `benchmarkMirrors()` |
 | `server/search.ts` | `osu.direct` 主搜索 + Sayobot 故障转移、官网 URL/ID 直达、LN% 估算、PP 情景反推星数与精确过滤、本地状态注入 |
 | `server/pp.ts` | 后端 PP 计算引擎（与前端一致的 Mania/通用公式）与 `deriveStarBoundsFromPpFilter()` 星数区间反推 |
@@ -77,16 +78,17 @@
 | :--- | :--- |
 | `src/main.tsx` | 引入离线 `@fontsource` Lazer 风格四字体（`Quicksand`, `Outfit`, `Exo 2`, `Noto Sans SC` 400/500/600/700 + `JetBrains Mono`），按 `?mode=overlay` 路由挂载 `OverlayApp` 或 `App` |
 | `src/index.css` | 8 套主题 CSS Token（默认 `:root[data-theme="light"]` 瓷器白）、Tailwind `@theme inline` 固定 `--spacing: 4px` 与 `--ui-font-scale`（默认 `1.2`）、`.song-list-row` / `.modal-surface` GPU 合成隔离规则、Lazer 字体工具类、`.segmented-compact`/`.segmented-auto`、卡片金框、Lazer 轮盘动效样式 |
-| `src/App.tsx` | 主工作区状态中心（配置、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠与进入音乐台自动收起主左侧栏、主题/视图模式持久化、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
-| `src/constants.ts` | 8 套主题元信息 (`THEME_OPTIONS`)、10 组强调色预设、`DEFAULT_FONT_SCALE = 1.2`、视图选项、工作流预设、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()`、统一 LN% 语义函数 `getLnCategory()` |
+| `src/i18n.tsx` | 前端轻量零外部依赖双语运行时（`I18nProvider`, `useI18n`, `tx(zh, en, lang?)`, `setGlobalLang`），通过 `osu_mgr_lang` localStorage 与 `<html lang>` 实现主窗口与浮窗实时同步切换 |
+| `src/App.tsx` | 主工作区状态中心（配置与 `language` 持久化同步、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠与进入音乐台自动收起主左侧栏、主题/视图模式持久化、动态代理端口测速 Toast、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
+| `src/constants.ts` | 8 套主题元信息 (`THEME_OPTIONS`)、10 组强调色预设、`DEFAULT_FONT_SCALE = 1.2`、双语工厂函数（`getViewModeOptions`, `getThemeOptions`, `getWorkflowPresets`, `getSortFields`, `getTargetMeta`, `getVariantOptions` 等）、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()`、统一双语 `getLnCategory()` |
 | `src/utils/themeColor.ts` | Canvas 24-bin 色相主色调提取器 (`extractDominantColor`) 与动态强调色 CSS 变量推导/应用 (`deriveAccentVariables`, `applyAccentVariables`, `clearAccentVariables`) |
-| `src/utils/pp.ts` | Ranked PP 准度制计算引擎（含 35 组 `NM / DT / HT / 变速` 情景预设与主/副展示文案、`localStorage` 自定义情景持久化、`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `extractPpScenarioFromFilters`, `formatPpScenarioShort`, `isRankedForPp`） |
-| `src/utils/filterArchive.ts` | Filter 存档筛选净化、自动命名、语义摘要标签提取与创建时间格式化工具 |
+| `src/utils/pp.ts` | Ranked PP 准度制计算引擎（含 35 组 `NM / DT / HT / 变速` 情景预设与双语主/副展示文案、`localStorage` 自定义情景持久化、`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `extractPpScenarioFromFilters`, `formatPpScenarioShort`, `isRankedForPp`） |
+| `src/utils/filterArchive.ts` | Filter 存档筛选净化、双语自动命名、语义摘要标签提取与创建时间格式化工具 |
 | `src/utils/maniaEngine.ts` | osu!mania Canvas2D 轨道渲染器（480p 坐标、BPM+SV 时间轴、PerCy `NoteBodyStyle` 0/1/2）与右侧滚动缩略图绘制引擎 |
 | `src/api.ts` | 前端 REST 封装（含 Book 档案库、自定义壁纸、IPv6 网络状态、快速批量下载与游戏客户端启动接口） |
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
-| `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏与右侧存档栏折叠按钮、单色粗线 `OM` 图标 `LaneEmblem` + `OSU!Manager!`、浮窗开关、8 主题分组弹窗、代理 6174、镜像延迟、窗口控制） |
-| `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（三段工作区模式切换 `搜图 \| Book \| 音乐`、并排 `Book 档案库 \| OSU 音乐台` 入口、目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
+| `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏与右侧存档栏折叠按钮、单色粗线 `OM` 图标 `LaneEmblem` + `OSU!Manager!`、浮窗开关、8 主题分组弹窗、动态代理端口/直连状态按钮、镜像延迟、窗口控制） |
+| `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（三段工作区模式切换、并排 `Book 档案库 / 3D Books \| OSU 音乐台 / OSU! Audio` 入口、目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
 | `src/components/music/OsuMusicMark.tsx` | 几何化高精度圆形 `osu!` 矢量徽标组件（随播放态/激活态触发信号色点亮） |
 | `src/components/music/rhythmEngine.ts` | 音乐台节拍计算与 Web Audio 频带能量提取纯函数（`computeBeatState` 精确跟随红线/倍速/Kiai、`extractAudioBands` 分频段能量与瞬态检测） |
 | `src/components/music/MusicPlayerContext.tsx` | 根级持久化音乐播放器上下文（拆分 `MusicControlContext` / `MusicTimeContext`、Web Audio `AnalyserNode`、倍速/原调锁高/NC 变调、歌单与红心、定时关闭、MediaSession 与托盘播控） |
@@ -94,9 +96,9 @@
 | `src/components/music/ConstructivistCoverStage.tsx` | 构成主义画幅 (`PROUN`) 与 Braun 瑞士唱盘 (`DISC`) 双封面舞台（含自适应换行防溢出的 `STABLE`/`LAZER`/`KIAI` 顶栏、60fps DOM-ref 实时节拍矩阵、有效倍速 BPM 与歌单快捷操作） |
 | `src/components/music/constructivistRedraw.ts` | 专注画报模式快速 CIE Lab 封面谐振取色与构图配色族推导器 |
 | `src/components/music/ConstructivistPosterBg.tsx` | 专注画报 (`ZEN`) 全屏高清原图背景层（底色/边角压暗/角标随全局明暗主题自适应切换）与谐振配色桥接组件 |
-| `src/components/music/MusicParticleCanvas.tsx` | 跟随低频能量、节拍脉冲与主题配色的构成主义几何律动粒子画布（常规模式/专注画报均支持独立开关） |
+| `src/components/music/MusicParticleCanvas.tsx` | 跟随低频能量、节拍脉冲与主题配色的构成主义几何律动粒子画布（常规模式/专注画报均支持独立开关，暂停空闲态自动降频减负） |
 | `src/components/music/MusicMiniDock.tsx` | 非音乐台视图下的后台纯播放瑞士极简悬浮迷你控制条（兼容搜图与 Book 底部避让） |
-| `src/components/music/MusicPlayerMode.tsx` | 构成主义/瑞士风格 `OSU! AUDIO // 音乐台` 完整工作区（默认收起的歌单目录、封面与全宽可视化、可检索/排序曲库与队列、随 8 套主题联动的专注画报及 `.osu` 密度直方图底栏） |
+| `src/components/music/MusicPlayerMode.tsx` | 构成主义/瑞士风格 `OSU! AUDIO // 音乐台` 完整工作区（60 条/批增量视窗渲染曲库与队列防主线程卡顿、默认收起的歌单目录、封面与全宽可视化、随 8 套主题联动的专注画报及 `.osu` 密度直方图底栏） |
 | `src/components/book/RhineLoadingVeil.tsx` | RhineLabUI 风格同心扫描环加载校准遮罩 (`RhineLoadingVeil`，支持进入/主题校准/刷新) 与顶部筛选切换扫光提示 (`RhineFilterTransitionHud`) |
 | `src/components/book/bookFilters.ts` | 本地 Book 多维筛选与排序纯函数引擎（来源/模式/键数/状态/评级/星数/PP/BPM/时长/LN%/谱师及 8 维度双向排序） |
 | `src/components/book/BookFilterPanel.tsx` | 仿下载页 RhineLabUI 悬浮高级筛选矩阵（复用 `StarRangeSlider`、`PpRangeSlider`、`SelectField` 与 `QUICK_PRACTICE_TAGS`） |
@@ -123,8 +125,8 @@
 | `src/components/DownloadDrawer.tsx` | 下载任务队列（含完成态预览/再加载按钮）与 Lazer 待导入队列批量导入抽屉 |
 | `src/components/FastBatchModal.tsx` | 极简纯文本「快速批量下载」工作台（目标数量 1–500、IPv6/直连分流、多镜像高并发与实时传输遥测） |
 | `src/components/LibrarySyncModal.tsx` | 双端曲库比对与 Stable→Lazer 零流量同步弹窗 |
-| `src/components/SettingsModal.tsx` | 客户端路径浏览、代理/IPv6 网络协议与镜像测速、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.10.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
-| `src/components/OnboardingModal.tsx` | 首次安装 6 步交互式环境配置与新手引导向导（调用 `/api/config/detect-env` 探测多盘符客户端路径与本机代理端口，支持代理模式/端口预设、下载策略、实时主题/字号预览、配置摘要保存及防输入框箭头误触） |
+| `src/components/SettingsModal.tsx` | 客户端路径浏览、动态代理/IPv6 网络协议与镜像测速、`简体中文 / English` 界面语言切换（`segmented-auto` 防截断，即时预览/取消回滚/保存持久化）、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.11.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
+| `src/components/OnboardingModal.tsx` | 首次安装 6 步交互式环境配置与新手引导向导（右上角含 `中文 / EN` 快速切换、调用 `/api/config/detect-env` 探测多盘符客户端路径与本机代理端口，支持代理模式/端口预设、下载策略、实时主题/字号预览、配置摘要保存及防输入框箭头误触） |
 | `src/components/SelectField.tsx` | 统一下拉封装（支持 `<optgroup>` 嵌套匹配，解决 Chromium 原生箭头重叠问题） |
 
 ---

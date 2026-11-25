@@ -4,6 +4,25 @@ All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be docum
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.11.0] - 2026-11-25
+
+### Added
+- **全量中英文双语体系与设置语言切换**（`src/i18n.tsx`, `server/i18n.ts`, `server/sources.ts`, `server/config.ts`, `electron/main.ts`, `electron/preload.cjs`, `src/electron.d.ts`, `src/components/SettingsModal.tsx`, `src/components/OnboardingModal.tsx`）：
+  - 新建零外部依赖双语运行时 `src/i18n.tsx`（`I18nProvider` / `useI18n` / `tx` / `osu_mgr_lang` localStorage 与 `<html lang>` 同步）与后端助手 `server/i18n.ts`（`st(zh, en)`）；在 `AppConfig` 中新增并持久化 `language: 'zh' | 'en'` 字段，通过 `PUT /api/config` 推送更新镜像元数据，并新增 `app:setLanguage` IPC 实时切换 Electron 托盘菜单与快捷键提示语言。
+  - 在全部 56 份前后端及 Electron 代码文件提供完整 `English` 版本文案（覆盖搜图选歌、Filter 存档、详情与交互式 PP 计算器、Mania 谱面预览器、RhineLab 3D Book 档案库、OSU! AUDIO 音乐台、游戏内亚克力浮窗、下载/快速批量/曲库同步与后端错误提示）；在「设置 → 分区 3」新增 `简体中文 | English` 切换开关，在新手引导页右上角新增 `中文 / EN` 快速切换按钮，支持即时预览、取消/Esc 回滚与单次保存持久化。
+- **GitHub `README.md` 界面功能展示图库**（`docs/screenshots/01..09*.png`, `README.md`, `AGENT.md`）：
+  - 在浏览器 `1440×900` 实机采集并人工核验 9 张核心界面截图（Lazer 选歌轮盘、英文 Obsidian 暗色主题、谱面详情与 PP 计算器、Mania 预览器、3D 书脊档案架、无字毛玻璃平铺视图、OSU! AUDIO 音乐台、浅色主题联动专注画报、跨机新手配置向导），丰富 `README.md` 双语预览展区与文档。
+
+### Changed & Fixed
+- **修复点击右上角连接测速后仍写死显示 `6174` 代理端口的问题**（`src/App.tsx`, `src/components/TitleBar.tsx`, `src/components/SettingsModal.tsx`）：
+  - 修复 `handleBenchmark()` 硬编码 `'正在检测代理 6174 与全部镜像源延迟...'`、设置页弹窗副标题及顶部状态栏在未获取测速对象时写死 `6174` 的问题，现均动态读取用户配置的 `proxyPort` 与 `proxyMode`（如 `:7890` 或纯直连 `Direct`）。
+- **修复音乐台加载全量曲库 (`821` 首) 导致主线程卡顿的问题**（`src/components/music/MusicPlayerMode.tsx`, `src/components/music/MusicParticleCanvas.tsx`）：
+  - 为音乐台曲目表与播放队列增加 `60` 条/批增量视窗渲染（滚底与底部按钮自动加载，筛选/切换归位并完整保留播放全表与队列计数），并将 `MusicParticleCanvas` 暂停空闲帧降频，消除进入音乐台时一次性挂载万级 DOM 节点造成的渲染器阻塞。
+- **修复模态框条件 Hook 调用序与设置页保存语言回弹及英文按钮截断**（`src/components/BeatmapDetailModal.tsx`, `src/components/LazerSongSelect.tsx`, `src/App.tsx`, `src/components/SettingsModal.tsx`, `src/components/SideRail.tsx`）：
+  - 将 `useMemo(() => getTargetMeta(lang), [lang])` 上移至提前 `return null` 之前以消除 React Hook #310；
+  - 移除 `SettingsModal.onClose` 与 `handleCompleteOnboarding` 异步回调中持有旧 `config` 闭包的 `syncConfigLanguage`，解决改语言后首次点击保存被旧配置回滚的竞态，同时保留取消/Esc 回滚；
+  - 为设置页语言切换栏应用 `.segmented-auto` 防截断样式（完整显示 `简体中文`），并将左侧栏底部并排入口英文文案精简为 `3D Books` / `OSU! Audio` 以适配 `120%` 字号。
+
 ## [1.10.0] - 2026-11-25
 
 ### Added

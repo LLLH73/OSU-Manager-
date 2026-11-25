@@ -4,16 +4,99 @@
   <p>
     <strong>面向 osu!stable 与 osu!lazer 双端玩家的 osu!mania 谱面管理、免登录下载、3D 档案库与本地音乐台工作台</strong>
     <br />
-    <sub>Cross-client osu!mania beatmap downloader, library manager, 3D Book Archive & Constructivist Music Station (v1.10.0)</sub>
+    <sub>Cross-client osu!mania beatmap downloader, library manager, 3D Book Archive & Constructivist Music Station · 中文 / English UI</sub>
   </p>
   <p>
     <a href="https://github.com/LLLH73/OSU-Manager-/releases/latest">Releases 下载</a> ·
+    <a href="#visual-showcase">界面预览</a> ·
     <a href="#简体中文">简体中文</a> ·
     <a href="#english">English</a> ·
     <a href="CHANGELOG.md">Changelog</a> ·
     <a href="docs/DEVLOG.md">Devlog</a>
   </p>
 </div>
+
+---
+
+<a id="visual-showcase"></a>
+
+## 界面预览 / Visual Showcase
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/01-lazer-browse.png"><img src="docs/screenshots/01-lazer-browse.png" alt="Lazer Song Select Browse View" width="100%" /></a>
+      <br />
+      <strong>01 · Lazer 选歌轮盘与动态背景 (Light · 瓷器白)</strong>
+      <br />
+      <sub>视口锁定弧形轮盘、本地已装金框标识、Ranked ~PP 与 Star/PP 双光谱滑块 / Lazer carousel, installed gold frames & Star/PP sliders</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/09-english-ui.png"><img src="docs/screenshots/09-english-ui.png" alt="English UI & Obsidian Dark Theme" width="100%" /></a>
+      <br />
+      <strong>02 · 全量英文界面 + Obsidian 暗色主题 (v1.11.0)</strong>
+      <br />
+      <sub>设置页一键热切「简体中文 / English」、动态显示本机代理端口与镜像测速 / Live ZH/EN toggle, Obsidian dark theme & dynamic proxy readout</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/02-detail-pp-calc.png"><img src="docs/screenshots/02-detail-pp-calc.png" alt="Beatmap Detail Modal & Interactive PP Calculator" width="100%" /></a>
+      <br />
+      <strong>03 · 谱面详情与交互式 PP 计算器</strong>
+      <br />
+      <sub>全难度表（星数 / LN% / 大致 PP）、支持 320:300 自定义黄彩比与变速情景推算 / Full diff table, MA ratio & custom Rate PP simulator</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/03-mania-preview.png"><img src="docs/screenshots/03-mania-preview.png" alt="Mania Chart Previewer with Local PerCy Skin" width="100%" /></a>
+      <br />
+      <strong>04 · Mania 谱面实景预览器（兼容本地 PerCy 皮肤）</strong>
+      <br />
+      <sub>直读本地 <code>Skins/</code> 资源、SV/BPM 还原、NPS 密度条、倍速流速调节与缩略图导航 / Local skin rendering, SV timeline & minimap</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/04-book-3d-archive.png"><img src="docs/screenshots/04-book-3d-archive.png" alt="RhineLab 3D Book Spine Local Archive" width="100%" /></a>
+      <br />
+      <strong>05 · Book 模式 · Three.js 3D 书脊档案架</strong>
+      <br />
+      <sub>跨双端聚合本地 800+ 谱面、历史成绩与游玩统计，支持 3D 立体波浪抽出与双页详档 / 3D shelf uniting Stable + Lazer local collections</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/05-book-mosaic.png"><img src="docs/screenshots/05-book-mosaic.png" alt="Book Frosted Glass Mosaic View" width="100%" /></a>
+      <br />
+      <strong>06 · Book 模式 · 无字平铺毛玻璃光学窗</strong>
+      <br />
+      <sub>WebGL1 邻界混色背景模糊 + 悬停光学澄清水晶体与虹膜叠化翻页 / WebGL1 blurred optical mosaic & hover focus window</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/06-music-station.png"><img src="docs/screenshots/06-music-station.png" alt="OSU! AUDIO Constructivist Music Station" width="100%" /></a>
+      <br />
+      <strong>07 · OSU! AUDIO // 构成主义本地音乐台</strong>
+      <br />
+      <sub>自动收起主侧栏、<code>STABLE / LAZER / KIAI</code> 徽标、红线节拍矩阵、FFT 频谱与 0.50×–2.00× 原调/NC 变调 / Spectrum deck, Kiai sync & playlists</sub>
+    </td>
+    <td width="50%" valign="top">
+      <a href="docs/screenshots/07-music-zen.png"><img src="docs/screenshots/07-music-zen.png" alt="Theme-Synced Focus Cover Mode" width="100%" /></a>
+      <br />
+      <strong>08 · 音乐台「专注画报 (Focus Cover)」主题联动</strong>
+      <br />
+      <sub>全屏高清封面背景 + 动态主题取色适配 8 套明暗主题 + 底部宽幅实时可视化 / Full-bleed cover stage synced to active light/dark theme</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center" valign="top">
+      <a href="docs/screenshots/08-onboarding-wizard.png"><img src="docs/screenshots/08-onboarding-wizard.png" alt="Cross-PC 6-Step Interactive Onboarding Setup Wizard" width="76%" /></a>
+      <br />
+      <strong>09 · 跨电脑 6 步新手配置向导（支持一键探测稳定/Lazer 路径与本地代理端口）</strong>
+      <br />
+      <sub>Auto-detects Stable / Lazer folders &amp; online proxy ports (<code>6174</code> / Clash <code>7890</code> / v2rayN <code>10808</code>) on first launch</sub>
+    </td>
+  </tr>
+</table>
 
 ---
 
@@ -62,6 +145,10 @@
 8. **macOS 磨砂游戏内浮窗 & 8 套主题与跨机器新手配置向导**
    - 全局热键 `Alt+Shift+O`（可在设置修改）在无边框游戏中随时呼出亚克力毛玻璃浮窗搜图装图。
    - 内置 4 套暗色 + 4 套纸感浅色主题（默认「瓷器白」）、`85%–125%` 界面字号缩放（默认 `120%`）、离线 `@fontsource` Lazer 字体、Filter 右侧存档栏，以及**首次启动 6 步交互式配置与引导向导**（支持自动扫描不同电脑盘符下的 `osu!stable` / `osu!lazer` 路径与 `storage.ini`，探测 Clash/v2rayN/Sing-box 等本机在线代理端口、设置 IPv6 与下载偏好、实时预览主题字号并保存至配置，之后可在「设置 → 关于与帮助」随时重看）。
+
+9. **全量简体中文 / English 双语切换与动态代理测速**
+   - 覆盖搜图选歌、详情/PP 计算器、Mania 预览器、3D Book 档案库、OSU! 音乐台、游戏内浮窗、Electron 系统托盘菜单与后端错误/镜像描述的全量中英双语体验。
+   - 可在「设置 → 分区 3」或新手引导右上角切换 `简体中文` / `English`（切换立即预览，点保存持久化至 `config.json`，取消/Esc 自动回滚）；右上角测速状态与提示文案严格跟随用户实际配置的 `proxyPort`（不再固定写死 `6174`）与直连/代理模式动态显示。
 
 ### 快速开始
 
@@ -134,6 +221,9 @@ No osu! login or session cookie is required. It brings together multi-mirror bea
 - **Acrylic In-Game Overlay, 8 Themes & Cross-PC Setup Onboarding**
   - Global shortcut `Alt+Shift+O` toggles a compact acrylic overlay above borderless osu! windows.
   - Includes 4 dark + 4 light themes (default `light`), UI font scaling (`85%–125%`, default `120%`), Filter Archives right rail, and an interactive **6-step first-run setup & onboarding wizard** that auto-detects `osu!stable` / `osu!lazer` directories (including `storage.ini`) and open local proxy ports (`6174`, Clash `7890/7897`, v2rayN `10808/10809`, Sing-box `2080`, etc.), configures IPv6/download/theme preferences, and can be replayed anytime from **Settings → About & Help**.
+- **Full ZH / EN Bilingual Switcher & Dynamic Proxy Diagnostics**
+  - Complete Simplified Chinese & English localization across Browse, Beatmap Detail & PP Calculator, Mania Previewer, 3D Book Archive, OSU! AUDIO Music Station, Acrylic Overlay, Electron Tray/Hotkeys, and backend mirror/status responses.
+  - Switch live via **Settings → Section 3 (`简体中文 | English`)** or the onboarding header pill (persisted in `config.json`, safely rolls back on Cancel/Esc). Top-bar latency checks and toast notifications dynamically reflect your configured `proxyPort` or `Direct` mode.
 
 ### Quick Start
 
@@ -184,7 +274,8 @@ OSU-Manager-/
 ├── CHANGELOG.md              # 版本变更日志 / Release changelog
 ├── README.md                 # 中英文双语说明文档 / Bilingual README
 ├── docs/
-│   └── DEVLOG.md             # 按会话记录的开发日志 / Session-by-session devlog
+│   ├── DEVLOG.md             # 按会话记录的开发日志 / Session-by-session devlog
+│   └── screenshots/          # README 展示截图 / UI showcase screenshots (01–09)
 ├── build/                    # OM 矢量与多分辨率应用图标 (icon.svg / icon.png / icon.ico)
 ├── scripts/                  # 打包后 PE 图标注入 (apply-exe-icon.mjs) 与 GitHub Release 发布脚本 (publish-github-release.mjs)
 ├── electron/                 # Electron 主进程与 preload 桥接
