@@ -42,8 +42,9 @@
 | 文件 | 职责 |
 | :--- | :--- |
 | `server/index.ts` | Express 路由入口、SSE `/api/events`、托管生产构建 `dist/`、`startServer()` |
-| `server/config.ts` | 读写 `config.json`，规范化 `proxyPort` / `concurrency` / `viewMode`，初始化 `data/` 及 `data/logs/` |
-| `server/types.ts` | 后端核心类型（`AppConfig`, `SongViewMode`, `ThemeId`, `SearchFilters`, `NormalizedBeatmapset`, `DownloadTask` 等） |
+| `server/config.ts` | 读写 `config.json`，规范化 `proxyPort` / `concurrency` / `viewMode` / `onboardingCompleted`，初始化 `data/` 及 `data/logs/` |
+| `server/envDetect.ts` | 跨机器本机环境与端口探测器：扫描多盘符 Stable 目录、解析 Lazer `storage.ini`、识别 `osu!.exe`、并发 TCP 探测代理端口与 IPv6 就绪状态 |
+| `server/types.ts` | 后端核心类型（`AppConfig`, `DetectedEnvironment`, `SongViewMode`, `ThemeId`, `SearchFilters`, `NormalizedBeatmapset`, `DownloadTask` 等） |
 | `server/logger.ts` | 零依赖结构化运行日志，输出至控制台与 `data/logs/server.log`（>2 MB 自动轮转至 `.1`），提供 `readRecentLogs()` |
 | `server/sources.ts` | 7 个下载镜像定义：`sayobot-auto`, `sayobot-txy`, `nekoha`, `osudirect`, `beatconnect`, `nerinyan`, `official` |
 | `server/network.ts` | `undici` 多 IP 协议族直连（DNS 缓存 + IPv6 优先/双栈 Happy Eyeballs）/代理路由、`6174` 端口 TCP 探测、并发镜像测速 `benchmarkMirrors()` |
@@ -63,7 +64,7 @@
 
 #### 主要 HTTP / SSE 接口
 - 健康与日志：`GET /api/health`、`GET /api/logs?lines=120`
-- 配置与网络：`GET /api/config`、`PUT /api/config`、`POST /api/config/background`、`DELETE /api/config/background`、`GET /api/network/status`、`POST /api/network/benchmark`
+- 配置与网络：`GET /api/config`、`PUT /api/config`、`GET/POST /api/config/detect-env`、`POST /api/config/background`、`DELETE /api/config/background`、`GET /api/network/status`、`POST /api/network/benchmark`
 - Filter 存档：`GET /api/filter-archives`、`POST /api/filter-archives`、`PUT /api/filter-archives/:id`、`DELETE /api/filter-archives/:id`
 - 本地 Book 档案库与音乐台接口：`GET /api/books`、`GET /api/books/:bookKey`、`GET /api/books/:bookKey/cover`、`GET /api/books/:bookKey/audio`、`GET /api/books/:bookKey/rhythm`、`GET/POST/PUT/DELETE /api/playlists`
 - 搜索与媒体：`GET /api/search`（含 `minPp`/`maxPp`/`ppAccuracy`/`ppRate`/`ppMisses`/`ppMaRatio`/`ppClassic`/`ppEz`/`ppNf`/`ppIncludeUnranked`）、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`、`GET /api/media/custom-bg`
@@ -122,8 +123,8 @@
 | `src/components/DownloadDrawer.tsx` | 下载任务队列（含完成态预览/再加载按钮）与 Lazer 待导入队列批量导入抽屉 |
 | `src/components/FastBatchModal.tsx` | 极简纯文本「快速批量下载」工作台（目标数量 1–500、IPv6/直连分流、多镜像高并发与实时传输遥测） |
 | `src/components/LibrarySyncModal.tsx` | 双端曲库比对与 Stable→Lazer 零流量同步弹窗 |
-| `src/components/SettingsModal.tsx` | 客户端路径浏览、代理/IPv6 网络协议与镜像测速、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.9.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
-| `src/components/OnboardingModal.tsx` | 首次安装 5 步交互式新手引导弹窗（支持步骤跳转、`←/→/Esc` 快捷键、跳至设置检查路径，由 `onboardingCompleted` 与 `localStorage` 持久化控制） |
+| `src/components/SettingsModal.tsx` | 客户端路径浏览、代理/IPv6 网络协议与镜像测速、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.10.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
+| `src/components/OnboardingModal.tsx` | 首次安装 6 步交互式环境配置与新手引导向导（调用 `/api/config/detect-env` 探测多盘符客户端路径与本机代理端口，支持代理模式/端口预设、下载策略、实时主题/字号预览、配置摘要保存及防输入框箭头误触） |
 | `src/components/SelectField.tsx` | 统一下拉封装（支持 `<optgroup>` 嵌套匹配，解决 Chromium 原生箭头重叠问题） |
 
 ---

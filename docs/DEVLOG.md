@@ -4,6 +4,31 @@
 
 ---
 
+## Session 19 — 新手引导交互式跨机配置向导与本机环境/端口自动探测 (`v1.10.0`)
+
+- **日期**：2026-11-25
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **版本**：`v1.9.0` → `v1.10.0`
+- **关联提交**：`08d901d`
+- **本次需求**：在新手教程中加入配置选项（包含但不限于配置端口、路径、下载与外观偏好等），充分适配不同电脑上的安装路径与代理环境。
+- **关键改动**：
+  1. **本机环境与在线代理端口探测后端**（`server/envDetect.ts`, `server/index.ts`, `server/types.ts`, `src/types.ts`, `src/api.ts`）：
+     - 新增 `detectLocalEnvironment()` 与 `GET/POST /api/config/detect-env`，扫描常见盘符下的 Stable 安装目录、解析 `%APPDATA%\osu\storage.ini` 定位迁移后的 Lazer 数据目录并推算 `osu!.exe` 与可用暂存目录；
+     - 并发 TCP 探测本机常见代理端口（`6174`、`7890` Clash、`7897` Verge、`10808/10809` v2rayN、`2080` Sing-box、`20171` v2rayA、`1080/1081`、`12334` Hiddify、`8888`）并返回在线端口列表、当前端口连通性及 IPv6 就绪状态。
+  2. **6 步交互式新手配置向导**（`src/components/OnboardingModal.tsx`, `src/components/SettingsModal.tsx`, `src/App.tsx`, `package.json`, `src/constants.ts`）：
+     - 将 `OnboardingModal` 升级为 6 步向导（`01 欢迎`、`02 客户端路径`、`03 网络与端口`、`04 外观与浮窗`、`05 核心功能`、`06 档案与完成`）；
+     - 支持 `一键填入探测路径`、候选路径快选、目录/文件浏览、代理策略切换、主机与端口输入、在线端口快选、常见端口预设、`检测端口`、IPv6/下载目标/格式/镜像/并发数、8 主题与字号实时预览、浮窗热键与最终配置摘要确认保存；
+     - 加入打开态重入防重置守卫（切换主题预览不重置步骤）、输入框聚焦防左右箭头误翻步，以及跳过/`Esc` 自动回滚未保存预览状态。
+- **验证结果**：
+  - `npm run typecheck` 与 `npm run electron:pack`（`v1.10.0`）退出码 `0` 通过，生成 `release\win-unpacked\osu-4k-downloader.exe`（`249,975,808` 字节，`FileVersion=1.10.0`，`ProductName=OSU!Manager!`）。
+  - **真实浏览器实测**（`http://127.0.0.1:3728`，`1440×900` & `1280×720`，空隔离目录 `%TEMP%\osu-dl-verify-v110`，0 控制台/页面报错）：
+    - 首次加载自动打开 `1 / 6` 向导（`v1.10.0`）；Step 2 显示 `D:\OSU`、`D:\OSU\OSUlazer\osu-lazer`、`osu!.exe` 实时存在状态徽标且「重新探测本机环境」正常；
+    - Step 3 点击 `7890 Clash` 预设正确填值，端口输入聚焦按 `←`/`→` 保持停留在 `3 / 6`（无误翻步），切回 `6174` 并点「检测端口」显示 `端口 :6174 在线`；
+    - `1280×720` 下 Step 3/4 弹窗高度 `648px <= 720px` 底部按钮完整无裁切；Step 4 主题实时预览（`瓷器白` → `浅咖啡` → `瓷器白`）正常；Step 6 配置摘要与保存持久化通过（重载不再弹窗，设置页可点击「重新观看新手引导」再次进入）。
+  - **打包 EXE 冒烟与清理**：`release\win-unpacked\osu-4k-downloader.exe`（`PORT=3729`）实测 `GET /api/health` 与 `POST /api/config/detect-env` 均返回 `200` 完整数据，清理测试进程与临时目录后 `3721`/`3728`/`3729` 端口监听数均为 `0`，用户 `data/config.json` 完整无损。
+
+---
+
 ## Session 18 — 专注画报主题同步、`OM` 图标重绘与 EXE 注入、设置信息、新手引导及双语 README 发布 (`v1.9.0`)
 
 - **日期**：2026-11-25

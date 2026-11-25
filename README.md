@@ -4,7 +4,7 @@
   <p>
     <strong>面向 osu!stable 与 osu!lazer 双端玩家的 osu!mania 4K 谱面管理、免登录下载、3D 档案库与本地音乐台工作台</strong>
     <br />
-    <sub>Cross-client osu!mania 4K beatmap downloader, library manager, 3D Book Archive & Constructivist Music Station (v1.9.0)</sub>
+    <sub>Cross-client osu!mania 4K beatmap downloader, library manager, 3D Book Archive & Constructivist Music Station (v1.10.0)</sub>
   </p>
   <p>
     <a href="#简体中文">简体中文</a> ·
@@ -58,15 +58,15 @@
    - **多入口与后台不间断播放**：可从左侧栏或 Book 模式进入（进入音乐台时自动收起主界面左侧栏，内置歌单栏默认收起）；切回搜图或 Book 模式后通过底部悬浮迷你条 `MusicMiniDock` 持续播放，Electron 下支持隐藏至系统托盘后台挂机与 Windows 媒体键控制。
    - **画幅 / 唱盘 & 实时可视化**：支持 `画幅 (PROUN)` 与无框 `唱盘 (DISC)` 双封面舞台、基于本地 `.osu` 红线/Kiai/密度解析的节拍矩阵、`0.50×–2.00×` 原调锁高 / Nightcore 磁带变调、自定义歌单持久化、可开关律动粒子、横贯全宽的 `频谱` / `示波` 双模式画布，以及**跟随全局 8 套主题配色切换的「专注画报」模式**。
 
-8. **macOS 磨砂游戏内浮窗 & 8 套主题与新手引导**
+8. **macOS 磨砂游戏内浮窗 & 8 套主题与跨机器新手配置向导**
    - 全局热键 `Alt+Shift+O`（可在设置修改）在无边框游戏中随时呼出亚克力毛玻璃浮窗搜图装图。
-   - 内置 4 套暗色 + 4 套纸感浅色主题（默认「瓷器白」）、`85%–125%` 界面字号缩放（默认 `120%`）、离线 `@fontsource` Lazer 字体、Filter 右侧存档栏，以及**首次启动 5 步新手引导**（之后可在「设置 → 关于与帮助」中随时重看、查看版本号与开源地址）。
+   - 内置 4 套暗色 + 4 套纸感浅色主题（默认「瓷器白」）、`85%–125%` 界面字号缩放（默认 `120%`）、离线 `@fontsource` Lazer 字体、Filter 右侧存档栏，以及**首次启动 6 步交互式配置与引导向导**（支持自动扫描不同电脑盘符下的 `osu!stable` / `osu!lazer` 路径与 `storage.ini`，探测 Clash/v2rayN/Sing-box 等本机在线代理端口、设置 IPv6 与下载偏好、实时预览主题字号并保存至配置，之后可在「设置 → 关于与帮助」随时重看）。
 
 ### 使用方式
 
 #### 1. 直接运行桌面版（推荐）
 - 运行已打包目录中的 `release\win-unpacked\osu-4k-downloader.exe`，或双击根目录 [start-desktop.bat](start-desktop.bat) / [start.bat](start.bat)。
-- **首次使用提示**：打开后会自动弹出 5 步新手引导；点击左下角「设置」即可核对你的 `osu!stable` / `osu!lazer` 本地路径（默认 `D:\OSU` 与 `D:\OSU\OSUlazer\osu-lazer`）、测试代理端口（默认 `127.0.0.1:6174`）与 7 大镜像延迟、切换主题与字体缩放，或查看当前版本号与重新观看新手引导。
+- **首次使用提示**：打开后会自动弹出 **6 步新手配置向导**，自动探测本机 `osu!stable` / `osu!lazer` 安装路径与在线代理端口（如 `6174` / `7890` / `7897` / `10808` 等，也可随时选择纯直连或手动浏览修改）；全部配置均可随时在左下角「设置」中微调，并在「关于与帮助」查看版本号或重新观看新手引导。
 
 #### 2. 源码开发与构建打包
 
@@ -121,9 +121,9 @@ No osu! login or session cookie is required. It brings together multi-mirror bea
 - **OSU! AUDIO // Constructivist Music Station**
   - Persistent background audio engine with `MusicMiniDock` and Electron tray playback controls; auto-collapses the main sidebar upon entering while keeping its own playlist rail collapsed by default.
   - Poster (`PROUN`) & frameless Turntable (`DISC`) stages with responsive `STABLE`/`LAZER`/`KIAI` badges, `.osu` red-line beat matrix, `0.50×–2.00×` pitch-locked or Nightcore playback, custom playlists, toggleable reactive particles, full-width `Spectrum / Oscilloscope` visualizers, and a **theme-synced Focus Cover (Zen) mode** across all 8 light & dark themes.
-- **Acrylic In-Game Overlay, 8 Themes & First-Run Onboarding**
+- **Acrylic In-Game Overlay, 8 Themes & Cross-PC Setup Onboarding**
   - Global shortcut `Alt+Shift+O` toggles a compact acrylic overlay above borderless osu! windows.
-  - Includes 4 dark + 4 light themes (default `light`), UI font scaling (`85%–125%`, default `120%`), Filter Archives right rail, and an interactive **5-step first-run onboarding guide** (replayable anytime from **Settings → About & Help** along with app version & GitHub repository link).
+  - Includes 4 dark + 4 light themes (default `light`), UI font scaling (`85%–125%`, default `120%`), Filter Archives right rail, and an interactive **6-step first-run setup & onboarding wizard** that auto-detects `osu!stable` / `osu!lazer` directories (including `storage.ini`) and open local proxy ports (`6174`, Clash `7890/7897`, v2rayN `10808/10809`, Sing-box `2080`, etc.), configures IPv6/download/theme preferences, and can be replayed anytime from **Settings → About & Help**.
 
 ### Usage & Commands
 

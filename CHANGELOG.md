@@ -4,6 +4,13 @@ All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be docum
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.10.0] - 2026-11-25
+
+### Added
+- **适配不同电脑环境的 6 步交互式新手配置向导与本机环境自动探测**（`server/envDetect.ts`, `server/index.ts`, `server/types.ts`, `src/types.ts`, `src/api.ts`, `src/components/OnboardingModal.tsx`, `src/components/SettingsModal.tsx`, `src/App.tsx`）：
+  - **后端多盘符与在线端口自动探测**：新增 `server/envDetect.ts` 与 `GET/POST /api/config/detect-env` 接口，自动扫描常见盘符下 `osu!stable` 根目录、解析 `%APPDATA%\osu\storage.ini` 与常见路径以定位 `osu!lazer` 数据目录及 `osu!.exe`、推导可用暂存目录与推荐默认目标，并并发 TCP 探测本机常见代理端口（`6174`、`7890` Clash、`7897` Clash Verge、`10808/10809` v2rayN、`2080` Sing-box、`20171` v2rayA、`1080/1081`、`12334` Hiddify、`8888`）及 IPv6 就绪状态。
+  - **6 步可交互向导配置流程**：将首次引导升级为「`01 欢迎` → `02 客户端路径` → `03 网络与端口` → `04 外观与浮窗` → `05 核心功能` → `06 档案与完成`」6 步向导，支持一键填入探测路径、目录/文件浏览、点击候选路径、端口一键探测与快填、IPv6/下载目标/包体格式/线程/首选镜像配置、主题与字号实时预览、浮窗热键与自动导入开关，以及最终配置摘要确认与立即写入生效；在输入框聚焦时自动屏蔽左右箭头翻步，并在跳过或 `Esc` 时安全回滚未保存的预览状态。
+
 ## [1.9.0] - 2026-11-25
 
 ### Added
