@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - **修复 Lazer 曲库高索引曲目仅有 9 秒在线试听或 0 秒无法播放完整本地音源的问题**（`server/realmReader.ts`, `server/localLibrary.ts`, `src/components/music/MusicPlayerContext.tsx`）：修复 Realm 二进制解析中簇索引偏移、字符串偏移、`BPlusTree` 长文件列表及 `ObjLink` 误按有符号 16 位读取导致 `>=32,768` 键值（如 `最終鬼畜妹`、`End Time`、`NANO DEATH!!!!!` 等 93 套 Lazer 曲目）溢出回绕成负数并丢失音频哈希的缺陷，并补充 `.osu` `AudioFilename` 与主音轨启发式回退以及 `<audio onDurationChange>` VBR 时长刷新。
 - **修复音乐台封面/唱盘框体右上角 `STABLE` / `LAZER` / `KIAI` 徽标溢出问题**（`src/components/music/ConstructivistCoverStage.tsx`）：调整画幅/唱盘卡片容器内边距与 `min-w-0` 约束，使顶栏信息条支持自适应换行（`flex-wrap`）、长 `SET #...` 编号安全截断，并收紧徽标字距与内边距，确保双端曲目同时展示 `STABLE`、`LAZER`、`KIAI` 时在所有桌面宽度下均不超出框体边界。
+- **修复在搜图选歌主界面切换后台音乐播放状态触发谱面列表重新搜索加载的问题**（`src/App.tsx`）：在 `AppWorkspace` 中改用解构后的 `useMusicPlayer()` 稳定回调引用（`pause` / `playTrack`）与 `isPlayingRef`，消除 `openManiaPreview` 因依赖整包 `musicPlayer` 上下文对象而在播放/暂停切换时重建、进而触发初始化 `useEffect` 重连 SSE 与重复执行默认搜索的问题。
 
 ### Changed
 - **品牌更名为 `OSU!Manager!`**（`src/components/TitleBar.tsx`, `index.html`, `electron/main.ts`）：将主界面左上角标题、网页标题、Electron 窗口标题与托盘菜单/提示更名为 **`OSU!Manager!`**（保持既有安装包产物名与用户数据目录兼容不变）。

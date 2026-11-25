@@ -4,6 +4,25 @@
 
 ---
 
+## Session 17 — 修复搜图主界面切换音乐播放状态触发列表重载 (`v1.8.0`)
+
+- **日期**：2026-11-25
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **版本**：`v1.8.0`
+- **关联提交**：`c3d2206`
+- **问题描述**：在搜图选歌主界面中，当底部音乐播放器打开并切换播放/暂停状态时，已加载的搜索谱面界面会重新执行搜索并回到默认列表。
+- **根因定位**：`src/App.tsx` 中的 `AppWorkspace` 通过 `const musicPlayer = useMusicPlayer()` 获取整包上下文对象，`isPlaying` 每次切换均会生成新的 `musicPlayer` 对象引用；由于 `openManiaPreview` 依赖 `[musicPlayer]`，而全局初始化 `useEffect`（含 `void runSearch(DEFAULT_FILTERS, false)` 与 SSE 建连）依赖 `[applyTheme, applyViewMode, openManiaPreview, runSearch]`，导致切换音乐播放状态时触发整个初始化副作用清理并重新搜索。
+- **修复方案**（`src/App.tsx`）：
+  1. 解构 `useMusicPlayer()` 仅读取 `musicIsPlaying`、`musicCurrentTrack` 与稳定回调 `pauseMusic` / `playMusicTrack`；
+  2. 引入 `isPlayingRef` 避免在 `setIsPlaying` 状态更新器内部调用 `pauseMusic()`；
+  3. 更新 `openManiaPreview`、`handleOpenBookInMusicPlayer`、`handleTogglePlay`、`handleStartPlay` 与 `AudioPlayerBar` 仅依赖永久稳定的 `pauseMusic` / `playMusicTrack`，确保音乐状态变化不再重建上述回调或重跑初始化搜索副作用。
+- **验证结果**：
+  - `npm run typecheck` 与 `npm run electron:pack`（`v1.8.0`）退出码 `0` 通过，更新生成 `release\win-unpacked\osu-4k-downloader.exe`（`249,978,368` 字节）。
+  - **真实浏览器实测**（`http://127.0.0.1:3728`，`1440×900`，隔离目录 `%TEMP%\osu-dl-verify-bugfix`，0 控制台/页面报错）：先在搜图模式搜索 `camellia`（`当前显示 24 套谱面`，首项 `Exit This Earth's Atomosphere`），开启音乐返回搜图后对底部 `MusicMiniDock` 连续执行 4 次播放/暂停、静音/取消静音、切下一首，并测试谱面 `试听预览` 与 `AudioPlayerBar` 暂停/关闭后恢复音乐；全程网络请求监控录得 `/api/search` 新增 **`0` 次**、`/api/config` 新增 **`0` 次**，`camellia` 搜索框、结果计数与当前列表完全保持不变。
+  - **打包产物冒烟与清理**：启动 `release\win-unpacked\osu-4k-downloader.exe`（`OSU_DL_DATA_DIR=%TEMP%\osu-dl-verify-exe-bugfix`, `PORT=3729`）实测 `GET /api/health` 返回 `{"ok":true,...}`，清理测试进程与临时目录后 `3721`/`3728`/`3729` 端口监听数均为 `0`，用户 `data/config.json` 完整保留。
+
+---
+
 ## Session 16 — 音乐台左侧栏自动收起与封面顶栏徽标防溢出优化 (`v1.8.0`)
 
 - **日期**：2026-11-25
