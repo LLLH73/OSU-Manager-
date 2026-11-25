@@ -60,6 +60,30 @@ export interface AppConfig {
   onboardingCompleted?: boolean;
 }
 
+export interface DetectedProxyPort {
+  port: number;
+  label: string;
+}
+
+export interface DetectedEnvironment {
+  stablePath: string | null;
+  stableCandidates: string[];
+  currentStableExists: boolean;
+  lazerDataPath: string | null;
+  lazerDataCandidates: string[];
+  currentLazerDataExists: boolean;
+  lazerExePath: string | null;
+  lazerExeCandidates: string[];
+  currentLazerExeExists: boolean;
+  suggestedLazerImportDir: string;
+  suggestedTarget: DownloadTarget;
+  proxyHost: string;
+  proxyPort: number;
+  currentProxyOpen: boolean;
+  openProxyPorts: DetectedProxyPort[];
+  hasGlobalIpv6: boolean;
+}
+
 export type RoutePolicy = 'cn_first' | 'global_first' | 'direct_only' | 'proxy_only';
 
 export interface MirrorDefinition {

@@ -330,6 +330,8 @@ function AppWorkspace({
     }
   }, []);
 
+  const handleSaveConfigRef = useRef<((patch: Partial<AppConfig>) => Promise<void>) | null>(null);
+
   const applyTheme = useCallback((nextTheme: ThemeId, persistBackend = true) => {
     setTheme(nextTheme);
     document.documentElement.dataset.theme = nextTheme;
@@ -362,6 +364,39 @@ function AppWorkspace({
         .catch(() => {});
     }
   }, []);
+
+  const handleSkipOnboarding = useCallback(() => {
+    setAppearancePreview(null);
+    if (config?.theme && isValidTheme(config.theme)) {
+      applyTheme(config.theme, false);
+    }
+    handleCompleteOnboarding(false);
+  }, [applyTheme, config?.theme, handleCompleteOnboarding]);
+
+  const handleSaveOnboardingConfig = useCallback(
+    async (patch: Partial<AppConfig>, openSettingsAfter = false) => {
+      setOnboardingOpen(false);
+      setAppearancePreview(null);
+      try {
+        localStorage.setItem('osu4k-onboarding-completed', 'true');
+      } catch {
+        // Ignore storage error
+      }
+      if (patch.theme && isValidTheme(patch.theme)) {
+        applyTheme(patch.theme, false);
+      }
+      if (patch.viewMode) {
+        applyViewMode(patch.viewMode, false);
+      }
+      if (handleSaveConfigRef.current) {
+        await handleSaveConfigRef.current({ ...patch, onboardingCompleted: true });
+      }
+      if (openSettingsAfter) {
+        setSettingsOpen(true);
+      }
+    },
+    [applyTheme, applyViewMode],
+  );
 
   const toggleSidebarCollapsed = useCallback(() => {
     setSidebarCollapsed((prev) => !prev);
@@ -726,7 +761,7 @@ function AppWorkspace({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       if (onboardingOpen) {
-        handleCompleteOnboarding(false);
+        handleSkipOnboarding();
       } else if (settingsOpen) {
         setAppearancePreview(null);
         setSettingsOpen(false);
@@ -750,7 +785,7 @@ function AppWorkspace({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
     onboardingOpen,
-    handleCompleteOnboarding,
+    handleSkipOnboarding,
     settingsOpen,
     fastBatchOpen,
     librarySyncOpen,
@@ -1500,6 +1535,7 @@ function AppWorkspace({
     setNetwork(net);
     setLibrary(lib);
   };
+  handleSaveConfigRef.current = handleSaveConfig;
 
   const handleToggleOverlay = async () => {
     const api = window.electronAPI;
@@ -2352,12 +2388,17 @@ function AppWorkspace({
         onBenchmark={handleBenchmark}
       />
 
-      {/* First-Run Onboarding Walkthrough Modal */}
+      {/* First-Run Onboarding Setup & Walkthrough Wizard */}
       <OnboardingModal
         open={onboardingOpen}
         version={APP_VERSION}
-        onClose={() => handleCompleteOnboarding(false)}
-        onOpenSettings={() => handleCompleteOnboarding(true)}
+        config={config}
+        theme={theme}
+        viewMode={viewMode}
+        onPreviewTheme={(t) => applyTheme(t, false)}
+        onPreviewAppearance={handlePreviewAppearance}
+        onSkip={handleSkipOnboarding}
+        onSaveAndFinish={handleSaveOnboardingConfig}
       />
 
       {/* Toast */}

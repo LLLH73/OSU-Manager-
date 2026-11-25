@@ -3,6 +3,7 @@ import {
   BookDetail,
   BookRhythmData,
   BooksLibraryResponse,
+  DetectedEnvironment,
   DownloadTarget,
   DownloadTask,
   DownloadVariant,
@@ -47,6 +48,20 @@ export function updateConfig(patch: Partial<AppConfig>): Promise<AppConfig> {
   return apiJson<AppConfig>('/api/config', {
     method: 'PUT',
     body: JSON.stringify(patch),
+  });
+}
+
+export function detectLocalEnvironment(
+  probe?: Partial<
+    Pick<
+      AppConfig,
+      'stablePath' | 'lazerDataPath' | 'lazerExePath' | 'lazerImportDir' | 'proxyHost' | 'proxyPort'
+    >
+  >,
+): Promise<DetectedEnvironment> {
+  return apiJson<DetectedEnvironment>('/api/config/detect-env', {
+    method: 'POST',
+    body: JSON.stringify(probe ?? {}),
   });
 }
 

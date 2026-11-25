@@ -13,6 +13,7 @@ import {
   listDownloads,
   retryDownload,
 } from './downloader.js';
+import { detectLocalEnvironment } from './envDetect.js';
 import {
   clearFastBatch,
   fastBatchEvents,
@@ -141,6 +142,20 @@ app.get('/api/logs', (req: Request, res: Response) => {
 // Config
 app.get('/api/config', (_req: Request, res: Response) => {
   res.json(getConfig());
+});
+
+app.get('/api/config/detect-env', async (_req: Request, res: Response) => {
+  res.json(await detectLocalEnvironment());
+});
+
+app.post('/api/config/detect-env', async (req: Request, res: Response) => {
+  const probe = (req.body || {}) as Partial<
+    Pick<
+      AppConfig,
+      'stablePath' | 'lazerDataPath' | 'lazerExePath' | 'lazerImportDir' | 'proxyHost' | 'proxyPort'
+    >
+  >;
+  res.json(await detectLocalEnvironment(probe));
 });
 
 app.put('/api/config', async (req: Request, res: Response) => {

@@ -1069,7 +1069,7 @@ export function SettingsModal({
                     新手引导
                   </div>
                   <p className="text-[0.78125rem] font-medium text-ink-3">
-                    重新浏览 Lazer 选歌、PP 筛选、双端同步、Book 档案库、音乐台与浮窗功能说明
+                    重新打开新手配置与功能引导（支持探测本机客户端路径与代理端口）
                   </p>
                 </div>
 
