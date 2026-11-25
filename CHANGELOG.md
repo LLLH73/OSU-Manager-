@@ -11,6 +11,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   - **后端多盘符与在线端口自动探测**：新增 `server/envDetect.ts` 与 `GET/POST /api/config/detect-env` 接口，自动扫描常见盘符下 `osu!stable` 根目录、解析 `%APPDATA%\osu\storage.ini` 与常见路径以定位 `osu!lazer` 数据目录及 `osu!.exe`、推导可用暂存目录与推荐默认目标，并并发 TCP 探测本机常见代理端口（`6174`、`7890` Clash、`7897` Clash Verge、`10808/10809` v2rayN、`2080` Sing-box、`20171` v2rayA、`1080/1081`、`12334` Hiddify、`8888`）及 IPv6 就绪状态。
   - **6 步可交互向导配置流程**：将首次引导升级为「`01 欢迎` → `02 客户端路径` → `03 网络与端口` → `04 外观与浮窗` → `05 核心功能` → `06 档案与完成`」6 步向导，支持一键填入探测路径、目录/文件浏览、点击候选路径、端口一键探测与快填、IPv6/下载目标/包体格式/线程/首选镜像配置、主题与字号实时预览、浮窗热键与自动导入开关，以及最终配置摘要确认与立即写入生效；在输入框聚焦时自动屏蔽左右箭头翻步，并在跳过或 `Esc` 时安全回滚未保存的预览状态。
 
+### Changed
+- **可执行文件更名为 `osu-manager`、启用 `asar` 打包并完善 Windows 全格式发行包与 GitHub Release 工作流**（`package.json`, `electron/main.ts`, `scripts/apply-exe-icon.mjs`, `scripts/publish-github-release.mjs`, `server/network.ts`, `start-desktop.bat`, `start.bat`, `src/components/OnboardingModal.tsx`, `src/components/SettingsModal.tsx`, `README.md`, `AGENT.md`）：
+  - 将 `build.productName` 与 `build.win.executableName` 设为 `osu-manager`（输出 `release/win-unpacked/osu-manager.exe`，同步保留 `name: "osu-4k-dual-downloader"` 以兼容既有 `%APPDATA%\osu-4k-dual-downloader\data` 用户配置目录）；
+  - 启用 `asar: true` + `asarUnpack: ["build/**"]` 并在 `electron/main.ts` 的 `resolveAppIconPath()` 中优先读取磁盘解包目录 `app.asar.unpacked/build/icon.ico`，将包内散落文件数从 `7,215` 项收敛至 `79` 项，显著加速压缩与便携版启动自解压；
+  - 将 `scripts/apply-exe-icon.mjs` 接入 `electron-builder` 的 `afterPack` 钩子，并新增 `npm run electron:dist` 一次性输出 `dir`、`osu-manager-1.10.0-win-x64.zip`、`osu-manager-1.10.0-portable.exe` 与 `osu-manager-1.10.0-setup.exe`，配合零依赖 `scripts/publish-github-release.mjs` 与 `SHA256SUMS.txt` 自动上传 GitHub Releases；
+  - 同步更新中英文 `README.md`、新手引导首屏及设置页关于副标题为面向全键位 `osu!mania` 双端玩家（默认 4K，支持 4K/7K/全键数切换筛选），并在 `README.md` 快速开始与顶部导航新增 GitHub Releases 一键下载入口。
+
 ## [1.9.0] - 2026-11-25
 
 ### Added

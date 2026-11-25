@@ -4,6 +4,37 @@
 
 ---
 
+## Session 20 — EXE 更名 `osu-manager`、`asar` 打包优化、GitHub Releases 全格式发行与 README 更新 (`v1.10.0`)
+
+- **日期**：2026-11-25
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **版本**：`v1.10.0`
+- **关联提交**：`feb24d8`
+- **本次需求**：将 Electron 生成的可执行文件改名为 `osu-manager`，在线上仓库 Releases 发布 `zip` / `portable.exe` / `setup.exe` 等下载包，并将 `README.md` 文案拓宽为面向全键位 `osu!mania` 双端玩家且在快速开始给出 Releases 跳转链接。
+- **关键改动与踩坑记录**：
+  1. **EXE 更名与全格式打包配置**（`package.json`, `electron/main.ts`, `scripts/apply-exe-icon.mjs`, `start-desktop.bat`, `start.bat`, `server/network.ts`）：
+     - 设置 `build.productName = "osu-manager"`、`build.win.executableName = "osu-manager"`，保留顶层 `name = "osu-4k-dual-downloader"` 不变以延续 `%APPDATA%\osu-4k-dual-downloader\data` 用户配置兼容；
+     - 将 `scripts/apply-exe-icon.mjs` 改造为 `electron-builder` 的 `afterPack` 钩子，确保在压缩 `zip` / `portable` / `nsis` 前统一向 `osu-manager.exe` 注入粗体 `OM` `.ico` 图标与 `OSU!Manager!` `1.10.0` 版本元数据（严禁对 NSIS 压缩封装后的 `setup.exe`/`portable.exe` 再次运行 `rcedit.exe`，以免破坏尾部归档校验）。
+  2. **从 `asar: false` 切换至 `asar: true` + `asarUnpack: ["build/**"]`**：
+     - 初次以 `asar: false` 打包全格式时，产物内含 `7,215` 个散落文件，导致 `osu-manager-1.10.0-portable.exe` 运行期自解压与磁盘扫描耗时超过 `75s` 仍未完成端口绑定；
+     - 启用 `asar: true` 与 `asarUnpack: ["build/**"]` 并更新 `electron/main.ts` 的 `resolveAppIconPath()` 解析 `app.asar.unpacked/build/icon.ico` 后，包内文件数降至 `79` 项，`win-unpacked\osu-manager.exe`（`2.5s`）与 `osu-manager-1.10.0-portable.exe`（`16.3s`）均顺利完成启动并正常挂载 `app.asar` 内的 `dist-server` 与 `dist/` 前端静态资源。
+  3. **GitHub Release 自动发布脚本与文档/文案同步**（`scripts/publish-github-release.mjs`, `README.md`, `AGENT.md`, `src/components/OnboardingModal.tsx`, `src/components/SettingsModal.tsx`）：
+     - 新建零依赖发布脚本 `scripts/publish-github-release.mjs`（通过 `GH_TOKEN`/`GITHUB_TOKEN` 或 `git credential fill` 内存鉴权，幂等创建/更新 GitHub Release 并流式上传安装包与 `SHA256SUMS.txt`）；
+     - 同步更新中英文 `README.md`、新手引导与设置页关于副本，去掉仅限 `4K` 的表述改为面向 `osu!mania` 双端玩家，并在 `README.md` 顶部与「快速开始」加入 Releases 下载方式。
+- **验证结果**：
+  - `npm run typecheck`、`npm run electron:pack` 与 `npm run electron:dist`（`v1.10.0`）均退出码 `0` 通过，生成：
+    - `release\win-unpacked\osu-manager.exe`（`249,975,808` 字节，`ProductName=OSU!Manager!`，`FileVersion=1.10.0`，`32×32` 关联图标 verified；确认无遗留 `osu-4k-downloader.exe`）
+    - `release\osu-manager-1.10.0-win-x64.zip`（`190,610,129` 字节，ZIP 校验含 `79` 项及 `resources/app.asar`、`resources/app.asar.unpacked/build/icon.ico`、`osu-manager.exe`）
+    - `release\osu-manager-1.10.0-portable.exe`（`142,510,795` 字节，`32×32` 图标 verified）
+    - `release\osu-manager-1.10.0-setup.exe`（`142,736,657` 字节，`32×32` 图标 verified）
+    - `release\SHA256SUMS.txt`
+  - **双产物启动冒烟**（隔离 `OSU_DL_DATA_DIR` + `PORT=3729`）：
+    - `release\win-unpacked\osu-manager.exe` 用时 `2.5s` 就绪，`/` (`200`, 含 `OSU!Manager!`)、`/api/health` (`200`)、`/api/config/detect-env` (`200`) 全通过；
+    - `release\osu-manager-1.10.0-portable.exe` 用时 `16.3s` 自解压并就绪，`/` (`200`, 含 `OSU!Manager!`)、`/api/health` (`200`)、`/api/config/detect-env` (`200`) 全通过；清理后 `3721`/`3728`/`3729` 端口监听数 `0`，`data\config.json` 完整无损。
+  - **真实浏览器 UI 文案实测**（`http://127.0.0.1:3728`，`1440×900`，`0` console/page errors）：新手引导 Step 1 正确显示 `跨端 osu!mania 谱面管理`，设置页分区 5 正确显示 `osu!mania 双端管理下载器 · Book 档案库 · OSU! 音乐台`、`v1.10.0` 与 GitHub 开源地址。
+
+---
+
 ## Session 19 — 新手引导交互式跨机配置向导与本机环境/端口自动探测 (`v1.10.0`)
 
 - **日期**：2026-11-25
