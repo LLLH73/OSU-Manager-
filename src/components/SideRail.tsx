@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import {
   ArrowRightLeft,
   BookOpen,
@@ -10,7 +11,13 @@ import {
   Zap,
 } from 'lucide-react';
 import { OsuMusicMark } from './music/OsuMusicMark';
-import { TARGET_META, VARIANT_OPTIONS, WORKFLOW_PRESETS, WorkflowPreset } from '../constants';
+import {
+  WorkflowPreset,
+  getTargetMeta,
+  getVariantOptions,
+  getWorkflowPresets,
+} from '../constants';
+import { useI18n } from '../i18n';
 import {
   DownloadTarget,
   DownloadTask,
@@ -63,6 +70,11 @@ export function SideRail({
   onOpenDownloads,
   onOpenSettings,
 }: SideRailProps) {
+  const { lang, t } = useI18n();
+  const targetMeta = useMemo(() => getTargetMeta(lang), [lang]);
+  const variantOptions = useMemo(() => getVariantOptions(lang), [lang]);
+  const workflowPresets = useMemo(() => getWorkflowPresets(lang), [lang]);
+
   const activeDownloads = downloads.filter(
     (d) =>
       d.status === 'queued' ||
@@ -79,7 +91,7 @@ export function SideRail({
         {/* Workspace Mode Switcher: Online Browse / 3D Book Archive / Swiss Music Player */}
         <section className="space-y-1">
           <div className="px-0.5">
-            <span className="overline">工作区模式</span>
+            <span className="overline">{t('工作区模式', 'Workspace')}</span>
           </div>
           <div className="grid grid-cols-3 rounded-[9px] border border-hairline bg-canvas/55 p-0.5">
             <button
@@ -93,7 +105,7 @@ export function SideRail({
               }`}
             >
               <Compass className="h-3.5 w-3.5 shrink-0" />
-              <span>搜图</span>
+              <span>{t('搜图', 'Browse')}</span>
             </button>
             <button
               type="button"
@@ -127,7 +139,7 @@ export function SideRail({
                 active={workspaceMode === 'music'}
                 playing={musicPlaying}
               />
-              <span>音乐</span>
+              <span>{t('音乐', 'Music')}</span>
               {musicPlaying && workspaceMode !== 'music' && (
                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#d62828]" />
               )}
@@ -138,19 +150,23 @@ export function SideRail({
         {/* Download Target (Impeccable machined 3-way pill + underline variant tabs) */}
         <section className="space-y-1.5">
           <div className="px-0.5">
-            <span className="overline">下载目标</span>
+            <span className="overline">{t('下载目标', 'Target')}</span>
           </div>
 
           <div className="grid grid-cols-3 rounded-[9px] border border-hairline bg-canvas/55 p-0.5">
-            {TARGET_ORDER.map((t) => {
-              const meta = TARGET_META[t];
-              const active = target === t;
+            {TARGET_ORDER.map((tgt) => {
+              const meta = targetMeta[tgt];
+              const active = target === tgt;
               return (
                 <button
-                  key={t}
+                  key={tgt}
                   type="button"
-                  onClick={() => onChangeTarget(t)}
-                  title={t === 'both' ? '同时安装到 Stable + Lazer' : `下载到 ${meta.label}`}
+                  onClick={() => onChangeTarget(tgt)}
+                  title={
+                    tgt === 'both'
+                      ? t('同时安装到 Stable + Lazer', 'Install to Stable + Lazer')
+                      : t(`下载到 ${meta.label}`, `Download to ${meta.label}`)
+                  }
                   className={`min-h-[30px] rounded-[7px] px-1 py-1 text-[0.8125rem] transition-all duration-150 ${
                     active
                       ? 'bg-surface-2 font-bold text-ink shadow-[0_1px_2px_rgba(0,0,0,0.12)]'
@@ -164,7 +180,7 @@ export function SideRail({
           </div>
 
           <div className="flex items-center gap-3.5 px-0.5">
-            {VARIANT_OPTIONS.map((opt) => {
+            {variantOptions.map((opt) => {
               const active = variant === opt.value;
               return (
                 <button
@@ -188,10 +204,10 @@ export function SideRail({
         {/* Mania 4K Presets (Borderless editorial index with 5px accent dot) */}
         <section className="space-y-1.5">
           <div className="px-0.5">
-            <span className="overline">Mania 4K 场景</span>
+            <span className="overline">{t('Mania 4K 场景', 'Mania 4K Presets')}</span>
           </div>
           <div className="space-y-0.5">
-            {WORKFLOW_PRESETS.map((preset) => {
+            {workflowPresets.map((preset) => {
               const active = activePresetId === preset.id;
               return (
                 <button
@@ -225,7 +241,7 @@ export function SideRail({
         {/* Local Dual-Client Library (Hairline-bounded tabular summary, zero card-in-card) */}
         <section className="space-y-1 border-y border-hairline py-1.5">
           <div className="px-0.5">
-            <span className="overline">本地曲库</span>
+            <span className="overline">{t('本地曲库', 'Local Library')}</span>
           </div>
 
           <div className="space-y-1.5 px-0.5">
@@ -234,7 +250,11 @@ export function SideRail({
                 {library?.stableRunning ? <span className="live-dot" /> : <span className="idle-dot" />}
                 <span>Stable</span>
                 <span className="text-[0.71875rem] font-medium text-ink-3">
-                  {library?.stableRunning ? '运行中' : library?.stableExists === false ? '未找到' : ''}
+                  {library?.stableRunning
+                    ? t('运行中', 'Running')
+                    : library?.stableExists === false
+                      ? t('未找到', 'Not found')
+                      : ''}
                 </span>
               </span>
               <span className="font-stat text-[1rem] font-bold text-ink tabular-nums">
@@ -250,7 +270,11 @@ export function SideRail({
                   <Loader2 className="h-3 w-3 animate-spin text-ink-3" />
                 )}
                 <span className="text-[0.71875rem] font-medium text-ink-3">
-                  {library?.lazerRunning ? '运行中' : library?.lazerExists === false ? '未找到' : ''}
+                  {library?.lazerRunning
+                    ? t('运行中', 'Running')
+                    : library?.lazerExists === false
+                      ? t('未找到', 'Not found')
+                      : ''}
                 </span>
               </span>
               <span className="font-stat text-[1rem] font-bold text-ink tabular-nums">
@@ -260,7 +284,7 @@ export function SideRail({
 
             {pending > 0 && (
               <div className="flex items-center justify-between pt-0.5 text-[0.78125rem] font-semibold text-warn">
-                <span>待导入 .osz</span>
+                <span>{t('待导入 .osz', 'Pending .osz')}</span>
                 <span className="font-mono font-semibold tabular-nums">{pending}</span>
               </div>
             )}
@@ -273,10 +297,10 @@ export function SideRail({
               onClick={() => onLaunchGame('stable')}
               title={
                 library?.stableRunning
-                  ? 'osu!stable 运行中，点击尝试切至前台'
+                  ? t('osu!stable 运行中，点击尝试切至前台', 'osu!stable is running — click to focus')
                   : library?.stableExeExists === false
-                    ? '未找到 osu!stable 可执行文件，点击检查路径'
-                    : '启动 osu!stable 客户端'
+                    ? t('未找到 osu!stable 可执行文件，点击检查路径', 'osu!stable executable not found — click to check path')
+                    : t('启动 osu!stable 客户端', 'Launch osu!stable')
               }
               className={`btn btn-sm min-h-[30px] justify-center gap-1.5 px-2 text-[0.75rem] ${
                 library?.stableRunning
@@ -289,7 +313,7 @@ export function SideRail({
               ) : (
                 <Play className="h-3 w-3 shrink-0 fill-current" />
               )}
-              <span className="truncate">启动 Stable</span>
+              <span className="truncate">{t('启动 Stable', 'Run Stable')}</span>
             </button>
 
             <button
@@ -298,10 +322,10 @@ export function SideRail({
               onClick={() => onLaunchGame('lazer')}
               title={
                 library?.lazerRunning
-                  ? 'osu!lazer 运行中，点击尝试切至前台'
+                  ? t('osu!lazer 运行中，点击尝试切至前台', 'osu!lazer is running — click to focus')
                   : library?.lazerExeExists === false
-                    ? '未找到 osu!lazer 可执行文件，点击检查路径'
-                    : '启动 osu!lazer 客户端'
+                    ? t('未找到 osu!lazer 可执行文件，点击检查路径', 'osu!lazer executable not found — click to check path')
+                    : t('启动 osu!lazer 客户端', 'Launch osu!lazer')
               }
               className={`btn btn-sm min-h-[30px] justify-center gap-1.5 px-2 text-[0.75rem] ${
                 library?.lazerRunning
@@ -314,7 +338,7 @@ export function SideRail({
               ) : (
                 <Play className="h-3 w-3 shrink-0 fill-current" />
               )}
-              <span className="truncate">启动 Lazer</span>
+              <span className="truncate">{t('启动 Lazer', 'Run Lazer')}</span>
             </button>
           </div>
 
@@ -335,7 +359,7 @@ export function SideRail({
                     : 'text-ink-3 group-hover:text-amber-500'
                 }`}
               />
-              <span className="truncate">Book 档案库</span>
+              <span className="truncate">{t('Book 档案库', '3D Books')}</span>
             </button>
 
             <button
@@ -352,7 +376,7 @@ export function SideRail({
                 active={workspaceMode === 'music'}
                 playing={musicPlaying}
               />
-              <span className="truncate">OSU 音乐台</span>
+              <span className="truncate">{t('OSU 音乐台', 'OSU! Audio')}</span>
             </button>
           </div>
         </section>
@@ -367,7 +391,7 @@ export function SideRail({
         >
           <span className="flex items-center gap-2">
             <ArrowRightLeft className="h-3.5 w-3.5 text-ink-3 transition-colors group-hover:text-osu" />
-            <span>双端曲库比对同步</span>
+            <span>{t('双端曲库比对同步', 'Library Sync')}</span>
           </span>
           <ChevronRight className="h-3.5 w-3.5 text-ink-4 transition-transform group-hover:translate-x-0.5 group-hover:text-ink-2" />
         </button>
@@ -385,7 +409,7 @@ export function SideRail({
                   : 'text-ink-3 group-hover:text-osu'
               }`}
             />
-            <span>快速批量下载</span>
+            <span>{t('快速批量下载', 'Fast Batch')}</span>
           </span>
           {(fastBatch?.state === 'running' || fastBatch?.state === 'paused') && (
             <span className="font-mono rounded-full bg-osu px-1.5 py-px text-[0.71875rem] font-semibold text-white tabular-nums">
@@ -405,12 +429,12 @@ export function SideRail({
             ) : (
               <Download className="h-3.5 w-3.5 text-ink-3 transition-colors group-hover:text-osu" />
             )}
-            <span>下载队列</span>
+            <span>{t('下载队列', 'Downloads')}</span>
           </span>
           <span className="flex items-center gap-1.5">
             {failedCount > 0 && (
               <span className="font-mono text-[0.71875rem] font-semibold text-bad tabular-nums">
-                {failedCount} 失败
+                {t(`${failedCount} 失败`, `${failedCount} failed`)}
               </span>
             )}
             {(activeDownloads.length > 0 || downloads.length > 0) && (
@@ -434,9 +458,11 @@ export function SideRail({
         >
           <span className="flex items-center gap-2">
             <Settings className="h-3.5 w-3.5 text-ink-3 transition-transform group-hover:rotate-45 group-hover:text-ink" />
-            <span>设置</span>
+            <span>{t('设置', 'Settings')}</span>
           </span>
-          <span className="text-[0.71875rem] font-medium text-ink-3">字体 · 主题 · 背景</span>
+          <span className="text-[0.71875rem] font-medium text-ink-3">
+            {t('字体 · 主题 · 背景', 'Font · Theme · BG')}
+          </span>
         </button>
       </div>
     </div>

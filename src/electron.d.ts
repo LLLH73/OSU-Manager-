@@ -22,6 +22,7 @@ export interface ElectronAPI {
   selectFile: (defaultPath?: string, filters?: FileDialogFilter[]) => Promise<string | null>;
   openExternal: (url: string) => Promise<void>;
   getAppVersion: () => Promise<string>;
+  setLanguage?: (lang: 'zh' | 'en') => Promise<void>;
 
   // Overlay APIs
   toggleOverlay: () => Promise<boolean>;

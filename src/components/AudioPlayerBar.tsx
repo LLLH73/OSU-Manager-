@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Download, Pause, Play, Volume2, VolumeX, X } from 'lucide-react';
 import { formatDuration } from '../constants';
+import { useI18n } from '../i18n';
 import { DownloadTarget, NormalizedBeatmapset } from '../types';
 import { MarqueeText } from './MarqueeText';
 
@@ -26,24 +27,25 @@ export function AudioPlayerBar({
   onStop,
   onDownload,
 }: AudioPlayerBarProps) {
+  const { t } = useI18n();
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.6);
   const [muted, setMuted] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     const el = audioRef.current;
     if (!el || !beatmapset) return;
-    setErrorMsg(null);
+    setHasError(false);
     setCurrentTime(0);
     setDuration(0);
     el.src = beatmapset.previewUrl;
     el.volume = muted ? 0 : volume;
     if (playing) {
       el.play().catch(() => {
-        setErrorMsg('试听加载失败');
+        setHasError(true);
       });
     }
   }, [beatmapset?.id]);
@@ -82,7 +84,7 @@ export function AudioPlayerBar({
           onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
           onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
           onEnded={() => onTogglePlay()}
-          onError={() => setErrorMsg('试听加载失败')}
+          onError={() => setHasError(true)}
         />
 
         {/* Circular Cover & Quiet Track Meta */}
@@ -107,7 +109,7 @@ export function AudioPlayerBar({
                 <i />
                 <i />
               </span>
-              {errorMsg && <span className="shrink-0 text-bad">({errorMsg})</span>}
+              {hasError && <span className="shrink-0 text-bad">({t('试听加载失败', 'Preview failed')})</span>}
             </div>
           </div>
         </div>
@@ -118,7 +120,7 @@ export function AudioPlayerBar({
             type="button"
             onClick={onTogglePlay}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-osu text-white transition-transform hover:scale-[1.04]"
-            title={playing ? '暂停试听' : '播放试听'}
+            title={playing ? t('暂停试听', 'Pause preview') : t('播放试听', 'Play preview')}
           >
             {playing ? (
               <Pause className="h-3.5 w-3.5" />
@@ -143,7 +145,7 @@ export function AudioPlayerBar({
             }}
             style={{ '--fill': `${seekFillPct}%` } as CSSProperties}
             className="impeccable-range flex-1"
-            aria-label="试听进度"
+            aria-label={t('试听进度', 'Preview progress')}
           />
           <span className="font-mono w-8 text-[0.71875rem] text-ink-3 tabular-nums">
             {formatDuration(duration)}
@@ -156,7 +158,7 @@ export function AudioPlayerBar({
             type="button"
             onClick={() => setMuted((m) => !m)}
             className="flex h-7 w-7 items-center justify-center rounded-full text-ink-2 transition-colors hover:bg-tint-hover hover:text-ink"
-            title={muted ? '取消静音' : '静音'}
+            title={muted ? t('取消静音', 'Unmute') : t('静音', 'Mute')}
           >
             {muted || volume === 0 ? (
               <VolumeX className="h-3.5 w-3.5 text-ink-3" />
@@ -176,7 +178,7 @@ export function AudioPlayerBar({
             }}
             style={{ '--fill': `${volFillPct}%` } as CSSProperties}
             className="impeccable-range hidden w-14 md:block"
-            aria-label="音量"
+            aria-label={t('音量', 'Volume')}
           />
           <button
             type="button"
@@ -184,13 +186,13 @@ export function AudioPlayerBar({
             className="ml-1 inline-flex min-h-[28px] items-center gap-1.5 rounded-full bg-ink px-3 text-[0.75rem] font-semibold text-canvas transition-opacity hover:opacity-88"
           >
             <Download className="h-3 w-3" />
-            <span>下载</span>
+            <span>{t('下载', 'Download')}</span>
           </button>
           <button
             type="button"
             onClick={onStop}
             className="flex h-7 w-7 items-center justify-center rounded-full text-ink-3 transition-colors hover:bg-tint-hover hover:text-ink"
-            title="关闭试听栏"
+            title={t('关闭试听栏', 'Close player bar')}
           >
             <X className="h-3.5 w-3.5" />
           </button>

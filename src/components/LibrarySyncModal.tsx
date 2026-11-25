@@ -17,7 +17,8 @@ import {
   rescanLocalLibrary,
   syncStableToLazer,
 } from '../api';
-import { TARGET_META } from '../constants';
+import { getTargetMeta } from '../constants';
+import { useI18n } from '../i18n';
 import { LibraryDiffResult, LocalLibraryStatus } from '../types';
 
 interface LibrarySyncModalProps {
@@ -35,6 +36,7 @@ export function LibrarySyncModal({
   onLibraryUpdated,
   onNotify,
 }: LibrarySyncModalProps) {
+  const { lang, isEn, t } = useI18n();
   const [tab, setTab] = useState<'stableToLazer' | 'lazerToStable'>('stableToLazer');
   const [diff, setDiff] = useState<LibraryDiffResult | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,15 +113,26 @@ export function LibrarySyncModal({
         const res = await syncStableToLazer(ids);
         onNotify(
           res.triggeredIpc
-            ? `已零流量本地打包 ${res.syncedCount} 张谱面并发送给运行中的 Lazer`
-            : `已零流量本地打包 ${res.syncedCount} 张谱面至 Lazer 待导入队列`,
+            ? t(
+                `已零流量本地打包 ${res.syncedCount} 张谱面并发送给运行中的 Lazer`,
+                `Locally packed ${res.syncedCount} beatmapsets (0 traffic) & sent to Lazer`,
+              )
+            : t(
+                `已零流量本地打包 ${res.syncedCount} 张谱面至 Lazer 待导入队列`,
+                `Locally packed ${res.syncedCount} beatmapsets (0 traffic) into Lazer import queue`,
+              ),
         );
       } else {
         const res = await enqueueBatchDownloads({
           items: ids.map((id) => ({ beatmapsetId: id })),
           target: 'stable',
         });
-        onNotify(`已加入 ${res.count} 个任务从镜像下载到 Stable`);
+        onNotify(
+          t(
+            `已加入 ${res.count} 个任务从镜像下载到 Stable`,
+            `Queued ${res.count} downloads from mirrors to Stable`,
+          ),
+        );
       }
       setSelectedIds(new Set());
       await loadDiff();
@@ -128,7 +141,8 @@ export function LibrarySyncModal({
     }
   };
 
-  const destMeta = tab === 'stableToLazer' ? TARGET_META.lazer : TARGET_META.stable;
+  const targetMeta = getTargetMeta(lang);
+  const destMeta = tab === 'stableToLazer' ? targetMeta.lazer : targetMeta.stable;
   const checkedRowCls =
     tab === 'stableToLazer'
       ? 'border-lazer/45 bg-lazer/12 text-ink'
@@ -146,7 +160,7 @@ export function LibrarySyncModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="双端曲库扫描与零流量同步"
+        aria-label={t('双端曲库扫描与零流量同步', 'Dual-Client Library Scan & Sync')}
         className="modal-surface flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
@@ -158,14 +172,23 @@ export function LibrarySyncModal({
             </div>
             <div className="min-w-0">
               <h2 className="font-display text-[1rem] font-bold text-ink">
-                双端曲库扫描与零流量同步
+                {t('双端曲库扫描与零流量同步', 'Dual-Client Library Scan & Sync')}
               </h2>
               <p
                 className="truncate text-[0.75rem] font-medium text-ink-3"
                 title={`${library?.stablePath ?? ''} · ${library?.lazerDataPath ?? ''}`}
               >
-                自动比对 Stable (<span className="font-mono text-ink-2">{library?.stablePath}</span>) 与 Lazer (
-                <span className="font-mono text-ink-2">{library?.lazerDataPath}</span>)
+                {isEn ? (
+                  <>
+                    Compare Stable (<span className="font-mono text-ink-2">{library?.stablePath}</span>) &amp; Lazer (
+                    <span className="font-mono text-ink-2">{library?.lazerDataPath}</span>)
+                  </>
+                ) : (
+                  <>
+                    自动比对 Stable (<span className="font-mono text-ink-2">{library?.stablePath}</span>) 与 Lazer (
+                    <span className="font-mono text-ink-2">{library?.lazerDataPath}</span>)
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -177,9 +200,9 @@ export function LibrarySyncModal({
               className="btn btn-sm"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span>重新扫描</span>
+              <span>{t('重新扫描', 'Rescan')}</span>
             </button>
-            <button type="button" onClick={onClose} className="btn btn-icon" aria-label="关闭">
+            <button type="button" onClick={onClose} className="btn btn-icon" aria-label={t('关闭', 'Close')}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -203,7 +226,7 @@ export function LibrarySyncModal({
               <span className="font-stat text-[1.5rem] leading-none font-bold text-ink">
                 {library?.stableCount ?? 0}
               </span>
-              <span className="text-[0.75rem] font-medium text-ink-3">套</span>
+              <span className="text-[0.75rem] font-medium text-ink-3">{t('套', 'sets')}</span>
             </div>
           </div>
 
@@ -216,18 +239,18 @@ export function LibrarySyncModal({
                 onClick={() => openLocalFolder('lazerImport')}
                 className="inline-flex items-center gap-1 text-[0.71875rem] font-medium text-ink-2 transition-colors hover:text-lazer-soft"
               >
-                <FolderOpen className="h-3 w-3" /> 导入目录
+                <FolderOpen className="h-3 w-3" /> {t('导入目录', 'Import Dir')}
               </button>
             </div>
             <div className="mt-1.5 flex items-baseline gap-1.5">
               <span className="font-stat text-[1.5rem] leading-none font-bold text-ink">
                 {library?.lazerCount ?? 0}
               </span>
-              <span className="text-[0.75rem] font-medium text-ink-3">套</span>
+              <span className="text-[0.75rem] font-medium text-ink-3">{t('套', 'sets')}</span>
               {library?.lazerDeepScanRunning && (
                 <span className="chip ml-auto self-center border-lazer/35 bg-lazer/12 text-lazer-soft">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  深度扫描中...
+                  {t('深度扫描中...', 'Deep scanning...')}
                 </span>
               )}
             </div>
@@ -237,13 +260,13 @@ export function LibrarySyncModal({
             <span className="absolute inset-y-0 left-0 w-[2.5px] bg-emerald-500" />
             <div className="flex items-center gap-1.5">
               <Layers className="h-3 w-3 text-ok" />
-              <span className="overline text-ok">双端共有谱面</span>
+              <span className="overline text-ok">{t('双端共有谱面', 'In Both Clients')}</span>
             </div>
             <div className="mt-1.5 flex items-baseline gap-1.5">
               <span className="font-stat text-[1.5rem] leading-none font-bold text-ink">
                 {diff?.inBothCount ?? '—'}
               </span>
-              <span className="text-[0.75rem] font-medium text-ink-3">套</span>
+              <span className="text-[0.75rem] font-medium text-ink-3">{t('套', 'sets')}</span>
             </div>
           </div>
         </div>
@@ -257,9 +280,9 @@ export function LibrarySyncModal({
                 setTab('stableToLazer');
                 setSelectedIds(new Set());
               }}
-              className={`px-3 ${tab === 'stableToLazer' ? TARGET_META.lazer.activeSegCls : ''}`}
+              className={`px-3 ${tab === 'stableToLazer' ? targetMeta.lazer.activeSegCls : ''}`}
             >
-              Stable 有 · Lazer 缺{' '}
+              {t('Stable 有 · Lazer 缺', 'Stable Only · Missing in Lazer')}{' '}
               <span className="font-mono ml-1 tabular-nums opacity-75">{diff?.stableOnly.length ?? 0}</span>
             </button>
             <button
@@ -268,9 +291,9 @@ export function LibrarySyncModal({
                 setTab('lazerToStable');
                 setSelectedIds(new Set());
               }}
-              className={`px-3 ${tab === 'lazerToStable' ? TARGET_META.stable.activeSegCls : ''}`}
+              className={`px-3 ${tab === 'lazerToStable' ? targetMeta.stable.activeSegCls : ''}`}
             >
-              Lazer 有 · Stable 缺{' '}
+              {t('Lazer 有 · Stable 缺', 'Lazer Only · Missing in Stable')}{' '}
               <span className="font-mono ml-1 tabular-nums opacity-75">{diff?.lazerOnly.length ?? 0}</span>
             </button>
           </div>
@@ -281,7 +304,7 @@ export function LibrarySyncModal({
               type="text"
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
-              placeholder="筛选谱面 ID 或名称..."
+              placeholder={t('筛选谱面 ID 或名称...', 'Filter by ID or title...')}
               className="field pl-8"
             />
           </div>
@@ -292,12 +315,12 @@ export function LibrarySyncModal({
           {loading ? (
             <div className="flex flex-col items-center justify-center gap-2 py-14 text-[0.8125rem] font-medium text-ink-2">
               <Loader2 className="h-5 w-5 animate-spin text-ink-3" />
-              <span>正在分析双端差异...</span>
+              <span>{t('正在分析双端差异...', 'Comparing libraries...')}</span>
             </div>
           ) : activeItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-2 py-14 text-[0.8125rem] font-medium text-ink-3">
               <Check className="h-5 w-5 text-ink-4" />
-              <span>没有符合条件的差异谱面</span>
+              <span>{t('没有符合条件的差异谱面', 'No matching beatmapsets found')}</span>
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
@@ -339,14 +362,26 @@ export function LibrarySyncModal({
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline bg-surface-1/75 px-5 py-3">
           <div className="flex items-center gap-2.5">
             <button type="button" onClick={selectAllVisible} className="btn btn-sm">
-              全选前 100 项
+              {t('全选前 100 项', 'Select First 100')}
             </button>
             <span className="text-[0.78125rem] font-medium text-ink-2">
-              已选{' '}
-              <span className={`font-mono font-semibold tabular-nums ${selectedIds.size > 0 ? destMeta.textCls : 'text-ink'}`}>
-                {selectedIds.size}
-              </span>{' '}
-              项
+              {isEn ? (
+                <>
+                  Selected{' '}
+                  <span className={`font-mono font-semibold tabular-nums ${selectedIds.size > 0 ? destMeta.textCls : 'text-ink'}`}>
+                    {selectedIds.size}
+                  </span>{' '}
+                  items
+                </>
+              ) : (
+                <>
+                  已选{' '}
+                  <span className={`font-mono font-semibold tabular-nums ${selectedIds.size > 0 ? destMeta.textCls : 'text-ink'}`}>
+                    {selectedIds.size}
+                  </span>{' '}
+                  项
+                </>
+              )}
             </span>
           </div>
 
@@ -363,8 +398,8 @@ export function LibrarySyncModal({
             )}
             <span>
               {tab === 'stableToLazer'
-                ? '本地打包同步到 Lazer (零流量)'
-                : '从镜像补全下载到 Stable'}
+                ? t('本地打包同步到 Lazer (零流量)', 'Local Pack & Sync to Lazer (0 Traffic)')
+                : t('从镜像补全下载到 Stable', 'Download Missing to Stable')}
             </span>
           </button>
         </div>

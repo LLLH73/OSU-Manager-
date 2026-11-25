@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { RotateCcw } from 'lucide-react';
+import { useI18n } from '../i18n';
 
 interface PpRangeSliderProps {
   minPp?: number;
@@ -20,6 +21,7 @@ function roundPp(v: number): number {
 }
 
 export function PpRangeSlider({ minPp, maxPp, onChange, trailing }: PpRangeSliderProps) {
+  const { t } = useI18n();
   const trackRef = useRef<HTMLDivElement | null>(null);
   const activeThumbRef = useRef<'min' | 'max' | null>(null);
   const dragRectRef = useRef<DOMRect | null>(null);
@@ -295,14 +297,14 @@ export function PpRangeSlider({ minPp, maxPp, onChange, trailing }: PpRangeSlide
               setEditingBound(null);
             }
           }}
-          aria-label="编辑 PP 下界"
+          aria-label={t('编辑 PP 下界', 'Edit min PP')}
           className="field font-mono min-h-[24px] w-[4.15rem] shrink-0 px-1.5 py-0 text-center text-[0.75rem] tabular-nums"
         />
       ) : (
         <button
           type="button"
           onClick={() => beginEdit('min')}
-          title="点击输入精确 PP 下界"
+          title={t('点击输入精确 PP 下界', 'Click to enter exact min PP')}
           className={`font-stat inline-flex min-h-[24px] w-[4.15rem] shrink-0 items-center justify-center whitespace-nowrap rounded-full border px-1.5 text-[0.75rem] font-bold tabular-nums transition-colors ${
             minPp != null
               ? 'border-lazer/45 bg-lazer/14 text-lazer-soft'
@@ -334,7 +336,7 @@ export function PpRangeSlider({ minPp, maxPp, onChange, trailing }: PpRangeSlide
         <div
           role="slider"
           tabIndex={0}
-          aria-label="PP 下界"
+          aria-label={t('PP 下界', 'Minimum PP')}
           aria-valuemin={0}
           aria-valuemax={Math.min(PP_FINITE_MAX, maxTrack)}
           aria-valuenow={minTrack}
@@ -349,11 +351,11 @@ export function PpRangeSlider({ minPp, maxPp, onChange, trailing }: PpRangeSlide
         <div
           role="slider"
           tabIndex={0}
-          aria-label="PP 上界"
+          aria-label={t('PP 上界', 'Maximum PP')}
           aria-valuemin={minTrack}
           aria-valuemax={PP_TRACK_SPAN}
           aria-valuenow={maxTrack}
-          aria-valuetext={maxPp == null ? '不限上限' : `${effMax} pp`}
+          aria-valuetext={maxPp == null ? t('不限上限', 'Unlimited') : `${effMax} pp`}
           onKeyDown={(e) => handleKeyDown('max', e)}
           style={{ left: maxThumbLeft }}
           className={`absolute top-1/2 h-[14px] w-[24px] -translate-y-1/2 rounded-[4px] bg-lazer transition-transform duration-100 ${
@@ -381,14 +383,14 @@ export function PpRangeSlider({ minPp, maxPp, onChange, trailing }: PpRangeSlide
               setEditingBound(null);
             }
           }}
-          aria-label="编辑 PP 上界"
+          aria-label={t('编辑 PP 上界', 'Edit max PP')}
           className="field font-mono min-h-[24px] w-[4.15rem] shrink-0 px-1.5 py-0 text-center text-[0.75rem] tabular-nums"
         />
       ) : (
         <button
           type="button"
           onClick={() => beginEdit('max')}
-          title="点击输入精确 PP 上界（上限 2000pp，清空表示不限 ∞）"
+          title={t('点击输入精确 PP 上界（上限 2000pp，清空表示不限 ∞）', 'Click to enter exact max PP (max 2000pp, clear for ∞)')}
           className={`font-stat inline-flex min-h-[24px] w-[4.15rem] shrink-0 items-center justify-center whitespace-nowrap rounded-full border px-1.5 text-[0.75rem] font-bold tabular-nums transition-colors ${
             maxPp != null
               ? 'border-lazer/45 bg-lazer/14 text-lazer-soft'
@@ -405,8 +407,8 @@ export function PpRangeSlider({ minPp, maxPp, onChange, trailing }: PpRangeSlide
         disabled={!hasFilter}
         tabIndex={hasFilter ? 0 : -1}
         onClick={() => onChange(undefined, undefined, true)}
-        title="清除 PP 范围"
-        aria-label="清除 PP 范围"
+        title={t('清除 PP 范围', 'Clear PP range')}
+        aria-label={t('清除 PP 范围', 'Clear PP range')}
         className={`btn btn-sm btn-icon h-[24px] w-[24px] shrink-0 transition-opacity ${
           hasFilter ? 'text-ink-3 opacity-100 hover:text-osu' : 'pointer-events-none invisible opacity-0'
         }`}

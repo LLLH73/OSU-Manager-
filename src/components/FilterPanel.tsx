@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import {
   ArrowDownWideNarrow,
@@ -12,12 +12,13 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import {
-  OSU_GENRES,
-  OSU_LANGUAGES,
   QUICK_PRACTICE_TAGS,
-  SORT_FIELDS,
-  STATUS_OPTIONS,
+  getOsuGenres,
+  getOsuLanguages,
+  getSortFields,
+  getStatusOptions,
 } from '../constants';
+import { useI18n } from '../i18n';
 import { InstalledFilter, SearchFilters, SearchMode, SearchSource, SearchStatus } from '../types';
 import {
   PpScenarioCategory,
@@ -49,16 +50,6 @@ interface FilterPanelProps {
   onReset: () => void;
 }
 
-const PP_RANGE_PRESETS: Array<{ label: string; minPp?: number; maxPp?: number }> = [
-  { label: '不限' },
-  { label: '<200', maxPp: 200 },
-  { label: '200–350', minPp: 200, maxPp: 350 },
-  { label: '350–500', minPp: 350, maxPp: 500 },
-  { label: '500–700', minPp: 500, maxPp: 700 },
-  { label: '700–1000', minPp: 700, maxPp: 1000 },
-  { label: '1000+', minPp: 1000 },
-];
-
 const PP_RATE_QUICK_CHIPS: Array<{ label: string; value: number }> = [
   { label: 'HT 0.75x', value: 0.75 },
   { label: '0.9x', value: 0.9 },
@@ -79,17 +70,6 @@ const PP_ACC_QUICK_CHIPS: Array<{ label: string; value: number }> = [
   { label: 'SS', value: 100 },
 ];
 
-const PP_MA_QUICK_CHIPS: Array<{ label: string; value: number | undefined }> = [
-  { label: '直算', value: undefined },
-  { label: '1:1', value: 1 },
-  { label: '2:1', value: 2 },
-  { label: '3:1', value: 3 },
-  { label: '4:1', value: 4 },
-  { label: '5:1', value: 5 },
-  { label: '8:1', value: 8 },
-  { label: '全彩', value: 1000 },
-];
-
 const PP_MISS_QUICK_CHIPS = [0, 1, 2, 3, 5, 8, 10];
 
 function RangeInput({
@@ -97,8 +77,8 @@ function RangeInput({
   minVal,
   maxVal,
   step = 'any',
-  minPlaceholder = '最小',
-  maxPlaceholder = '最大',
+  minPlaceholder,
+  maxPlaceholder,
   onChangeMin,
   onChangeMax,
 }: {
@@ -111,6 +91,9 @@ function RangeInput({
   onChangeMin: (v: number | undefined) => void;
   onChangeMax: (v: number | undefined) => void;
 }) {
+  const { t } = useI18n();
+  const effectiveMinPlaceholder = minPlaceholder ?? t('最小', 'Min');
+  const effectiveMaxPlaceholder = maxPlaceholder ?? t('最大', 'Max');
   const parse = (raw: string) => {
     if (raw === '') return undefined;
     const n = Number(raw);
@@ -124,7 +107,7 @@ function RangeInput({
           type="number"
           step={step}
           value={minVal ?? ''}
-          placeholder={minPlaceholder}
+          placeholder={effectiveMinPlaceholder}
           onChange={(e) => onChangeMin(parse(e.target.value))}
           className="field font-mono text-[0.78125rem] tabular-nums"
         />
@@ -133,7 +116,7 @@ function RangeInput({
           type="number"
           step={step}
           value={maxVal ?? ''}
-          placeholder={maxPlaceholder}
+          placeholder={effectiveMaxPlaceholder}
           onChange={(e) => onChangeMax(parse(e.target.value))}
           className="field font-mono text-[0.78125rem] tabular-nums"
         />
@@ -153,6 +136,37 @@ export function FilterPanel({
   onSearch,
   onReset,
 }: FilterPanelProps) {
+  const { lang, isEn, t } = useI18n();
+  const osuGenres = useMemo(() => getOsuGenres(lang), [lang]);
+  const osuLanguages = useMemo(() => getOsuLanguages(lang), [lang]);
+  const sortFields = useMemo(() => getSortFields(lang), [lang]);
+  const statusOptions = useMemo(() => getStatusOptions(lang), [lang]);
+  const ppRangePresets = useMemo<Array<{ label: string; minPp?: number; maxPp?: number }>>(
+    () => [
+      { label: t('不限', 'Any') },
+      { label: '<200', maxPp: 200 },
+      { label: '200–350', minPp: 200, maxPp: 350 },
+      { label: '350–500', minPp: 350, maxPp: 500 },
+      { label: '500–700', minPp: 500, maxPp: 700 },
+      { label: '700–1000', minPp: 700, maxPp: 1000 },
+      { label: '1000+', minPp: 1000 },
+    ],
+    [t],
+  );
+  const ppMaQuickChips = useMemo<Array<{ label: string; value: number | undefined }>>(
+    () => [
+      { label: t('直算', 'Direct'), value: undefined },
+      { label: '1:1', value: 1 },
+      { label: '2:1', value: 2 },
+      { label: '3:1', value: 3 },
+      { label: '4:1', value: 4 },
+      { label: '5:1', value: 5 },
+      { label: '8:1', value: 8 },
+      { label: t('全彩', 'MAX'), value: 1000 },
+    ],
+    [t],
+  );
+
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [ppPopoverOpen, setPpPopoverOpen] = useState(false);
   const [savedScenarios, setSavedScenarios] = useState<SavedPpScenario[]>(loadSavedPpScenarios);
@@ -267,7 +281,7 @@ export function FilterPanel({
 
   const ppScenario = extractPpScenarioFromFilters(filters);
   const ppScenarioCustomized = !isDefaultPpScenario(ppScenario) || Boolean(filters.ppIncludeUnranked);
-  const ppScenarioLabel = formatPpScenarioShort(ppScenario);
+  const ppScenarioLabel = formatPpScenarioShort(ppScenario, lang);
   const hasStarFilter = filters.minStars != null || filters.maxStars != null;
   const hasPpFilter = filters.minPp != null || filters.maxPp != null;
 
@@ -281,29 +295,33 @@ export function FilterPanel({
 
   const maLiveReadout = (() => {
     if (ppScenario.maRatio === null) {
-      return '直算模式（不区分黄/彩 300）';
+      return t('直算模式（不区分黄/彩 300）', 'Direct mode (no 320:300 split)');
     }
     const r = ppScenario.maRatio;
     const maxPct = ((r / (r + 1)) * 100).toFixed(1);
     const factor = (320 * r + 300) / (320 * (r + 1));
     const effAcc = (ppScenario.accuracy * factor).toFixed(2);
-    return `彩占 ${maxPct}% · 折算 ${effAcc}%`;
+    return t(`彩占 ${maxPct}% · 折算 ${effAcc}%`, `MAX ${maxPct}% · Eff. ${effAcc}%`);
   })();
 
   const modeSummary =
     filters.mode === '3'
-      ? `Mania ${filters.keys && filters.keys !== 'any' ? `${filters.keys}K` : '全部键数'}`
+      ? `Mania ${filters.keys && filters.keys !== 'any' ? `${filters.keys}K` : t('全部键数', 'All Keys')}`
       : filters.mode === '0'
         ? 'Standard'
         : filters.mode === '1'
           ? 'Taiko'
           : filters.mode === '2'
             ? 'Catch'
-            : '全模式';
-  const statusSummary =
-    STATUS_OPTIONS.find((s) => s.value === (filters.status || 'leaderboard'))?.label.split(' ')[0] ??
-    '排行榜';
-  const sortSummary = SORT_FIELDS.find((s) => s.value === sortField)?.label ?? '上架时间';
+            : t('全模式', 'All Modes');
+  const rawStatusLabel = statusOptions.find((s) => s.value === (filters.status || 'leaderboard'))?.label;
+  const statusSummary = rawStatusLabel
+    ? isEn
+      ? rawStatusLabel
+      : rawStatusLabel.split(' ')[0]
+    : t('排行榜', 'Leaderboard');
+  const sortSummary =
+    sortFields.find((s) => s.value === sortField)?.label ?? t('上架时间', 'Ranked Date');
 
   if (collapsed) {
     return (
@@ -321,7 +339,10 @@ export function FilterPanel({
               type="text"
               value={filters.q || ''}
               onChange={(e) => onChange({ ...filters, q: e.target.value, offset: 0 }, false)}
-              placeholder="快速搜索曲名、艺术家、谱师或粘贴谱面链接..."
+              placeholder={t(
+                '快速搜索曲名、艺术家、谱师或粘贴谱面链接...',
+                'Search title, artist, mapper, or paste beatmap URL...',
+              )}
               className="field min-h-[32px] pl-8.5 pr-3 text-[0.8125rem]"
             />
           </div>
@@ -342,12 +363,12 @@ export function FilterPanel({
             )}
             {!hasPpFilter && ppScenarioCustomized && (
               <span className="chip border-lazer/35 bg-lazer/12 text-lazer-soft">
-                情景 {ppScenarioLabel}
+                {t(`情景 ${ppScenarioLabel}`, `PP ${ppScenarioLabel}`)}
               </span>
             )}
             {advancedCount > 0 && (
               <span className="chip border-osu/40 bg-osu/12 text-osu-soft">
-                +{advancedCount} 高级
+                {t(`+${advancedCount} 高级`, `+${advancedCount} Adv`)}
               </span>
             )}
           </div>
@@ -358,18 +379,18 @@ export function FilterPanel({
             className="btn btn-primary btn-sm min-h-[32px] rounded-[8px] px-3"
           >
             <Search className="h-3.5 w-3.5" />
-            <span>{loading ? '搜索中' : '搜索'}</span>
+            <span>{loading ? t('搜索中', 'Searching') : t('搜索', 'Search')}</span>
           </button>
 
           {onOpenSaveArchive && (
             <button
               type="button"
               onClick={onOpenSaveArchive}
-              title="保存当前筛选与搜索状态到右侧存档栏"
+              title={t('保存当前筛选与搜索状态到右侧存档栏', 'Save current filters & state to Archives')}
               className="btn btn-sm min-h-[32px] rounded-[8px] px-2.5 text-ink-2 hover:border-osu/45 hover:text-osu-soft"
             >
               <BookmarkPlus className="h-3.5 w-3.5 text-osu" />
-              <span className="hidden xl:inline">存档</span>
+              <span className="hidden xl:inline">{t('存档', 'Save')}</span>
             </button>
           )}
 
@@ -377,11 +398,11 @@ export function FilterPanel({
             <button
               type="button"
               onClick={onToggleCollapsed}
-              title="展开完整搜索与筛选面板"
+              title={t('展开完整搜索与筛选面板', 'Expand full search & filter panel')}
               className="btn btn-sm min-h-[32px] rounded-[8px] px-3"
             >
               <SlidersHorizontal className="h-3.5 w-3.5 text-osu" />
-              <span>展开筛选</span>
+              <span>{t('展开筛选', 'Filters')}</span>
               <ChevronDown className="h-3.5 w-3.5" />
             </button>
           )}
@@ -406,14 +427,17 @@ export function FilterPanel({
             type="text"
             value={filters.q || ''}
             onChange={(e) => onChange({ ...filters, q: e.target.value, offset: 0 }, false)}
-            placeholder="搜索曲名、艺术家、谱师、Tags，或直接粘贴 Beatmapset ID / osu.ppy.sh 链接..."
+            placeholder={t(
+              '搜索曲名、艺术家、谱师、Tags，或直接粘贴 Beatmapset ID / osu.ppy.sh 链接...',
+              'Search title, artist, mapper, tags, or paste Beatmapset ID / osu.ppy.sh URL...',
+            )}
             className="field field-lg pl-10 pr-4"
           />
         </div>
         <div className="flex items-center gap-2">
           <button type="submit" disabled={loading} className="btn btn-primary min-h-[40px] rounded-[8px] px-5 text-[0.84375rem]">
             <Search className="h-4 w-4" />
-            <span>{loading ? '搜索中…' : '搜索谱面'}</span>
+            <span>{loading ? t('搜索中…', 'Searching…') : t('搜索谱面', 'Search')}</span>
           </button>
           <button
             type="button"
@@ -428,7 +452,7 @@ export function FilterPanel({
             }`}
           >
             <SlidersHorizontal className="h-4 w-4" />
-            <span>高级筛选</span>
+            <span>{t('高级筛选', 'Advanced')}</span>
             {advancedCount > 0 && (
               <span className="font-stat flex h-4 min-w-[16px] items-center justify-center rounded-full bg-osu px-1 text-[0.6875rem] font-bold text-white">
                 {advancedCount}
@@ -439,32 +463,32 @@ export function FilterPanel({
           <button
             type="button"
             onClick={onReset}
-            title="重置为 Mania 4K 默认筛选"
+            title={t('重置为 Mania 4K 默认筛选', 'Reset to Mania 4K defaults')}
             className="btn min-h-[40px] rounded-[8px] px-3 text-ink-2"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">重置</span>
+            <span className="hidden md:inline">{t('重置', 'Reset')}</span>
           </button>
           {onOpenSaveArchive && (
             <button
               type="button"
               onClick={onOpenSaveArchive}
-              title="保存当前筛选与搜索状态到右侧存档栏"
+              title={t('保存当前筛选与搜索状态到右侧存档栏', 'Save current filters & state to Archives')}
               className="btn min-h-[40px] rounded-[8px] px-3 text-ink-2 hover:border-osu/45 hover:text-osu-soft"
             >
               <BookmarkPlus className="h-3.5 w-3.5 text-osu" />
-              <span className="hidden md:inline">存档</span>
+              <span className="hidden md:inline">{t('存档', 'Archive')}</span>
             </button>
           )}
           {onToggleCollapsed && (
             <button
               type="button"
               onClick={onToggleCollapsed}
-              title="收起搜索与筛选栏"
+              title={t('收起搜索与筛选栏', 'Collapse filter panel')}
               className="btn min-h-[40px] rounded-[8px] px-2.5 text-ink-2"
             >
               <ChevronUp className="h-4 w-4" />
-              <span className="hidden lg:inline">收起</span>
+              <span className="hidden lg:inline">{t('收起', 'Hide')}</span>
             </button>
           )}
         </div>
@@ -472,7 +496,7 @@ export function FilterPanel({
 
       {/* Quick Mania Practice Tags */}
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        <span className="overline mr-1">高频词条</span>
+        <span className="overline mr-1">{t('高频词条', 'Quick Tags')}</span>
         {QUICK_PRACTICE_TAGS.map((tag) => {
           const active = (filters.q || '').trim().toLowerCase() === tag;
           return (
@@ -495,7 +519,7 @@ export function FilterPanel({
       {/* Row 2: Core Official Filters */}
       <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-hairline pt-2.5 sm:grid-cols-3 xl:grid-cols-6">
         <div className="flex min-w-0 flex-col gap-1">
-          <label className="field-label">游戏模式 (Mode)</label>
+          <label className="field-label">{t('游戏模式 (Mode)', 'Mode')}</label>
           <SelectField
             value={filters.mode || '3'}
             onChange={(val) => {
@@ -507,36 +531,36 @@ export function FilterPanel({
             <option value="0">osu!standard</option>
             <option value="1">osu!taiko</option>
             <option value="2">osu!catch</option>
-            <option value="any">全部模式 (Any)</option>
+            <option value="any">{t('全部模式 (Any)', 'All Modes')}</option>
           </SelectField>
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">
-          <label className="field-label">键数 (Keys)</label>
+          <label className="field-label">{t('键数 (Keys)', 'Keys')}</label>
           <SelectField
             disabled={filters.mode !== '3'}
             value={filters.mode === '3' ? filters.keys || '4' : 'any'}
             onChange={(val) => update({ keys: val }, true)}
           >
-            <option value="4">4K (默认)</option>
+            <option value="4">{t('4K (默认)', '4K (Default)')}</option>
             <option value="5">5K</option>
             <option value="6">6K</option>
             <option value="7">7K</option>
             <option value="8">8K</option>
             <option value="9">9K</option>
             <option value="10">10K</option>
-            <option value="other">其他键数</option>
-            <option value="any">全部键数</option>
+            <option value="other">{t('其他键数', 'Other')}</option>
+            <option value="any">{t('全部键数', 'All Keys')}</option>
           </SelectField>
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">
-          <label className="field-label">谱面状态 (Categories)</label>
+          <label className="field-label">{t('谱面状态 (Categories)', 'Status')}</label>
           <SelectField
             value={filters.status || 'leaderboard'}
             onChange={(val) => update({ status: val as SearchStatus }, true)}
           >
-            {STATUS_OPTIONS.map((opt) => (
+            {statusOptions.map((opt) => (
               <option key={opt.value} value={opt.value}>
                 {opt.label}
               </option>
@@ -545,14 +569,14 @@ export function FilterPanel({
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">
-          <label className="field-label">排序方式 (Sort)</label>
+          <label className="field-label">{t('排序方式 (Sort)', 'Sort')}</label>
           <div className="flex min-w-0 items-center gap-1">
             <SelectField
               value={sortField}
               onChange={(val) => update({ sort: `${val}:${sortDir || 'desc'}` }, true)}
               className="flex-1"
             >
-              {SORT_FIELDS.map((s) => (
+              {sortFields.map((s) => (
                 <option key={s.value} value={s.value}>
                   {s.label}
                 </option>
@@ -563,7 +587,11 @@ export function FilterPanel({
               onClick={() =>
                 update({ sort: `${sortField}:${sortDir === 'asc' ? 'desc' : 'asc'}` }, true)
               }
-              title={sortDir === 'asc' ? '当前升序，点击切换降序' : '当前降序，点击切换升序'}
+              title={
+                sortDir === 'asc'
+                  ? t('当前升序，点击切换降序', 'Ascending — click for descending')
+                  : t('当前降序，点击切换升序', 'Descending — click for ascending')
+              }
               className="btn btn-icon shrink-0"
             >
               {sortDir === 'asc' ? (
@@ -576,27 +604,27 @@ export function FilterPanel({
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">
-          <label className="field-label">本地查重过滤</label>
+          <label className="field-label">{t('本地查重过滤', 'Library Filter')}</label>
           <SelectField
             value={filters.installedFilter || 'all'}
             onChange={(val) => update({ installedFilter: val as InstalledFilter }, true)}
           >
-            <option value="all">显示全部谱面</option>
-            <option value="hide_lazer">隐藏 Lazer 已有</option>
-            <option value="hide_stable">隐藏 Stable 已有</option>
-            <option value="hide_any">仅看双端均未装</option>
+            <option value="all">{t('显示全部谱面', 'Show All')}</option>
+            <option value="hide_lazer">{t('隐藏 Lazer 已有', 'Hide In Lazer')}</option>
+            <option value="hide_stable">{t('隐藏 Stable 已有', 'Hide In Stable')}</option>
+            <option value="hide_any">{t('仅看双端均未装', 'Not Installed')}</option>
           </SelectField>
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">
-          <label className="field-label">搜索引擎来源</label>
+          <label className="field-label">{t('搜索引擎来源', 'Search Engine')}</label>
           <SelectField
             value={filters.source || 'auto'}
             onChange={(val) => update({ source: val as SearchSource }, true)}
           >
-            <option value="auto">自动 (osu.direct + 故障转移)</option>
-            <option value="osudirect">osu.direct 全量筛选</option>
-            <option value="sayobot">小夜镜像 (国内直连)</option>
+            <option value="auto">{t('自动 (osu.direct + 故障转移)', 'Auto (osu.direct + Failover)')}</option>
+            <option value="osudirect">{t('osu.direct 全量筛选', 'osu.direct (Full Filters)')}</option>
+            <option value="sayobot">{t('小夜镜像 (国内直连)', 'Sayobot Mirror')}</option>
           </SelectField>
         </div>
       </div>
@@ -621,7 +649,10 @@ export function FilterPanel({
                   setAdvancedOpen(false);
                   setPpPopoverOpen((v) => !v);
                 }}
-                title={`当前 PP 筛选情景: ${ppScenarioLabel}（点击配置 DT/HT/准度/黄彩比/Miss）`}
+                title={t(
+                  `当前 PP 筛选情景: ${ppScenarioLabel}（点击配置 DT/HT/准度/黄彩比/Miss）`,
+                  `PP Scenario: ${ppScenarioLabel} (click to configure Rate/Acc/MA/Miss)`,
+                )}
                 className={`btn btn-sm min-h-[26px] max-w-[152px] shrink-0 px-2 text-[0.71875rem] 2xl:max-w-[210px] ${
                   ppPopoverOpen || ppScenarioCustomized
                     ? 'border-lazer/50 bg-lazer/14 text-lazer-soft'
@@ -654,7 +685,7 @@ export function FilterPanel({
                 <div className="flex items-center gap-1.5">
                   <Calculator className="h-3.5 w-3.5 text-lazer-soft" />
                   <span className="font-display text-[0.84375rem] font-bold text-ink">
-                    PP 筛选范围与情景设定
+                    {t('PP 筛选范围与情景设定', 'PP Range & Scenario')}
                   </span>
                 </div>
                 <button
@@ -678,15 +709,15 @@ export function FilterPanel({
                   }
                   className="text-[0.71875rem] font-semibold text-ink-3 hover:text-osu"
                 >
-                  重置情景
+                  {t('重置情景', 'Reset')}
                 </button>
               </div>
 
               {/* Quick PP Range Presets */}
               <div className="space-y-1.5">
-                <span className="field-label block">常用 PP 区间</span>
+                <span className="field-label block">{t('常用 PP 区间', 'Quick PP Ranges')}</span>
                 <div className="flex flex-wrap gap-1">
-                  {PP_RANGE_PRESETS.map((p) => {
+                  {ppRangePresets.map((p) => {
                     const active =
                       (filters.minPp ?? undefined) === p.minPp &&
                       (filters.maxPp ?? undefined) === p.maxPp;
@@ -709,8 +740,10 @@ export function FilterPanel({
               {/* Master-Detail Scenario Library (Left Primary Mode Rail / Right Secondary Presets) */}
               <div className="space-y-1.5 border-t border-hairline pt-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="field-label">情景预设库</span>
-                  <span className="text-[0.6875rem] text-ink-3">左侧选主模式 · 右侧选副词条</span>
+                  <span className="field-label">{t('情景预设库', 'Scenario Presets')}</span>
+                  <span className="text-[0.6875rem] text-ink-3">
+                    {t('左侧选主模式 · 右侧选副词条', 'Mode on left · Presets on right')}
+                  </span>
                 </div>
                 <PpScenarioLibrary
                   variant="compact"
@@ -728,7 +761,9 @@ export function FilterPanel({
                 {/* Rate / Mode */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between gap-2 text-[0.71875rem]">
-                    <span className="font-semibold text-ink-2">模式与倍速 (HT / NM / DT)</span>
+                    <span className="font-semibold text-ink-2">
+                      {t('模式与倍速 (HT / NM / DT)', 'Rate / Speed (HT / NM / DT)')}
+                    </span>
                     <div className="flex items-center gap-1">
                       <input
                         type="number"
@@ -744,7 +779,7 @@ export function FilterPanel({
                             });
                           }
                         }}
-                        aria-label="筛选倍速数值"
+                        aria-label={t('筛选倍速数值', 'Filter rate value')}
                         className="field font-mono min-h-[24px] w-16 px-1.5 py-0 text-right text-[0.75rem]"
                       />
                       <span className="font-mono text-ink-3">x</span>
@@ -763,7 +798,7 @@ export function FilterPanel({
                       } as CSSProperties
                     }
                     className="slim-range w-full"
-                    aria-label="筛选倍速滑块"
+                    aria-label={t('筛选倍速滑块', 'Filter rate slider')}
                   />
                   <div className="flex flex-wrap gap-1">
                     {PP_RATE_QUICK_CHIPS.map((c) => {
@@ -795,7 +830,7 @@ export function FilterPanel({
                 {/* Accuracy */}
                 <div className="space-y-1.5 border-t border-hairline/60 pt-2">
                   <div className="flex items-center justify-between gap-2 text-[0.71875rem]">
-                    <span className="font-semibold text-ink-2">准度 (Accuracy)</span>
+                    <span className="font-semibold text-ink-2">{t('准度 (Accuracy)', 'Accuracy')}</span>
                     <div className="flex items-center gap-1">
                       <input
                         type="number"
@@ -809,7 +844,7 @@ export function FilterPanel({
                             update({ ppAccuracy: Math.min(100, Math.max(0, v)) });
                           }
                         }}
-                        aria-label="筛选准度数值"
+                        aria-label={t('筛选准度数值', 'Filter accuracy value')}
                         className="field font-mono min-h-[24px] w-16 px-1.5 py-0 text-right text-[0.75rem]"
                       />
                       <span className="font-mono text-ink-3">%</span>
@@ -828,7 +863,7 @@ export function FilterPanel({
                       } as CSSProperties
                     }
                     className="slim-range w-full"
-                    aria-label="筛选准度滑块"
+                    aria-label={t('筛选准度滑块', 'Filter accuracy slider')}
                   />
                   <div className="flex flex-wrap gap-1">
                     {PP_ACC_QUICK_CHIPS.map((c) => (
@@ -852,7 +887,9 @@ export function FilterPanel({
                 <div className="space-y-1.5 border-t border-hairline/60 pt-2">
                   <div className="flex flex-wrap items-center justify-between gap-2 text-[0.71875rem]">
                     <div className="min-w-0">
-                      <span className="font-semibold text-ink-2">黄彩比 (彩300 : 黄300)</span>
+                      <span className="font-semibold text-ink-2">
+                        {t('黄彩比 (彩300 : 黄300)', 'MA Ratio (320 : 300)')}
+                      </span>
                       <span className="font-mono ml-1.5 text-[0.6875rem] text-ink-3 tabular-nums">
                         {maLiveReadout}
                       </span>
@@ -864,7 +901,7 @@ export function FilterPanel({
                         max={999}
                         step={0.1}
                         value={ppScenario.maRatio !== null ? ppScenario.maRatio : ''}
-                        placeholder="直算"
+                        placeholder={t('直算', 'Direct')}
                         onChange={(e) => {
                           const raw = e.target.value.trim();
                           if (raw === '') {
@@ -878,7 +915,7 @@ export function FilterPanel({
                             });
                           }
                         }}
-                        aria-label="筛选黄彩比数值"
+                        aria-label={t('筛选黄彩比数值', 'Filter MA ratio value')}
                         className="field font-mono min-h-[24px] w-16 px-1.5 py-0 text-right text-[0.75rem]"
                       />
                       <span className="font-mono text-ink-3">: 1</span>
@@ -888,7 +925,7 @@ export function FilterPanel({
                           onClick={() => update({ ppMaRatio: undefined })}
                           className="btn btn-sm min-h-[22px] px-1.5 text-[0.6875rem] text-ink-3"
                         >
-                          直算
+                          {t('直算', 'Direct')}
                         </button>
                       )}
                     </div>
@@ -908,10 +945,10 @@ export function FilterPanel({
                       } as CSSProperties
                     }
                     className={`slim-range w-full ${ppScenario.maRatio === null ? 'opacity-60' : ''}`}
-                    aria-label="筛选黄彩比滑块"
+                    aria-label={t('筛选黄彩比滑块', 'Filter MA ratio slider')}
                   />
                   <div className="flex flex-wrap gap-1">
-                    {PP_MA_QUICK_CHIPS.map((c) => {
+                    {ppMaQuickChips.map((c) => {
                       const active =
                         c.value === undefined
                           ? ppScenario.maRatio === null
@@ -949,7 +986,7 @@ export function FilterPanel({
                             update({ ppMisses: Math.min(100, Math.max(0, Math.round(v))) });
                           }
                         }}
-                        aria-label="筛选失误数"
+                        aria-label={t('筛选失误数', 'Filter miss count')}
                         className="field font-mono min-h-[24px] w-14 px-1.5 py-0 text-center text-[0.75rem]"
                       />
                     </div>
@@ -1012,7 +1049,7 @@ export function FilterPanel({
                     }
                     className="check check-lazer"
                   />
-                  <span>含未上架谱面（按模拟上架 PP 筛选）</span>
+                  <span>{t('含未上架谱面（按模拟上架 PP 筛选）', 'Include unranked maps (If Ranked PP)')}</span>
                 </label>
 
                 {/* Save Current Scenario Bar */}
@@ -1031,8 +1068,8 @@ export function FilterPanel({
                         setScenarioTab('custom');
                       }
                     }}
-                    placeholder="保存当前组合名称（留空自动生成）"
-                    aria-label="自定义 PP 情景名称"
+                    placeholder={t('保存当前组合名称（留空自动生成）', 'Custom scenario name (auto if blank)')}
+                    aria-label={t('自定义 PP 情景名称', 'Custom PP scenario name')}
                     className="field min-h-[26px] flex-1 px-2 py-0.5 text-[0.75rem]"
                   />
                   <button
@@ -1046,14 +1083,14 @@ export function FilterPanel({
                     className="btn btn-sm min-h-[26px] shrink-0 border-lazer/45 bg-lazer/14 px-2.5 text-[0.71875rem] text-lazer-soft hover:bg-lazer/22"
                   >
                     <BookmarkPlus className="h-3 w-3 shrink-0" />
-                    <span>+ 存为自定义</span>
+                    <span>+ {t('存为自定义', 'Save Preset')}</span>
                   </button>
                 </div>
               </div>
 
               <div className="flex items-center justify-between gap-2 border-t border-hairline pt-2.5">
                 <span className="text-[0.6875rem] text-ink-3">
-                  自动推算星数区间并精确过滤
+                  {t('自动推算星数区间并精确过滤', 'Auto-estimates star range & filters precisely')}
                 </span>
                 <button
                   type="button"
@@ -1063,7 +1100,7 @@ export function FilterPanel({
                   }}
                   className="btn btn-primary btn-sm px-3.5"
                 >
-                  应用并筛选
+                  {t('应用并筛选', 'Apply & Search')}
                 </button>
               </div>
             </div>
@@ -1082,12 +1119,12 @@ export function FilterPanel({
         >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="flex min-w-0 flex-col gap-1">
-              <label className="field-label">曲风 (Genre)</label>
+              <label className="field-label">{t('曲风 (Genre)', 'Genre')}</label>
               <SelectField
                 value={filters.genre ?? 0}
                 onChange={(val) => update({ genre: Number(val) || undefined })}
               >
-                {OSU_GENRES.map((g) => (
+                {osuGenres.map((g) => (
                   <option key={g.id} value={g.id}>
                     {g.label}
                   </option>
@@ -1096,12 +1133,12 @@ export function FilterPanel({
             </div>
 
             <div className="flex min-w-0 flex-col gap-1">
-              <label className="field-label">语言 (Language)</label>
+              <label className="field-label">{t('语言 (Language)', 'Language')}</label>
               <SelectField
                 value={filters.language ?? 0}
                 onChange={(val) => update({ language: Number(val) || undefined })}
               >
-                {OSU_LANGUAGES.map((l) => (
+                {osuLanguages.map((l) => (
                   <option key={l.id} value={l.id}>
                     {l.label}
                   </option>
@@ -1110,18 +1147,18 @@ export function FilterPanel({
             </div>
 
             <div className="flex min-w-0 flex-col gap-1">
-              <label className="field-label">谱师 (Mapper / Creator)</label>
+              <label className="field-label">{t('谱师 (Mapper / Creator)', 'Mapper / Creator')}</label>
               <input
                 type="text"
                 value={filters.creator || ''}
-                placeholder="精确匹配谱师 ID 名"
+                placeholder={t('精确匹配谱师 ID 名', 'Exact mapper username')}
                 onChange={(e) => update({ creator: e.target.value || undefined })}
                 className="field"
               />
             </div>
 
             <div className="flex min-w-0 flex-col gap-1">
-              <label className="field-label">LN 长条占比速选 (4K)</label>
+              <label className="field-label">{t('LN 长条占比速选 (4K)', 'LN Ratio Quick Pick (4K)')}</label>
               <div className="segmented segmented-auto">
                 <button
                   type="button"
@@ -1172,7 +1209,7 @@ export function FilterPanel({
               onChangeMax={(v) => update({ maxBpm: v })}
             />
             <RangeInput
-              label="时长 (秒)"
+              label={t('时长 (秒)', 'Length (s)')}
               minVal={filters.minLength}
               maxVal={filters.maxLength}
               step="1"
@@ -1202,7 +1239,7 @@ export function FilterPanel({
               onChangeMax={(v) => update({ maxHp: v })}
             />
             <RangeInput
-              label="AR (其他模式)"
+              label={t('AR (其他模式)', 'AR (Other Modes)')}
               minVal={filters.minAr}
               maxVal={filters.maxAr}
               step="0.5"
@@ -1212,7 +1249,7 @@ export function FilterPanel({
               onChangeMax={(v) => update({ maxAr: v })}
             />
             <RangeInput
-              label="LN 面率 (%)"
+              label={t('LN 面率 (%)', 'LN Ratio (%)')}
               minVal={filters.minLn}
               maxVal={filters.maxLn}
               step="5"
@@ -1232,7 +1269,7 @@ export function FilterPanel({
                   onChange={(e) => update({ video: e.target.checked || undefined })}
                   className="check"
                 />
-                <span>含背景视频 (Has Video)</span>
+                <span>{t('含背景视频 (Has Video)', 'Has Video')}</span>
               </label>
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -1241,7 +1278,7 @@ export function FilterPanel({
                   onChange={(e) => update({ storyboard: e.target.checked || undefined })}
                   className="check"
                 />
-                <span>含故事板 (Has Storyboard)</span>
+                <span>{t('含故事板 (Has Storyboard)', 'Has Storyboard')}</span>
               </label>
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -1250,7 +1287,7 @@ export function FilterPanel({
                   onChange={(e) => update({ featured: e.target.checked || undefined })}
                   className="check"
                 />
-                <span>精选艺术家 (Featured Artists)</span>
+                <span>{t('精选艺术家 (Featured Artists)', 'Featured Artists')}</span>
               </label>
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -1259,7 +1296,7 @@ export function FilterPanel({
                   onChange={(e) => update({ spotlight: e.target.checked || undefined })}
                   className="check"
                 />
-                <span>官方精选集 (Spotlight)</span>
+                <span>{t('官方精选集 (Spotlight)', 'Spotlight')}</span>
               </label>
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -1268,7 +1305,7 @@ export function FilterPanel({
                   onChange={(e) => update({ includeConverts: e.target.checked || undefined })}
                   className="check"
                 />
-                <span>包含转谱 (Converts)</span>
+                <span>{t('包含转谱 (Converts)', 'Include Converts')}</span>
               </label>
               <label className="flex cursor-pointer items-center gap-2">
                 <input
@@ -1277,7 +1314,7 @@ export function FilterPanel({
                   onChange={(e) => update({ nsfw: e.target.checked })}
                   className="check"
                 />
-                <span>包含成人内容 (Explicit/NSFW)</span>
+                <span>{t('包含成人内容 (Explicit/NSFW)', 'Explicit / NSFW')}</span>
               </label>
             </div>
 
@@ -1289,7 +1326,7 @@ export function FilterPanel({
               }}
               className="btn btn-primary btn-sm px-4"
             >
-              应用高级筛选
+              {t('应用高级筛选', 'Apply Filters')}
             </button>
           </div>
         </div>

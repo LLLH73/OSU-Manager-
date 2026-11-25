@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { getStarColor, getStarSpectrum } from '../constants';
+import { useI18n } from '../i18n';
 
 interface StarRangeSliderProps {
   minStars?: number;
@@ -28,6 +29,7 @@ function roundStar(v: number): number {
 }
 
 export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSliderProps) {
+  const { t } = useI18n();
   const trackRef = useRef<HTMLDivElement | null>(null);
   const activeThumbRef = useRef<'min' | 'max' | null>(null);
   const dragRectRef = useRef<DOMRect | null>(null);
@@ -284,7 +286,7 @@ export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSlide
 
   return (
     <div className="flex min-w-0 items-center gap-2 rounded-[10px] border border-hairline bg-surface-1/65 px-2.5 py-1">
-      <span className="field-label shrink-0">星数</span>
+      <span className="field-label shrink-0">{t('星数', 'Stars')}</span>
 
       {/* Lower Bound Badge / Click-to-edit (fixed width prevents flex-1 track shift) */}
       {editingBound === 'min' ? (
@@ -305,14 +307,14 @@ export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSlide
               setEditingBound(null);
             }
           }}
-          aria-label="编辑星数下界"
+          aria-label={t('编辑星数下界', 'Edit min stars')}
           className="field font-mono min-h-[24px] w-[3.65rem] shrink-0 px-1.5 py-0 text-center text-[0.75rem] tabular-nums"
         />
       ) : (
         <button
           type="button"
           onClick={() => beginEdit('min')}
-          title="点击输入精确星数下界"
+          title={t('点击输入精确星数下界', 'Click to enter exact min stars')}
           style={
             minStars != null
               ? {
@@ -360,11 +362,11 @@ export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSlide
         <div
           role="slider"
           tabIndex={0}
-          aria-label="星数下界"
+          aria-label={t('星数下界', 'Minimum stars')}
           aria-valuemin={0}
           aria-valuemax={Math.min(STAR_FINITE_MAX, maxTrack)}
           aria-valuenow={minTrack}
-          aria-valuetext={`${minTrack.toFixed(1)} 星`}
+          aria-valuetext={t(`${minTrack.toFixed(1)} 星`, `${minTrack.toFixed(1)} stars`)}
           onKeyDown={(e) => handleKeyDown('min', e)}
           style={{ left: minThumbLeft }}
           className={`absolute top-1/2 h-[14px] w-[24px] -translate-y-1/2 rounded-[4px] bg-osu transition-transform duration-100 ${
@@ -376,11 +378,15 @@ export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSlide
         <div
           role="slider"
           tabIndex={0}
-          aria-label="星数上界"
+          aria-label={t('星数上界', 'Maximum stars')}
           aria-valuemin={minTrack}
           aria-valuemax={STAR_TRACK_SPAN}
           aria-valuenow={maxTrack}
-          aria-valuetext={maxStars == null ? '不限上限' : `${effMax.toFixed(1)} 星`}
+          aria-valuetext={
+            maxStars == null
+              ? t('不限上限', 'Unlimited')
+              : t(`${effMax.toFixed(1)} 星`, `${effMax.toFixed(1)} stars`)
+          }
           onKeyDown={(e) => handleKeyDown('max', e)}
           style={{ left: maxThumbLeft }}
           className={`absolute top-1/2 h-[14px] w-[24px] -translate-y-1/2 rounded-[4px] bg-osu transition-transform duration-100 ${
@@ -408,14 +414,14 @@ export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSlide
               setEditingBound(null);
             }
           }}
-          aria-label="编辑星数上界"
+          aria-label={t('编辑星数上界', 'Edit max stars')}
           className="field font-mono min-h-[24px] w-[3.65rem] shrink-0 px-1.5 py-0 text-center text-[0.75rem] tabular-nums"
         />
       ) : (
         <button
           type="button"
           onClick={() => beginEdit('max')}
-          title="点击输入精确星数上界（上限 15.0★，清空表示不限 ∞）"
+          title={t('点击输入精确星数上界（上限 15.0★，清空表示不限 ∞）', 'Click to enter exact max stars (max 15.0★, clear for ∞)')}
           style={
             maxStars != null
               ? {
@@ -441,8 +447,8 @@ export function StarRangeSlider({ minStars, maxStars, onChange }: StarRangeSlide
         disabled={!hasFilter}
         tabIndex={hasFilter ? 0 : -1}
         onClick={() => onChange(undefined, undefined, true)}
-        title="清除星数区间"
-        aria-label="清除星数区间"
+        title={t('清除星数区间', 'Clear star range')}
+        aria-label={t('清除星数区间', 'Clear star range')}
         className={`btn btn-sm btn-icon h-[24px] w-[24px] shrink-0 transition-opacity ${
           hasFilter ? 'text-ink-3 opacity-100 hover:text-osu' : 'pointer-events-none invisible opacity-0'
         }`}

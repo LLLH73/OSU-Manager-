@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import AdmZip from 'adm-zip';
 import { detectLazerExePath, PREVIEW_OSZ_CACHE_DIR, TMP_DIR } from './config.js';
+import { st } from './i18n.js';
 import {
   detectRunningClients,
   getLibraryStatus,
@@ -14,6 +15,36 @@ import {
 } from './library.js';
 import { logWarn } from './logger.js';
 import { AppConfig } from './types.js';
+
+function fileTooSmallReason(size: number): string {
+  return st(`文件过小 (${size}B)，不是有效的 .osz 包`, `File too small (${size}B), not a valid .osz package`);
+}
+
+function notZipReason(): string {
+  return st(
+    '响应内容不是 ZIP/.osz 压缩包（可能镜像返回了错误页）',
+    'Response is not a ZIP/.osz archive (mirror may have returned an error page)',
+  );
+}
+
+function noOsuInArchiveReason(): string {
+  return st('.osz 压缩包内未找到任何 .osu 谱面文件', 'No .osu beatmap files found inside the .osz archive');
+}
+
+function verifyFailedReason(): string {
+  return st('校验 .osz 压缩包失败', 'Failed to verify .osz archive');
+}
+
+function unsafeArchivePathMsg(entryName: string): string {
+  return st(
+    `检测到不安全的压缩包路径: ${entryName}`,
+    `Unsafe archive entry path detected: ${entryName}`,
+  );
+}
+
+function lazerExeNotFoundMsg(exePath: string): string {
+  return st(`未找到 osu!lazer 可执行文件: ${exePath}`, `osu!lazer executable not found: ${exePath}`);
+}
 
 export function sanitizeWindowsName(input: string, maxLen = 110): string {
   const cleaned = input
@@ -29,7 +60,7 @@ export function verifyOszFile(filePath: string): { valid: boolean; reason?: stri
   try {
     const stat = fs.statSync(filePath);
     if (stat.size < 512) {
-      return { valid: false, reason: `文件过小 (${stat.size}B)，不是有效的 .osz 包`, osuCount: 0 };
+      return { valid: false, reason: fileTooSmallReason(stat.size), osuCount: 0 };
     }
     const fd = fs.openSync(filePath, 'r');
     const magic = Buffer.allocUnsafe(4);
@@ -39,7 +70,7 @@ export function verifyOszFile(filePath: string): { valid: boolean; reason?: stri
       fs.closeSync(fd);
     }
     if (magic[0] !== 0x50 || magic[1] !== 0x4b || magic[2] !== 0x03 || magic[3] !== 0x04) {
-      return { valid: false, reason: '响应内容不是 ZIP/.osz 压缩包（可能镜像返回了错误页）', osuCount: 0 };
+      return { valid: false, reason: notZipReason(), osuCount: 0 };
     }
 
     const zip = new AdmZip(filePath);
@@ -49,13 +80,13 @@ export function verifyOszFile(filePath: string): { valid: boolean; reason?: stri
     ).length;
 
     if (osuCount === 0) {
-      return { valid: false, reason: '.osz 压缩包内未找到任何 .osu 谱面文件', osuCount: 0 };
+      return { valid: false, reason: noOsuInArchiveReason(), osuCount: 0 };
     }
     return { valid: true, osuCount };
   } catch (err) {
     return {
       valid: false,
-      reason: err instanceof Error ? err.message : '校验 .osz 压缩包失败',
+      reason: err instanceof Error ? err.message : verifyFailedReason(),
       osuCount: 0,
     };
   }
@@ -68,14 +99,14 @@ export async function verifyOszFileFast(
   try {
     const stat = await fs.promises.stat(filePath);
     if (stat.size < 512) {
-      return { valid: false, reason: `文件过小 (${stat.size}B)，不是有效的 .osz 包` };
+      return { valid: false, reason: fileTooSmallReason(stat.size) };
     }
 
     fh = await fs.promises.open(filePath, 'r');
     const head = Buffer.allocUnsafe(4);
     await fh.read(head, 0, 4, 0);
     if (head[0] !== 0x50 || head[1] !== 0x4b || head[2] !== 0x03 || head[3] !== 0x04) {
-      return { valid: false, reason: '响应内容不是 ZIP/.osz 压缩包（可能镜像返回了错误页）' };
+      return { valid: false, reason: notZipReason() };
     }
 
     const tailLen = Math.min(stat.size, 65_558);
@@ -127,11 +158,11 @@ export async function verifyOszFileFast(
     if (cdText.includes('.osu')) {
       return { valid: true };
     }
-    return { valid: false, reason: '.osz 压缩包内未找到任何 .osu 谱面文件' };
+    return { valid: false, reason: noOsuInArchiveReason() };
   } catch (err) {
     return {
       valid: false,
-      reason: err instanceof Error ? err.message : '校验 .osz 压缩包失败',
+      reason: err instanceof Error ? err.message : verifyFailedReason(),
     };
   } finally {
     if (fh) {
@@ -198,7 +229,7 @@ export async function fastInstallToStable(
       if (!safeRel || safeRel.includes('..')) continue;
       const destFile = path.resolve(resolvedTmp, safeRel);
       if (!destFile.startsWith(resolvedTmp + path.sep)) {
-        throw new Error(`检测到不安全的压缩包路径: ${entry.entryName}`);
+        throw new Error(unsafeArchivePathMsg(entry.entryName));
       }
       const parentDir = path.dirname(destFile);
       if (!dirsCreated.has(parentDir)) {
@@ -316,7 +347,7 @@ export async function installToStable(
       if (!safeRel || safeRel.includes('..')) continue;
       const destFile = path.resolve(resolvedTmp, safeRel);
       if (!destFile.startsWith(resolvedTmp + path.sep)) {
-        throw new Error(`检测到不安全的压缩包路径: ${entry.entryName}`);
+        throw new Error(unsafeArchivePathMsg(entry.entryName));
       }
       fs.mkdirSync(path.dirname(destFile), { recursive: true });
       fs.writeFileSync(destFile, entry.getData());
@@ -379,7 +410,7 @@ export async function launchLazerBatchImport(
       launched: false,
       count: 0,
       files: [],
-      message: `未找到 osu!lazer 可执行文件: ${cfg.lazerExePath}`,
+      message: lazerExeNotFoundMsg(cfg.lazerExePath),
     };
   }
 
@@ -393,7 +424,7 @@ export async function launchLazerBatchImport(
       launched: false,
       count: 0,
       files: [],
-      message: '待导入目录中没有 .osz 文件',
+      message: st('待导入目录中没有 .osz 文件', 'No .osz files in pending import folder'),
     };
   }
 
@@ -423,7 +454,10 @@ export async function launchLazerBatchImport(
     launched: true,
     count: targets.length,
     files: targets.map((t) => t.filename),
-    message: `已向 osu!lazer 发送 ${targets.length} 个谱面导入请求`,
+    message: st(
+      `已向 osu!lazer 发送 ${targets.length} 个谱面导入请求`,
+      `Sent ${targets.length} beatmap import request(s) to osu!lazer`,
+    ),
   };
 }
 
@@ -476,12 +510,18 @@ export async function syncStableToLazer(
   for (const setId of setIds) {
     const folderName = stableMap.get(setId);
     if (!folderName) {
-      failed.push({ setId, reason: 'Stable 库中未找到该谱面目录' });
+      failed.push({
+        setId,
+        reason: st('Stable 库中未找到该谱面目录', 'Beatmap folder not found in Stable library'),
+      });
       continue;
     }
     const srcPath = path.join(songsDir, folderName);
     if (!fs.existsSync(srcPath)) {
-      failed.push({ setId, reason: `目录不存在: ${srcPath}` });
+      failed.push({
+        setId,
+        reason: st(`目录不存在: ${srcPath}`, `Directory does not exist: ${srcPath}`),
+      });
       continue;
     }
 
@@ -602,12 +642,20 @@ export async function loadBeatmapIntoRunningGame(
   let targetClient: 'lazer' | 'stable' | null = null;
   if (requestedClient === 'lazer') {
     if (!lazerRunning) {
-      return { ok: false, client: null, message: '未检测到运行中的 osu!lazer' };
+      return {
+        ok: false,
+        client: null,
+        message: st('未检测到运行中的 osu!lazer', 'No running osu!lazer instance detected'),
+      };
     }
     targetClient = 'lazer';
   } else if (requestedClient === 'stable') {
     if (!stableRunning) {
-      return { ok: false, client: null, message: '未检测到运行中的 osu!stable' };
+      return {
+        ok: false,
+        client: null,
+        message: st('未检测到运行中的 osu!stable', 'No running osu!stable instance detected'),
+      };
     }
     targetClient = 'stable';
   } else {
@@ -624,7 +672,10 @@ export async function loadBeatmapIntoRunningGame(
     return {
       ok: false,
       client: null,
-      message: '未检测到正在运行的 osu!lazer 或 osu!stable 客户端',
+      message: st(
+        '未检测到正在运行的 osu!lazer 或 osu!stable 客户端',
+        'No running osu!lazer or osu!stable client detected',
+      ),
     };
   }
 
@@ -633,7 +684,10 @@ export async function loadBeatmapIntoRunningGame(
     return {
       ok: false,
       client: targetClient,
-      message: `未找到谱面 #${beatmapsetId} 的本地 .osz 文件或 Songs 目录，请先下载`,
+      message: st(
+        `未找到谱面 #${beatmapsetId} 的本地 .osz 文件或 Songs 目录，请先下载`,
+        `Local .osz file or Songs folder for beatmapset #${beatmapsetId} not found; please download it first`,
+      ),
     };
   }
 
@@ -643,7 +697,7 @@ export async function loadBeatmapIntoRunningGame(
       return {
         ok: false,
         client: 'lazer',
-        message: `未找到 osu!lazer 可执行文件: ${cfg.lazerExePath}`,
+        message: lazerExeNotFoundMsg(cfg.lazerExePath),
       };
     }
 
@@ -676,7 +730,10 @@ export async function loadBeatmapIntoRunningGame(
     return {
       ok: true,
       client: 'lazer',
-      message: `已向运行中的 osu!lazer 发送导入加载请求 (#${beatmapsetId})`,
+      message: st(
+        `已向运行中的 osu!lazer 发送导入加载请求 (#${beatmapsetId})`,
+        `Sent import & load request (#${beatmapsetId}) to running osu!lazer`,
+      ),
     };
   }
 
@@ -686,7 +743,7 @@ export async function loadBeatmapIntoRunningGame(
     return {
       ok: false,
       client: 'stable',
-      message: `未找到 osu!stable 可执行文件: ${stableExe}`,
+      message: st(`未找到 osu!stable 可执行文件: ${stableExe}`, `osu!stable executable not found: ${stableExe}`),
     };
   }
 
@@ -710,7 +767,10 @@ export async function loadBeatmapIntoRunningGame(
   return {
     ok: true,
     client: 'stable',
-    message: `已向运行中的 osu!stable 发送导入加载请求 (#${beatmapsetId})`,
+    message: st(
+      `已向运行中的 osu!stable 发送导入加载请求 (#${beatmapsetId})`,
+      `Sent import & load request (#${beatmapsetId}) to running osu!stable`,
+    ),
   };
 }
 
@@ -743,8 +803,14 @@ export async function launchGameClient(
       client,
       message:
         client === 'stable'
-          ? `未找到 osu!stable 可执行文件 (${exePath || '未配置目录'})，请在设置中确认 Stable 目录`
-          : `未找到 osu!lazer 可执行文件 (${exePath || '未配置路径'})，请在设置中确认 Lazer 路径`,
+          ? st(
+              `未找到 osu!stable 可执行文件 (${exePath || '未配置目录'})，请在设置中确认 Stable 目录`,
+              `osu!stable executable not found (${exePath || 'directory not configured'}); please check your Stable path in Settings`,
+            )
+          : st(
+              `未找到 osu!lazer 可执行文件 (${exePath || '未配置路径'})，请在设置中确认 Lazer 路径`,
+              `osu!lazer executable not found (${exePath || 'path not configured'}); please check your Lazer path in Settings`,
+            ),
     };
   }
 
@@ -770,8 +836,14 @@ export async function launchGameClient(
       exePath,
       message:
         client === 'stable'
-          ? 'osu!stable 已在运行中，已尝试切至前台'
-          : 'osu!lazer 已在运行中，已尝试切至前台',
+          ? st(
+              'osu!stable 已在运行中，已尝试切至前台',
+              'osu!stable is already running; attempted to bring to foreground',
+            )
+          : st(
+              'osu!lazer 已在运行中，已尝试切至前台',
+              'osu!lazer is already running; attempted to bring to foreground',
+            ),
     };
   }
 
@@ -830,8 +902,8 @@ export async function launchGameClient(
       exePath,
       message:
         client === 'stable'
-          ? `启动 osu!stable 失败: ${exePath}`
-          : `启动 osu!lazer 失败: ${exePath}`,
+          ? st(`启动 osu!stable 失败: ${exePath}`, `Failed to launch osu!stable: ${exePath}`)
+          : st(`启动 osu!lazer 失败: ${exePath}`, `Failed to launch osu!lazer: ${exePath}`),
     };
   }
 
@@ -848,6 +920,9 @@ export async function launchGameClient(
     client,
     alreadyRunning: false,
     exePath,
-    message: client === 'stable' ? '正在启动 osu!stable…' : '正在启动 osu!lazer…',
+    message:
+      client === 'stable'
+        ? st('正在启动 osu!stable…', 'Launching osu!stable...')
+        : st('正在启动 osu!lazer…', 'Launching osu!lazer...'),
   };
 }

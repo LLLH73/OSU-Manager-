@@ -5,6 +5,7 @@ export type DownloadTarget = 'lazer' | 'stable' | 'both';
 export type DownloadVariant = 'novideo' | 'full' | 'mini';
 export type SearchSource = 'auto' | 'osudirect' | 'sayobot';
 export type StableInstallMode = 'extract' | 'drop_osz';
+export type UiLanguage = 'zh' | 'en';
 export type ThemeId =
   | 'dark'
   | 'stone'
@@ -58,6 +59,7 @@ export interface AppConfig {
   accentColor: string;
   fontScale: number;
   ipFamily: IpFamilyMode;
+  language: UiLanguage;
   onboardingCompleted?: boolean;
 }
 

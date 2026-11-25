@@ -10,8 +10,9 @@ import {
   type RequestInit as UndiciRequestInit,
 } from 'undici';
 import { getConfig } from './config.js';
+import { getServerLang, st } from './i18n.js';
 import { logInfo } from './logger.js';
-import { MIRROR_DEFINITIONS, MIRROR_MAP } from './sources.js';
+import { getLocalizedMirrorInfo, MIRROR_DEFINITIONS, MIRROR_MAP } from './sources.js';
 import {
   FastBatchRouteStrategy,
   IpFamilyMode,
@@ -342,16 +343,24 @@ let lastBenchmarkAt: string | null = null;
 let benchmarking = false;
 let benchmarkPromise: Promise<NetworkStatus> | null = null;
 
+function getOfficialNoCookieError(): string {
+  return st(
+    '未配置 osu_session Cookie（镜像站无需登录，已自动改用镜像）',
+    'osu_session cookie not configured (mirrors require no login and are used automatically)',
+  );
+}
+
 async function probeOneMirror(def: MirrorDefinition): Promise<MirrorHealth> {
   const cfg = getConfig();
+  const loc = getLocalizedMirrorInfo(def, getServerLang());
   const base: MirrorHealth = {
     id: def.id,
-    name: def.name,
-    shortName: def.shortName,
+    name: loc.name,
+    shortName: loc.shortName,
     region: def.region,
     requiresAuth: def.requiresAuth,
     supportsVariants: def.supportsVariants,
-    description: def.description,
+    description: loc.description,
     healthy: false,
     latencyMs: null,
     routeUsed: null,
@@ -375,12 +384,12 @@ async function probeOneMirror(def: MirrorDefinition): Promise<MirrorHealth> {
         latencyMs: Date.now() - t0,
         routeUsed,
         statusCode: response.status,
-        error: '未配置 osu_session Cookie（镜像站无需登录，已自动改用镜像）',
+        error: getOfficialNoCookieError(),
       };
     } catch (err) {
       return {
         ...base,
-        error: err instanceof Error ? err.message : '官方源不可达',
+        error: err instanceof Error ? err.message : st('官方源不可达', 'Official source unreachable'),
       };
     }
   }
@@ -423,7 +432,7 @@ async function probeOneMirror(def: MirrorDefinition): Promise<MirrorHealth> {
   return {
     ...base,
     healthy: false,
-    error: lastErr || '探测超时或失败',
+    error: lastErr || st('探测超时或失败', 'Probe timed out or failed'),
   };
 }
 
@@ -494,7 +503,22 @@ export function getRankedMirrors(preferred: PreferredMirror = 'auto'): MirrorDef
 
 function getNetworkStatusSync(proxyOpen: boolean): NetworkStatus {
   const cfg = getConfig();
-  const mirrors = MIRROR_DEFINITIONS.map((d) => mirrorHealthMap.get(d.id)!);
+  const lang = getServerLang();
+  const mirrors = MIRROR_DEFINITIONS.map((d) => {
+    const health = mirrorHealthMap.get(d.id)!;
+    const loc = getLocalizedMirrorInfo(d, lang);
+    const error =
+      d.id === 'official' && !cfg.officialCookie.trim() && health.statusCode !== null && !health.healthy
+        ? getOfficialNoCookieError()
+        : health.error;
+    return {
+      ...health,
+      name: loc.name,
+      shortName: loc.shortName,
+      description: loc.description,
+      error,
+    };
+  });
   const ranked = getRankedMirrors('auto');
   const firstHealthy = ranked.find((m) => mirrorHealthMap.get(m.id)?.healthy);
 

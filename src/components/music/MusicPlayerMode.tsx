@@ -38,6 +38,7 @@ import {
   X,
 } from 'lucide-react';
 import { formatDuration, isDarkTheme } from '../../constants';
+import { tx, useI18n, type UiLanguage } from '../../i18n';
 import type { BookSummary, ThemeId } from '../../types';
 import { MarqueeText } from '../MarqueeText';
 import { SelectField } from '../SelectField';
@@ -73,14 +74,19 @@ type TrackSortField = 'default' | 'recent' | 'title' | 'plays' | 'bpm' | 'length
 type SourceFilter = 'all' | 'stable' | 'lazer';
 
 const RATE_PRESETS = [0.75, 1.0, 1.25, 1.5] as const;
+const TRACK_RENDER_BATCH = 60;
 
-const SYSTEM_COLLECTIONS: Array<{ id: SystemCollectionId; code: string; label: string }> = [
-  { id: 'sys:all', code: '01', label: '全部本地曲目' },
-  { id: 'sys:liked', code: '02', label: '红心收藏' },
-  { id: 'sys:recent', code: '03', label: '最近游玩' },
-  { id: 'sys:frequent', code: '04', label: '常听精选' },
-  { id: 'sys:mania4k', code: '05', label: 'Mania 4K' },
-];
+function getSystemCollections(
+  lang: UiLanguage,
+): Array<{ id: SystemCollectionId; code: string; label: string }> {
+  return [
+    { id: 'sys:all', code: '01', label: tx('全部本地曲目', 'All Local Tracks', lang) },
+    { id: 'sys:liked', code: '02', label: tx('红心收藏', 'Liked Tracks', lang) },
+    { id: 'sys:recent', code: '03', label: tx('最近游玩', 'Recently Played', lang) },
+    { id: 'sys:frequent', code: '04', label: tx('常听精选', 'Most Played', lang) },
+    { id: 'sys:mania4k', code: '05', label: 'Mania 4K' },
+  ];
+}
 
 function formatCompactDate(sec: number): string {
   const m = Math.floor(sec / 60);
@@ -110,6 +116,7 @@ function MusicTransportDeck() {
     toggleMute,
   } = useMusicPlayer();
   const { currentTime, duration, seek, seekRelative } = useMusicTime();
+  const { t } = useI18n();
 
   const seekMax = duration > 0 ? duration : Math.max(10, currentTrack?.lengthSec ?? 10);
   const seekFillPct = Math.min(100, Math.max(0, (currentTime / seekMax) * 100));
@@ -171,7 +178,7 @@ function MusicTransportDeck() {
             onChange={(e) => seek(Number(e.target.value))}
             style={{ '--fill': `${seekFillPct}%` } as CSSProperties}
             className="swiss-range block w-full"
-            aria-label="播放进度"
+            aria-label={t('播放进度', 'Playback progress')}
           />
         </div>
 
@@ -189,10 +196,10 @@ function MusicTransportDeck() {
             onClick={cycleLoopMode}
             title={
               loopMode === 'all'
-                ? '循环模式：列表循环（点击切换单曲/随机）'
+                ? t('循环模式：列表循环（点击切换单曲/随机）', 'Loop: All (click for One / Shuffle)')
                 : loopMode === 'one'
-                  ? '循环模式：单曲循环'
-                  : '循环模式：随机播放'
+                  ? t('循环模式：单曲循环', 'Loop: Repeat One')
+                  : t('循环模式：随机播放', 'Loop: Shuffle')
             }
             className={`inline-flex h-7 items-center gap-1 px-2 font-mono text-[0.6875rem] font-bold ${
               loopMode === 'all' ? 'swiss-btn' : 'swiss-btn-signal'
@@ -206,7 +213,11 @@ function MusicTransportDeck() {
               <Repeat className="h-3.5 w-3.5" />
             )}
             <span className="hidden xl:inline">
-              {loopMode === 'all' ? '列表' : loopMode === 'one' ? '单曲' : '随机'}
+              {loopMode === 'all'
+                ? t('列表', 'Loop')
+                : loopMode === 'one'
+                  ? t('单曲', 'One')
+                  : t('随机', 'Mix')}
             </span>
           </button>
 
@@ -214,7 +225,7 @@ function MusicTransportDeck() {
             type="button"
             onClick={() => seekRelative(-5)}
             disabled={!currentTrack}
-            title="快退 5 秒 (←)"
+            title={t('快退 5 秒 (←)', 'Seek -5s (←)')}
             className="swiss-btn hidden h-7 w-7 items-center justify-center md:inline-flex disabled:opacity-35"
           >
             <RotateCcw className="h-3.5 w-3.5" />
@@ -223,7 +234,7 @@ function MusicTransportDeck() {
           <button
             type="button"
             onClick={prevTrack}
-            title="上一首 (P)"
+            title={t('上一首 (P)', 'Previous (P)')}
             className="swiss-btn inline-flex h-7 w-7 items-center justify-center"
           >
             <SkipBack className="h-3.5 w-3.5" />
@@ -232,7 +243,7 @@ function MusicTransportDeck() {
           <button
             type="button"
             onClick={togglePlay}
-            title={isPlaying ? '暂停 (Space)' : '播放 (Space)'}
+            title={isPlaying ? t('暂停 (Space)', 'Pause (Space)') : t('播放 (Space)', 'Play (Space)')}
             className={`inline-flex h-8 min-w-[76px] items-center justify-center gap-1.5 px-2.5 font-mono text-[0.71875rem] font-bold tracking-[0.06em] ${
               isPlaying ? 'swiss-btn-signal' : 'swiss-btn-solid'
             }`}
@@ -250,7 +261,7 @@ function MusicTransportDeck() {
           <button
             type="button"
             onClick={nextTrack}
-            title="下一首 (N)"
+            title={t('下一首 (N)', 'Next (N)')}
             className="swiss-btn inline-flex h-7 w-7 items-center justify-center"
           >
             <SkipForward className="h-3.5 w-3.5" />
@@ -260,7 +271,7 @@ function MusicTransportDeck() {
             type="button"
             onClick={() => seekRelative(5)}
             disabled={!currentTrack}
-            title="快进 5 秒 (→)"
+            title={t('快进 5 秒 (→)', 'Seek +5s (→)')}
             className="swiss-btn hidden h-7 w-7 items-center justify-center md:inline-flex disabled:opacity-35"
           >
             <RotateCw className="h-3.5 w-3.5" />
@@ -306,7 +317,7 @@ function MusicTransportDeck() {
             onChange={(e) => setPlaybackRate(Number(e.target.value))}
             style={{ '--fill': `${rateFillPct}%` } as CSSProperties}
             className="swiss-range hidden w-20 md:block"
-            aria-label="播放倍速"
+            aria-label={t('播放倍速', 'Playback speed')}
           />
           <span className="w-11 font-mono text-[0.71875rem] font-bold text-[var(--mp-ink)] tabular-nums">
             {playbackRate.toFixed(2)}×
@@ -316,14 +327,20 @@ function MusicTransportDeck() {
             onClick={() => setPreservesPitch(!preservesPitch)}
             title={
               preservesPitch
-                ? '原调锁高：倍速不变音高（点击切换 Nightcore 磁带变调）'
-                : '磁带变调 (Nightcore/Daycore)：音高随倍速变化'
+                ? t(
+                    '原调锁高：倍速不变音高（点击切换 Nightcore 磁带变调）',
+                    'Pitch Lock: keeps original pitch at any speed (click for Nightcore)',
+                  )
+                : t(
+                    '磁带变调 (Nightcore/Daycore)：音高随倍速变化',
+                    'Tape Pitch (Nightcore/Daycore): pitch shifts with speed',
+                  )
             }
             className={`h-7 px-2 font-mono text-[0.65625rem] font-bold ${
               preservesPitch ? 'swiss-btn' : 'swiss-btn-signal'
             }`}
           >
-            {preservesPitch ? '原调' : 'NC变调'}
+            {preservesPitch ? t('原调', 'Pitch Lock') : t('NC变调', 'Nightcore')}
           </button>
         </div>
 
@@ -339,7 +356,7 @@ function MusicTransportDeck() {
           <button
             type="button"
             onClick={toggleMute}
-            title={muted ? '取消静音 (M)' : '静音 (M)'}
+            title={muted ? t('取消静音 (M)', 'Unmute (M)') : t('静音 (M)', 'Mute (M)')}
             className="swiss-btn inline-flex h-7 w-7 items-center justify-center"
           >
             {muted || volume === 0 ? (
@@ -357,7 +374,7 @@ function MusicTransportDeck() {
             onChange={(e) => setVolume(Number(e.target.value))}
             style={{ '--fill': `${volFillPct}%` } as CSSProperties}
             className="swiss-range w-20 sm:w-24"
-            aria-label="音量"
+            aria-label={t('音量', 'Volume')}
           />
           <span className="w-9 text-right font-mono text-[0.6875rem] font-bold text-[var(--mp-ink)] tabular-nums">
             {volFillPct}%
@@ -387,6 +404,7 @@ function ZenPosterInfoCard({
   onExitZen: () => void;
 }) {
   const { audioRef, rhythmDataRef, rhythmData } = useMusicPlayer();
+  const { t } = useI18n();
   const [collapsed, setCollapsed] = useState(false);
   const bpmRef = useRef<HTMLSpanElement | null>(null);
   const barRef = useRef<HTMLSpanElement | null>(null);
@@ -434,7 +452,7 @@ function ZenPosterInfoCard({
     };
   }, [collapsed, isPlaying, playbackRate, track?.bookKey, track?.bpm, audioRef, rhythmDataRef]);
 
-  const titleText = track ? track.titleUnicode || track.title : '未选择本地曲目';
+  const titleText = track ? track.titleUnicode || track.title : t('未选择本地曲目', 'No Local Track Selected');
 
   if (collapsed) {
     return (
@@ -455,12 +473,12 @@ function ZenPosterInfoCard({
         <button
           type="button"
           onClick={() => setCollapsed(false)}
-          title="展开曲目信息卡"
+          title={t('展开曲目信息卡', 'Expand track card')}
           className="inline-flex h-6 items-center gap-1 border px-2 text-[0.6875rem] font-bold transition-colors hover:opacity-85"
           style={{ borderColor: 'var(--mp-rule)', color: 'var(--mp-ink)' }}
         >
           <Maximize2 className="h-3 w-3" />
-          <span>展开</span>
+          <span>{t('展开', 'Expand')}</span>
         </button>
 
         <button
@@ -470,7 +488,7 @@ function ZenPosterInfoCard({
           style={{ borderColor: 'var(--mp-rule)', color: 'var(--mp-ink)' }}
         >
           <Minimize2 className="h-3 w-3" />
-          <span>退出</span>
+          <span>{t('退出', 'Exit')}</span>
         </button>
       </div>
     );
@@ -493,7 +511,7 @@ function ZenPosterInfoCard({
         >
           <span className="flex items-center gap-2">
             <OsuMusicMark className="h-3.5 w-3.5" active playing={isPlaying} />
-            <span>FOCUS COVER // 专注画报</span>
+            <span>{t('FOCUS COVER // 专注画报', 'FOCUS COVER')}</span>
             <span>·</span>
             <span>{trackIndexLabel}</span>
           </span>
@@ -511,11 +529,11 @@ function ZenPosterInfoCard({
             <button
               type="button"
               onClick={() => setCollapsed(true)}
-              title="收起信息卡（欣赏完整封面）"
+              title={t('收起信息卡（欣赏完整封面）', 'Collapse card (view full cover)')}
               className="border px-1.5 py-0.5 text-[0.6rem] tracking-normal transition-colors hover:opacity-85"
               style={{ borderColor: 'var(--mp-rule)', color: 'var(--mp-ink)' }}
             >
-              收起
+              {t('收起', 'Hide')}
             </button>
           </div>
         </div>
@@ -575,7 +593,7 @@ function ZenPosterInfoCard({
                 }}
               >
                 <Heart className={`h-3 w-3 ${isLiked ? 'fill-current' : ''}`} />
-                <span>{isLiked ? '已红心' : '红心'}</span>
+                <span>{isLiked ? t('已红心', 'Liked') : t('红心', 'Like')}</span>
               </button>
             )}
             <button
@@ -585,7 +603,7 @@ function ZenPosterInfoCard({
               style={{ borderColor: 'var(--mp-rule)', color: 'var(--mp-ink)' }}
             >
               <Minimize2 className="h-3 w-3" />
-              <span>退出</span>
+              <span>{t('退出', 'Exit')}</span>
             </button>
           </div>
         </div>
@@ -644,6 +662,7 @@ export function MusicPlayerMode({
     cancelSleepTimer,
   } = useMusicPlayer();
   const { seekRelative } = useMusicTime();
+  const { lang, isEn, t } = useI18n();
 
   const isDark = isDarkTheme(theme);
   const isElectron = Boolean(window.electronAPI?.isElectron);
@@ -692,7 +711,7 @@ export function MusicPlayerMode({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pickerQ, setPickerQ] = useState('');
 
-  // Quick row "+歌单" popover
+  // Quick row "+Playlist" popover
   const [rowMenuBookKey, setRowMenuBookKey] = useState<string | null>(null);
 
   // Sleep timer menu
@@ -700,6 +719,9 @@ export function MusicPlayerMode({
   const timerMenuRef = useRef<HTMLDivElement | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const trackListScrollRef = useRef<HTMLDivElement | null>(null);
+  const [visibleTrackCount, setVisibleTrackCount] = useState(TRACK_RENDER_BATCH);
+  const [visibleQueueCount, setVisibleQueueCount] = useState(TRACK_RENDER_BATCH);
 
   const bookMap = useMemo(() => {
     const map = new Map<string, BookSummary>();
@@ -801,6 +823,47 @@ export function MusicPlayerMode({
     return copy;
   }, [collectionBooks, sourceFilter, searchQ, sortBy]);
 
+  useEffect(() => {
+    setVisibleTrackCount(TRACK_RENDER_BATCH);
+    if (trackListScrollRef.current) {
+      trackListScrollRef.current.scrollTop = 0;
+    }
+  }, [activeCollection, searchQ, sourceFilter, sortBy]);
+
+  useEffect(() => {
+    if (rightTab === 'queue' && currentIndex >= visibleQueueCount) {
+      setVisibleQueueCount(Math.min(queue.length, currentIndex + TRACK_RENDER_BATCH));
+    }
+  }, [rightTab, currentIndex, visibleQueueCount, queue.length]);
+
+  const visibleTracks = useMemo(
+    () => displayedTracks.slice(0, visibleTrackCount),
+    [displayedTracks, visibleTrackCount],
+  );
+
+  const visibleQueue = useMemo(
+    () => queue.slice(0, visibleQueueCount),
+    [queue, visibleQueueCount],
+  );
+
+  const handleTrackListScroll = () => {
+    const el = trackListScrollRef.current;
+    if (!el) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 320) {
+      if (rightTab === 'queue') {
+        setVisibleQueueCount((prev) =>
+          prev < queue.length ? Math.min(queue.length, prev + TRACK_RENDER_BATCH) : prev,
+        );
+      } else {
+        setVisibleTrackCount((prev) =>
+          prev < displayedTracks.length
+            ? Math.min(displayedTracks.length, prev + TRACK_RENDER_BATCH)
+            : prev,
+        );
+      }
+    }
+  };
+
   const pickerCandidates = useMemo(() => {
     if (!pickerOpen) return [];
     const q = pickerQ.trim().toLowerCase();
@@ -862,7 +925,8 @@ export function MusicPlayerMode({
   }, [togglePlay, seekRelative, setPlaybackRate, playbackRate, toggleMute, nextTrack, prevTrack]);
 
   const handleCreatePlaylist = async () => {
-    const name = newPlName.trim() || `歌单 ${playlists.length + 1}`;
+    const name =
+      newPlName.trim() || t(`歌单 ${playlists.length + 1}`, `Playlist ${playlists.length + 1}`);
     const seedKeys: string[] = [];
     if (pendingSeedBookKey) seedKeys.push(pendingSeedBookKey);
     if (newPlImportFiltered) {
@@ -883,7 +947,7 @@ export function MusicPlayerMode({
 
   const handlePlayAll = (shuffle = false) => {
     if (displayedTracks.length === 0) {
-      onNotify?.('当前列表没有可播放的曲目');
+      onNotify?.(t('当前列表没有可播放的曲目', 'No playable tracks in current list'));
       return;
     }
     const list = shuffle
@@ -892,9 +956,12 @@ export function MusicPlayerMode({
     setQueueAndPlay(list, 0);
   };
 
+  const systemCollections = useMemo(() => getSystemCollections(lang), [lang]);
+
   const activeCollectionLabel = activeCustomPlaylist
     ? activeCustomPlaylist.name
-    : SYSTEM_COLLECTIONS.find((c) => c.id === activeCollection)?.label ?? '全部本地曲目';
+    : systemCollections.find((c) => c.id === activeCollection)?.label ??
+      t('全部本地曲目', 'All Local Tracks');
 
   const trackIndexLabel =
     currentTrack && currentIndex >= 0
@@ -908,7 +975,9 @@ export function MusicPlayerMode({
           <div className="font-mono text-[0.625rem] font-bold tracking-[0.14em] text-[var(--mp-muted)] uppercase">
             COLLECTIONS
           </div>
-          <div className="text-[0.8125rem] font-bold text-[var(--mp-ink)]">曲库与歌单</div>
+          <div className="text-[0.8125rem] font-bold text-[var(--mp-ink)]">
+            {t('曲库与歌单', 'Library & Playlists')}
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
@@ -920,12 +989,12 @@ export function MusicPlayerMode({
             className="swiss-btn-solid inline-flex h-7 items-center gap-1 px-2 font-mono text-[0.6875rem] font-bold"
           >
             <Plus className="h-3.5 w-3.5" />
-            <span>新建</span>
+            <span>{t('新建', 'New')}</span>
           </button>
           <button
             type="button"
             onClick={() => setPlaylistsOpen(false)}
-            title="收起歌单侧栏"
+            title={t('收起歌单侧栏', 'Collapse playlist sidebar')}
             className="swiss-btn inline-flex h-7 w-7 items-center justify-center"
           >
             <PanelLeftClose className="h-3.5 w-3.5" />
@@ -937,7 +1006,7 @@ export function MusicPlayerMode({
       {createOpen && (
         <div className="space-y-2 border-b border-[var(--mp-rule)] bg-[var(--mp-surface-alt)] p-2.5">
           <div className="font-mono text-[0.625rem] font-bold tracking-[0.1em] text-[var(--mp-signal)] uppercase">
-            NEW PLAYLIST // 创建歌单
+            {t('NEW PLAYLIST // 创建歌单', 'NEW PLAYLIST')}
           </div>
           <input
             type="text"
@@ -947,7 +1016,7 @@ export function MusicPlayerMode({
               if (e.key === 'Enter') void handleCreatePlaylist();
               if (e.key === 'Escape') setCreateOpen(false);
             }}
-            placeholder="输入歌单名称..."
+            placeholder={t('输入歌单名称...', 'Playlist name...')}
             autoFocus
             className="w-full border border-[var(--mp-line)] bg-[var(--mp-panel)] px-2 py-1 text-[0.75rem] text-[var(--mp-ink)] outline-none focus:border-[var(--mp-ink)]"
           />
@@ -958,7 +1027,9 @@ export function MusicPlayerMode({
               onChange={(e) => setNewPlImportFiltered(e.target.checked)}
               className="accent-[var(--mp-signal)]"
             />
-            <span>导入当前列表 ({displayedTracks.length} 首)</span>
+            <span>
+              {t(`导入当前列表 (${displayedTracks.length} 首)`, `Import current list (${displayedTracks.length})`)}
+            </span>
           </label>
           <div className="flex items-center gap-1.5">
             <button
@@ -966,14 +1037,14 @@ export function MusicPlayerMode({
               onClick={() => void handleCreatePlaylist()}
               className="swiss-btn-signal flex-1 py-1 text-[0.71875rem] font-bold"
             >
-              创建
+              {t('创建', 'Create')}
             </button>
             <button
               type="button"
               onClick={() => setCreateOpen(false)}
               className="swiss-btn px-2.5 py-1 text-[0.71875rem] font-semibold"
             >
-              取消
+              {t('取消', 'Cancel')}
             </button>
           </div>
         </div>
@@ -984,7 +1055,7 @@ export function MusicPlayerMode({
           SMART INDEX
         </div>
         <div className="space-y-0.5">
-          {SYSTEM_COLLECTIONS.map((col) => {
+          {systemCollections.map((col) => {
             const active = activeCollection === col.id && rightTab === 'tracks';
             const count =
               col.id === 'sys:all'
@@ -1037,7 +1108,7 @@ export function MusicPlayerMode({
         <div className="space-y-1">
           {playlists.length === 0 ? (
             <div className="px-2 py-3 text-[0.71875rem] text-[var(--mp-muted)]">
-              暂无自定义歌单，点击右上角「新建」创建。
+              {t('暂无自定义歌单，点击右上角「新建」创建。', 'No custom playlists yet. Click "New" above to create one.')}
             </div>
           ) : (
             playlists.map((pl) => {
@@ -1116,14 +1187,14 @@ export function MusicPlayerMode({
                           }}
                           className="bg-[var(--mp-signal)] px-1.5 py-0.5 font-mono text-[0.625rem] font-bold text-white"
                         >
-                          删
+                          {t('删', 'Del')}
                         </button>
                         <button
                           type="button"
                           onClick={() => setConfirmDeletePlId(null)}
                           className="px-1 py-0.5 font-mono text-[0.625rem] opacity-75"
                         >
-                          取消
+                          {t('取消', 'Cancel')}
                         </button>
                       </>
                     ) : (
@@ -1135,7 +1206,7 @@ export function MusicPlayerMode({
                           <button
                             type="button"
                             onClick={() => void togglePinPlaylist(pl.id)}
-                            title={pl.pinned ? '取消置顶' : '置顶歌单'}
+                            title={pl.pinned ? t('取消置顶', 'Unpin playlist') : t('置顶歌单', 'Pin playlist')}
                             className="p-0.5 opacity-75 hover:opacity-100"
                           >
                             {pl.pinned ? <PinOff className="h-3 w-3" /> : <Pin className="h-3 w-3" />}
@@ -1146,15 +1217,15 @@ export function MusicPlayerMode({
                               setRenamingPlId(pl.id);
                               setRenamingName(pl.name);
                             }}
-                            title="重命名"
+                            title={t('重命名', 'Rename')}
                             className="px-1 font-mono text-[0.625rem] font-bold opacity-75 hover:opacity-100"
                           >
-                            改
+                            {t('改', 'Ren')}
                           </button>
                           <button
                             type="button"
                             onClick={() => setConfirmDeletePlId(pl.id)}
-                            title="删除歌单"
+                            title={t('删除歌单', 'Delete playlist')}
                             className="p-0.5 opacity-75 hover:text-[var(--mp-signal)] hover:opacity-100"
                           >
                             <Trash2 className="h-3 w-3" />
@@ -1208,7 +1279,7 @@ export function MusicPlayerMode({
             <button
               type="button"
               onClick={() => setPlaylistsOpen((v) => !v)}
-              title={playlistsOpen ? '收起歌单侧栏' : '展开歌单侧栏'}
+              title={playlistsOpen ? t('收起歌单侧栏', 'Hide playlists') : t('展开歌单侧栏', 'Show playlists')}
               className={`inline-flex h-8 items-center gap-1.5 px-2.5 text-[0.75rem] font-bold ${
                 playlistsOpen ? 'swiss-btn-solid' : 'swiss-btn'
               }`}
@@ -1218,7 +1289,7 @@ export function MusicPlayerMode({
               ) : (
                 <PanelLeftOpen className="h-3.5 w-3.5 text-[var(--mp-signal)]" />
               )}
-              <span>歌单</span>
+              <span>{t('歌单', 'Lists')}</span>
             </button>
           )}
 
@@ -1230,7 +1301,7 @@ export function MusicPlayerMode({
                   OSU! AUDIO
                 </h1>
                 <span className="font-mono text-[0.6875rem] font-bold tracking-[0.1em] text-[var(--mp-muted)] uppercase">
-                  // 音乐台
+                  {t('// 音乐台', '// STATION')}
                 </span>
               </div>
               <div className="mt-0.5 flex items-center gap-2 font-mono text-[0.625rem] tracking-[0.1em] text-[var(--mp-muted)] uppercase">
@@ -1245,11 +1316,11 @@ export function MusicPlayerMode({
         {/* Right Controls: Visualizer (Spectrum/Scope), Cover Mode, Rhythm, Sleep Timer, Zen, Refresh, Background Tray */}
         <div className="flex flex-wrap items-center gap-1.5">
           {/* Visualizer Mode Switcher (Spectrum & Oscilloscope) */}
-          <div className="flex h-8 items-center border border-[var(--mp-line)] bg-[var(--mp-bg)] p-0.5" role="group" aria-label="可视化模式">
+          <div className="flex h-8 items-center border border-[var(--mp-line)] bg-[var(--mp-bg)] p-0.5" role="group" aria-label={t('可视化模式', 'Visualizer mode')}>
             {(
               [
-                { id: 'bars', label: '频谱', icon: BarChart3 },
-                { id: 'scope', label: '示波', icon: Activity },
+                { id: 'bars', label: t('频谱', 'Spectrum'), icon: BarChart3 },
+                { id: 'scope', label: t('示波', 'Wave'), icon: Activity },
               ] as Array<{ id: MusicVisualizerMode; label: string; icon: typeof BarChart3 }>
             ).map((opt) => {
               const Icon = opt.icon;
@@ -1273,11 +1344,11 @@ export function MusicPlayerMode({
           </div>
 
           {/* Cover Mode Switcher */}
-          <div className="flex h-8 items-center border border-[var(--mp-line)] bg-[var(--mp-bg)] p-0.5" role="group" aria-label="封面模式">
+          <div className="flex h-8 items-center border border-[var(--mp-line)] bg-[var(--mp-bg)] p-0.5" role="group" aria-label={t('封面模式', 'Cover mode')}>
             {(
               [
-                { id: 'poster', label: '画幅', icon: Image },
-                { id: 'disc', label: '唱盘', icon: Disc3 },
+                { id: 'poster', label: t('画幅', 'Poster'), icon: Image },
+                { id: 'disc', label: t('唱盘', 'Disc'), icon: Disc3 },
               ] as Array<{ id: MusicCoverMode; label: string; icon: typeof Image }>
             ).map((opt) => {
               const Icon = opt.icon;
@@ -1301,16 +1372,16 @@ export function MusicPlayerMode({
           </div>
 
           {/* Rhythm Follow Level */}
-          <div className="hidden h-8 items-center border border-[var(--mp-line)] bg-[var(--mp-bg)] p-0.5 sm:flex" role="group" aria-label="节奏跟随强度">
+          <div className="hidden h-8 items-center border border-[var(--mp-line)] bg-[var(--mp-bg)] p-0.5 sm:flex" role="group" aria-label={t('节奏跟随强度', 'Beat sync intensity')}>
             <span className="px-1.5 font-mono text-[0.625rem] font-bold text-[var(--mp-muted)]">
-              节奏
+              {t('节奏', 'Beat')}
             </span>
             {(
               [
-                { id: 'off', label: '关' },
-                { id: 'subtle', label: '克制' },
-                { id: 'standard', label: '标准' },
-                { id: 'kinetic', label: '律动' },
+                { id: 'off', label: t('关', 'Off') },
+                { id: 'subtle', label: t('克制', 'Low') },
+                { id: 'standard', label: t('标准', 'Std') },
+                { id: 'kinetic', label: t('律动', 'Max') },
               ] as Array<{ id: MusicRhythmIntensity; label: string }>
             ).map((opt) => {
               const active = rhythmFollow === opt.id;
@@ -1336,13 +1407,17 @@ export function MusicPlayerMode({
             type="button"
             onClick={toggleParticles}
             aria-pressed={particlesEnabled}
-            title={particlesEnabled ? '关闭背景律动粒子' : '开启背景律动粒子'}
+            title={
+              particlesEnabled
+                ? t('关闭背景律动粒子', 'Disable reactive particles')
+                : t('开启背景律动粒子', 'Enable reactive particles')
+            }
             className={`inline-flex h-8 items-center gap-1 px-2.5 text-[0.71875rem] font-bold ${
               particlesEnabled ? 'swiss-btn-signal' : 'swiss-btn'
             }`}
           >
             <Sparkles className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">粒子</span>
+            <span className="hidden sm:inline">{t('粒子', 'Particles')}</span>
           </button>
 
           {/* Sleep Timer */}
@@ -1353,20 +1428,20 @@ export function MusicPlayerMode({
               className={`inline-flex h-8 items-center gap-1.5 px-2.5 font-mono text-[0.6875rem] font-bold ${
                 sleepTimer ? 'swiss-btn-signal' : 'swiss-btn'
               }`}
-              title="定时暂停播放"
+              title={t('定时暂停播放', 'Sleep timer')}
             >
               <Clock className="h-3.5 w-3.5" />
               <span>
                 {sleepTimer?.mode === 'minutes'
                   ? formatCompactDate(sleepTimer.remainingSec)
                   : sleepTimer?.mode === 'track_end'
-                    ? '本曲后停'
-                    : '定时'}
+                    ? t('本曲后停', 'Track End')
+                    : t('定时', 'Timer')}
               </span>
             </button>
 
             {timerMenuOpen && (
-              <div className="absolute top-9 right-0 z-30 w-40 border border-[var(--mp-rule)] bg-[var(--mp-panel)] p-1 shadow-xl">
+              <div className="absolute top-9 right-0 z-30 w-44 border border-[var(--mp-rule)] bg-[var(--mp-panel)] p-1 shadow-xl">
                 {[15, 30, 60].map((m) => (
                   <button
                     key={m}
@@ -1377,7 +1452,7 @@ export function MusicPlayerMode({
                     }}
                     className="block w-full px-2.5 py-1.5 text-left text-[0.75rem] font-semibold text-[var(--mp-ink)] hover:bg-[var(--mp-surface-alt)]"
                   >
-                    {m} 分钟后暂停
+                    {t(`${m} 分钟后暂停`, `Pause in ${m} min`)}
                   </button>
                 ))}
                 <button
@@ -1388,7 +1463,7 @@ export function MusicPlayerMode({
                   }}
                   className="block w-full px-2.5 py-1.5 text-left text-[0.75rem] font-semibold text-[var(--mp-ink)] hover:bg-[var(--mp-surface-alt)]"
                 >
-                  播完当前曲目
+                  {t('播完当前曲目', 'After current track')}
                 </button>
                 {sleepTimer && (
                   <button
@@ -1399,7 +1474,7 @@ export function MusicPlayerMode({
                     }}
                     className="mt-1 block w-full border-t border-[var(--mp-line)] px-2.5 py-1.5 text-left text-[0.75rem] font-bold text-[var(--mp-signal)] hover:bg-[var(--mp-surface-alt)]"
                   >
-                    取消定时
+                    {t('取消定时', 'Cancel timer')}
                   </button>
                 )}
               </div>
@@ -1412,17 +1487,19 @@ export function MusicPlayerMode({
             className={`inline-flex h-8 items-center gap-1 px-2.5 text-[0.71875rem] font-bold ${
               zenMode ? 'swiss-btn-solid' : 'swiss-btn'
             }`}
-            title="专注画报模式（聚焦封面、节奏与可视化）"
+            title={t('专注画报模式（聚焦封面、节奏与可视化）', 'Focus Cover mode (cover, beat & visualizer)')}
           >
             {zenMode ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-            <span className="hidden md:inline">{zenMode ? '退出画报' : '专注画报'}</span>
+            <span className="hidden md:inline">
+              {zenMode ? t('退出画报', 'Exit Focus') : t('专注画报', 'Focus Cover')}
+            </span>
           </button>
 
           <button
             type="button"
             disabled={loadingLibrary}
             onClick={() => void refreshLibrary(true)}
-            title="重新扫描本地歌曲库"
+            title={t('重新扫描本地歌曲库', 'Rescan local song library')}
             className="swiss-btn inline-flex h-8 w-8 items-center justify-center"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loadingLibrary ? 'animate-spin' : ''}`} />
@@ -1433,14 +1510,24 @@ export function MusicPlayerMode({
               type="button"
               onClick={() => {
                 void window.electronAPI?.hideToTray?.().then((ok) => {
-                  if (ok) onNotify?.('已最小化至系统托盘继续纯播放音乐');
+                  if (ok) {
+                    onNotify?.(
+                      t(
+                        '已最小化至系统托盘继续纯播放音乐',
+                        'Minimized to system tray — audio continues',
+                      ),
+                    );
+                  }
                 });
               }}
-              title="隐藏主窗口到系统托盘继续后台纯播放（点击托盘图标可呼回）"
+              title={t(
+                '隐藏主窗口到系统托盘继续后台纯播放（点击托盘图标可呼回）',
+                'Hide window to system tray while continuing playback',
+              )}
               className="swiss-btn inline-flex h-8 items-center gap-1 px-2.5 text-[0.71875rem] font-bold"
             >
               <MinusCircle className="h-3.5 w-3.5 text-[var(--mp-signal)]" />
-              <span className="hidden sm:inline">后台挂机</span>
+              <span className="hidden sm:inline">{t('后台挂机', 'Tray')}</span>
             </button>
           )}
         </div>
@@ -1590,7 +1677,7 @@ export function MusicPlayerMode({
                       : 'text-[var(--mp-muted)] hover:text-[var(--mp-ink)]'
                   }`}
                 >
-                  曲目列表 ({displayedTracks.length})
+                  {t(`曲目列表 (${displayedTracks.length})`, `Tracks (${displayedTracks.length})`)}
                 </button>
                 <button
                   type="button"
@@ -1601,7 +1688,7 @@ export function MusicPlayerMode({
                       : 'text-[var(--mp-muted)] hover:text-[var(--mp-ink)]'
                   }`}
                 >
-                  播放队列 ({queue.length})
+                  {t(`播放队列 (${queue.length})`, `Queue (${queue.length})`)}
                 </button>
               </div>
 
@@ -1614,14 +1701,14 @@ export function MusicPlayerMode({
                       type="text"
                       value={searchQ}
                       onChange={(e) => setSearchQ(e.target.value)}
-                      placeholder="搜曲名 / 曲师 / 标签 (/)"
+                      placeholder={t('搜曲名 / 曲师 / 标签 (/)', 'Search title / artist / tags (/)')}
                       className="h-full w-36 bg-transparent pr-6 pl-1.5 text-[0.75rem] text-[var(--mp-ink)] outline-none placeholder:text-[var(--mp-muted)] sm:w-44"
                     />
                     {searchQ && (
                       <button
                         type="button"
                         onClick={() => setSearchQ('')}
-                        aria-label="清空搜索"
+                        aria-label={t('清空搜索', 'Clear search')}
                         className="absolute right-1 p-0.5 text-[var(--mp-muted)] hover:text-[var(--mp-ink)]"
                       >
                         <X className="h-3 w-3" />
@@ -1641,25 +1728,25 @@ export function MusicPlayerMode({
                             : 'text-[var(--mp-muted)] hover:text-[var(--mp-ink)]'
                         }`}
                       >
-                        {sf === 'all' ? '全部' : sf === 'stable' ? 'Stable' : 'Lazer'}
+                        {sf === 'all' ? t('全部', 'All') : sf === 'stable' ? 'Stable' : 'Lazer'}
                       </button>
                     ))}
                   </div>
 
-                  <div className="w-24">
+                  <div className={isEn ? 'w-28' : 'w-24'}>
                     <SelectField
                       value={sortBy}
                       onChange={(v) => setSortBy(v as TrackSortField)}
-                      title="排序方式"
+                      title={t('排序方式', 'Sort tracks')}
                       className="h-7 !rounded-[2px] !border-[var(--mp-line)] !bg-[var(--mp-bg)] text-[0.71875rem]"
                     >
-                      <option value="default">默认排序</option>
-                      <option value="recent">最近游玩</option>
-                      <option value="title">曲名 A–Z</option>
-                      <option value="plays">游玩次数</option>
-                      <option value="bpm">曲目 BPM</option>
-                      <option value="length">曲目时长</option>
-                      <option value="stars">最高星数</option>
+                      <option value="default">{t('默认排序', 'Default')}</option>
+                      <option value="recent">{t('最近游玩', 'Last Played')}</option>
+                      <option value="title">{t('曲名 A–Z', 'Title A–Z')}</option>
+                      <option value="plays">{t('游玩次数', 'Plays')}</option>
+                      <option value="bpm">{t('曲目 BPM', 'BPM')}</option>
+                      <option value="length">{t('曲目时长', 'Length')}</option>
+                      <option value="stars">{t('最高星数', 'Max Stars')}</option>
                     </SelectField>
                   </div>
 
@@ -1669,14 +1756,14 @@ export function MusicPlayerMode({
                     className="swiss-btn-solid inline-flex h-7 items-center gap-1 px-2.5 text-[0.71875rem] font-bold"
                   >
                     <Play className="h-3 w-3 fill-current" />
-                    <span>播放全部</span>
+                    <span>{t('播放全部', 'Play All')}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => handlePlayAll(true)}
                     className="swiss-btn inline-flex h-7 items-center gap-1 px-2 text-[0.71875rem] font-semibold"
-                    title="打乱顺序并播放当前列表"
+                    title={t('打乱顺序并播放当前列表', 'Shuffle and play current list')}
                   >
                     <Shuffle className="h-3 w-3" />
                   </button>
@@ -1690,7 +1777,7 @@ export function MusicPlayerMode({
                       }`}
                     >
                       <Plus className="h-3.5 w-3.5" />
-                      <span>{pickerOpen ? '完成选曲' : '添加曲目'}</span>
+                      <span>{pickerOpen ? t('完成选曲', 'Done') : t('添加曲目', 'Add Tracks')}</span>
                     </button>
                   )}
                 </div>
@@ -1702,13 +1789,16 @@ export function MusicPlayerMode({
               <div className="shrink-0 border-b-2 border-[var(--mp-rule)] bg-[var(--mp-surface-alt)] px-3 py-2.5 sm:px-4">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-mono text-[0.65625rem] font-bold tracking-[0.1em] text-[var(--mp-signal)] uppercase">
-                    PICK LOCAL SONGS INTO 「{activeCustomPlaylist.name}」
+                    {t(
+                      `PICK LOCAL SONGS INTO 「${activeCustomPlaylist.name}」`,
+                      `ADD LOCAL SONGS TO "${activeCustomPlaylist.name}"`,
+                    )}
                   </span>
                   <input
                     type="text"
                     value={pickerQ}
                     onChange={(e) => setPickerQ(e.target.value)}
-                    placeholder="过滤本地曲库添加到歌单..."
+                    placeholder={t('过滤本地曲库添加到歌单...', 'Filter local tracks to add...')}
                     className="h-7 w-56 border border-[var(--mp-line)] bg-[var(--mp-panel)] px-2 text-[0.75rem] text-[var(--mp-ink)] outline-none focus:border-[var(--mp-ink)]"
                   />
                 </div>
@@ -1736,7 +1826,7 @@ export function MusicPlayerMode({
                           {b.titleUnicode || b.title} — {b.artistUnicode || b.artist}
                         </span>
                         <span className="font-mono shrink-0 text-[0.65625rem]">
-                          {added ? '✓ 已加入' : '+ 加入'}
+                          {added ? t('✓ 已加入', '✓ Added') : t('+ 加入', '+ Add')}
                         </span>
                       </button>
                     );
@@ -1746,7 +1836,11 @@ export function MusicPlayerMode({
             )}
 
             {/* Track Table Body */}
-            <div className="min-h-0 flex-1 overflow-y-auto">
+            <div
+              ref={trackListScrollRef}
+              onScroll={handleTrackListScroll}
+              className="min-h-0 flex-1 overflow-y-auto"
+            >
               {loadingLibrary && playableBooks.length === 0 ? (
                 <div className="flex h-full items-center justify-center gap-2 text-[var(--mp-muted)]">
                   <Loader2 className="h-5 w-5 animate-spin text-[var(--mp-signal)]" />
@@ -1760,17 +1854,17 @@ export function MusicPlayerMode({
                     onClick={() => void refreshLibrary(true)}
                     className="swiss-btn-solid px-4 py-1.5 text-[0.75rem] font-bold"
                   >
-                    重试扫描本地曲库
+                    {t('重试扫描本地曲库', 'Retry Library Scan')}
                   </button>
                 </div>
               ) : rightTab === 'queue' ? (
                 queue.length === 0 ? (
                   <div className="flex h-full flex-col items-center justify-center p-6 text-center text-[var(--mp-muted)]">
-                    <p className="text-[0.875rem] font-semibold">播放队列为空</p>
+                    <p className="text-[0.875rem] font-semibold">{t('播放队列为空', 'Playback queue is empty')}</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-[var(--mp-line)]">
-                    {queue.map((b, idx) => {
+                    {visibleQueue.map((b, idx) => {
                       const active = idx === currentIndex;
                       return (
                         <div
@@ -1812,7 +1906,7 @@ export function MusicPlayerMode({
                               e.stopPropagation();
                               removeFromQueue(idx);
                             }}
-                            title="从队列移除"
+                            title={t('从队列移除', 'Remove from queue')}
                             className="p-1 text-[var(--mp-muted)] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[var(--mp-signal)]"
                           >
                             <X className="h-3.5 w-3.5" />
@@ -1820,12 +1914,32 @@ export function MusicPlayerMode({
                         </div>
                       );
                     })}
+                    {visibleQueue.length < queue.length && (
+                      <div className="flex justify-center p-2.5">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setVisibleQueueCount((prev) =>
+                              Math.min(queue.length, prev + TRACK_RENDER_BATCH),
+                            )
+                          }
+                          className="swiss-btn px-3 py-1 font-mono text-[0.6875rem] font-bold"
+                        >
+                          {t(
+                            `显示更多 (${visibleQueue.length} / ${queue.length})`,
+                            `Show more (${visibleQueue.length} / ${queue.length})`,
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               ) : displayedTracks.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-[var(--mp-muted)]">
                   <p className="text-[0.875rem] font-semibold text-[var(--mp-ink)]">
-                    {activeCustomPlaylist ? '该歌单暂无曲目' : '没有匹配的本地歌曲'}
+                    {activeCustomPlaylist
+                      ? t('该歌单暂无曲目', 'No tracks in this playlist yet')
+                      : t('没有匹配的本地歌曲', 'No matching local tracks')}
                   </p>
                   {activeCustomPlaylist && (
                     <button
@@ -1833,13 +1947,13 @@ export function MusicPlayerMode({
                       onClick={() => setPickerOpen(true)}
                       className="swiss-btn-signal px-3 py-1.5 text-[0.75rem] font-bold"
                     >
-                      + 从本地曲库添加歌曲
+                      {t('+ 从本地曲库添加歌曲', '+ Add Tracks from Library')}
                     </button>
                   )}
                 </div>
               ) : (
                 <div className="divide-y divide-[var(--mp-line)]">
-                  {displayedTracks.map((b, idx) => {
+                  {visibleTracks.map((b, idx) => {
                     const active = currentTrack?.bookKey === b.bookKey;
                     const liked = likedSet.has(b.bookKey);
                     const menuOpen = rowMenuBookKey === b.bookKey;
@@ -1899,7 +2013,7 @@ export function MusicPlayerMode({
                           <button
                             type="button"
                             onClick={() => toggleLike(b.bookKey)}
-                            title={liked ? '取消红心' : '红心收藏'}
+                            title={liked ? t('取消红心', 'Unlike') : t('红心收藏', 'Like')}
                             className={`p-1 transition-colors ${
                               liked
                                 ? 'text-[var(--mp-signal)]'
@@ -1912,7 +2026,7 @@ export function MusicPlayerMode({
                           <button
                             type="button"
                             onClick={() => enqueueTrackNext(b)}
-                            title="下一首播放"
+                            title={t('下一首播放', 'Play next')}
                             className="hidden p-1 text-[var(--mp-muted)] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[var(--mp-ink)] sm:inline-flex"
                           >
                             <Play className="h-3 w-3" />
@@ -1924,7 +2038,7 @@ export function MusicPlayerMode({
                             onClick={() =>
                               setRowMenuBookKey((prev) => (prev === b.bookKey ? null : b.bookKey))
                             }
-                            title="加入歌单"
+                            title={t('加入歌单', 'Add to playlist')}
                             className="p-1 text-[var(--mp-muted)] opacity-60 hover:text-[var(--mp-ink)] hover:opacity-100"
                           >
                             <ListPlus className="h-3.5 w-3.5" />
@@ -1938,7 +2052,7 @@ export function MusicPlayerMode({
                                 onClick={() =>
                                   void reorderPlaylistTrack(activeCustomPlaylist.id, idx, idx - 1)
                                 }
-                                title="上移"
+                                title={t('上移', 'Move up')}
                                 className="p-0.5 text-[var(--mp-muted)] hover:text-[var(--mp-ink)] disabled:opacity-25"
                               >
                                 <ArrowUp className="h-3 w-3" />
@@ -1949,7 +2063,7 @@ export function MusicPlayerMode({
                                 onClick={() =>
                                   void reorderPlaylistTrack(activeCustomPlaylist.id, idx, idx + 1)
                                 }
-                                title="下移"
+                                title={t('下移', 'Move down')}
                                 className="p-0.5 text-[var(--mp-muted)] hover:text-[var(--mp-ink)] disabled:opacity-25"
                               >
                                 <ArrowDown className="h-3 w-3" />
@@ -1959,7 +2073,7 @@ export function MusicPlayerMode({
                                 onClick={() =>
                                   void removeBookFromPlaylist(activeCustomPlaylist.id, b.bookKey)
                                 }
-                                title="从歌单移除"
+                                title={t('从歌单移除', 'Remove from playlist')}
                                 className="p-1 text-[var(--mp-muted)] hover:text-[var(--mp-signal)]"
                               >
                                 <X className="h-3 w-3" />
@@ -2000,7 +2114,7 @@ export function MusicPlayerMode({
                                 className="mt-0.5 flex w-full items-center gap-1 border-t border-[var(--mp-line)] px-2 py-1 text-left text-[0.71875rem] font-bold text-[var(--mp-signal)] hover:bg-[var(--mp-surface-alt)]"
                               >
                                 <Plus className="h-3 w-3" />
-                                <span>新建歌单并加入</span>
+                                <span>{t('新建歌单并加入', 'New Playlist & Add')}</span>
                               </button>
                             </div>
                           )}
@@ -2008,6 +2122,24 @@ export function MusicPlayerMode({
                       </div>
                     );
                   })}
+                  {visibleTracks.length < displayedTracks.length && (
+                    <div className="flex justify-center p-2.5">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVisibleTrackCount((prev) =>
+                            Math.min(displayedTracks.length, prev + TRACK_RENDER_BATCH),
+                          )
+                        }
+                        className="swiss-btn px-3 py-1 font-mono text-[0.6875rem] font-bold"
+                      >
+                        {t(
+                          `显示更多 (${visibleTracks.length} / ${displayedTracks.length})`,
+                          `Show more (${visibleTracks.length} / ${displayedTracks.length})`,
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

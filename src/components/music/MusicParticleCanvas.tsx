@@ -176,6 +176,11 @@ export function MusicParticleCanvas({
         return;
       }
 
+      if (!isPlaying && now - lastTs < 48) {
+        rafId = window.requestAnimationFrame(renderFrame);
+        return;
+      }
+
       const dt = Math.min(0.05, Math.max(0.004, (now - lastTs) / 1000));
       lastTs = now;
       const frameScale = dt * 60;

@@ -19,14 +19,15 @@ import {
   X,
 } from 'lucide-react';
 import {
-  TARGET_META,
   formatCount,
   formatDuration,
   getLnCategory,
   getStarColor,
   getStatusBadge,
+  getTargetMeta,
   openExternalLink,
 } from '../constants';
+import { useI18n } from '../i18n';
 import {
   DownloadTarget,
   DownloadVariant,
@@ -61,18 +62,6 @@ interface BeatmapDetailModalProps {
 
 const TARGET_ORDER: DownloadTarget[] = ['lazer', 'stable', 'both'];
 
-const TARGET_SEG_LABEL: Record<DownloadTarget, string> = {
-  lazer: 'Lazer',
-  stable: 'Stable',
-  both: '双端同步',
-};
-
-const TARGET_TITLE: Record<DownloadTarget, string> = {
-  lazer: '安装到 Lazer',
-  stable: '安装到 Stable',
-  both: '同时安装到 Stable + Lazer',
-};
-
 export function BeatmapDetailModal({
   beatmapset,
   initialDiffId = null,
@@ -88,6 +77,8 @@ export function BeatmapDetailModal({
   onPreviewBeatmap,
   onDownload,
 }: BeatmapDetailModalProps) {
+  const { lang, t } = useI18n();
+  const allTargetMeta = useMemo(() => getTargetMeta(lang), [lang]);
   const [target, setTarget] = useState<DownloadTarget>(defaultTarget);
   const [variant, setVariant] = useState<DownloadVariant>(defaultVariant);
   const [mirror, setMirror] = useState<PreferredMirror>('auto');
@@ -134,22 +125,36 @@ export function BeatmapDetailModal({
     .filter(Boolean)
     .slice(0, 18);
 
-  const stats: Array<{ label: string; value: string; icon: typeof Heart; cls: string }> = [
-    { label: 'BPM', value: String(beatmapset.bpm), icon: Activity, cls: 'text-ink' },
+  const targetSegLabel: Record<DownloadTarget, string> = {
+    lazer: 'Lazer',
+    stable: 'Stable',
+    both: t('双端同步', 'Both'),
+  };
+  const targetTitle: Record<DownloadTarget, string> = {
+    lazer: t('安装到 Lazer', 'Install to Lazer'),
+    stable: t('安装到 Stable', 'Install to Stable'),
+    both: t('同时安装到 Stable + Lazer', 'Install to Stable + Lazer'),
+  };
+
+  const stats: Array<{ key: string; label: string; value: string; icon: typeof Heart; cls: string }> = [
+    { key: 'bpm', label: 'BPM', value: String(beatmapset.bpm), icon: Activity, cls: 'text-ink' },
     {
-      label: '收藏数',
+      key: 'fav',
+      label: t('收藏数', 'Favourites'),
       value: formatCount(beatmapset.favouriteCount),
       icon: Heart,
       cls: 'text-osu-soft',
     },
     {
-      label: '总游玩',
+      key: 'play',
+      label: t('总游玩', 'Plays'),
       value: formatCount(beatmapset.playCount),
       icon: PlayCircle,
       cls: 'text-stable-soft',
     },
     {
-      label: '难度数量',
+      key: 'diffs',
+      label: t('难度数量', 'Difficulties'),
       value: `${beatmapset.beatmaps.length}`,
       icon: Layers,
       cls: 'text-ink',
@@ -187,7 +192,7 @@ export function BeatmapDetailModal({
           <button
             type="button"
             onClick={onClose}
-            title="关闭"
+            title={t('关闭', 'Close')}
             className="btn btn-icon absolute top-3 right-3 border-white/15 bg-black/50 text-white backdrop-blur-md hover:bg-black/70 hover:text-white"
           >
             <X className="h-4 w-4" />
@@ -204,7 +209,7 @@ export function BeatmapDetailModal({
                 </span>
                 {beatmapset.video && (
                   <span className="chip border-white/15 bg-black/50 text-slate-100 backdrop-blur-sm">
-                    <Film className="h-3 w-3" /> 含视频
+                    <Film className="h-3 w-3" /> {t('含视频', 'Video')}
                   </span>
                 )}
                 {beatmapset.spotlight && (
@@ -214,17 +219,17 @@ export function BeatmapDetailModal({
                 )}
                 {beatmapset.localStatus.inLazer && (
                   <span className="chip chip-gold backdrop-blur-sm">
-                    <Check className="h-3 w-3" strokeWidth={3} /> Lazer 已装
+                    <Check className="h-3 w-3" strokeWidth={3} /> {t('Lazer 已装', 'In Lazer')}
                   </span>
                 )}
                 {beatmapset.localStatus.inStable && (
                   <span className="chip chip-gold backdrop-blur-sm">
-                    <Check className="h-3 w-3" strokeWidth={3} /> Stable 已装
+                    <Check className="h-3 w-3" strokeWidth={3} /> {t('Stable 已装', 'In Stable')}
                   </span>
                 )}
                 {beatmapset.localStatus.inLazerPending && !beatmapset.localStatus.inLazer && (
                   <span className="chip border-amber-300/50 bg-black/70 text-amber-200 backdrop-blur-sm">
-                    <Clock className="h-3 w-3" /> Lazer 待导入
+                    <Clock className="h-3 w-3" /> {t('Lazer 待导入', 'Lazer Pending')}
                   </span>
                 )}
               </div>
@@ -234,7 +239,7 @@ export function BeatmapDetailModal({
               <p className="mt-0.5 truncate text-[0.875rem] font-medium text-slate-200 drop-shadow-sm">
                 {beatmapset.artist}
                 <span className="mx-1.5 text-slate-400">·</span>
-                谱师 <span className="font-semibold text-pink-300">{beatmapset.creator}</span>
+                {t('谱师', 'Mapped by')} <span className="font-semibold text-pink-300">{beatmapset.creator}</span>
               </p>
             </div>
 
@@ -249,7 +254,7 @@ export function BeatmapDetailModal({
                   className="btn border-white/25 bg-black/55 text-white backdrop-blur-md hover:border-osu/80 hover:bg-osu/90 hover:text-white"
                 >
                   <Eye className="h-3.5 w-3.5" />
-                  <span>预览谱面</span>
+                  <span>{t('预览谱面', 'Preview')}</span>
                 </button>
               )}
               <button
@@ -262,7 +267,7 @@ export function BeatmapDetailModal({
                 ) : (
                   <Play className="h-3.5 w-3.5 fill-current" />
                 )}
-                <span>{isPlaying ? '暂停试听' : '试听音频'}</span>
+                <span>{isPlaying ? t('暂停试听', 'Pause') : t('试听音频', 'Preview Audio')}</span>
               </button>
               <a
                 href={beatmapset.officialUrl}
@@ -272,7 +277,7 @@ export function BeatmapDetailModal({
                 className="btn border-white/15 bg-black/50 text-white backdrop-blur-md hover:bg-black/70 hover:text-white"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
-                <span>官网</span>
+                <span>{t('官网', 'Web')}</span>
               </a>
             </div>
           </div>
@@ -285,16 +290,18 @@ export function BeatmapDetailModal({
         >
           {/* Quick Stats */}
           <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            {stats.map(({ label, value, icon: Icon, cls }) => (
-              <div key={label} className="panel-flat px-3.5 py-3">
+            {stats.map(({ key, label, value, icon: Icon, cls }) => (
+              <div key={key} className="panel-flat px-3.5 py-3">
                 <div className="overline flex items-center gap-1.5">
                   <Icon className="h-3 w-3" />
                   {label}
                 </div>
                 <div className={`font-stat mt-1 text-[1.25rem] font-bold tracking-tight ${cls}`}>
                   {value}
-                  {label === '难度数量' && (
-                    <span className="ml-1 font-sans text-[0.8125rem] font-semibold text-ink-3">个难度</span>
+                  {key === 'diffs' && (
+                    <span className="ml-1 font-sans text-[0.8125rem] font-semibold text-ink-3">
+                      {t('个难度', 'diffs')}
+                    </span>
                   )}
                 </div>
               </div>
@@ -304,26 +311,28 @@ export function BeatmapDetailModal({
           {/* Difficulties Table */}
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="overline">难度列表</span>
-              <span className="text-[0.78125rem] font-medium text-ink-3">点击任意难度行可在下方模拟多情景 PP</span>
+              <span className="overline">{t('难度列表', 'Difficulties')}</span>
+              <span className="text-[0.78125rem] font-medium text-ink-3">
+                {t('点击任意难度行可在下方模拟多情景 PP', 'Click any difficulty row to simulate PP scenarios below')}
+              </span>
             </div>
             <div className="panel-flat overflow-x-auto">
               <table className="data-table [&_th]:!px-2.5 [&_td]:!px-2.5">
                 <thead>
                   <tr>
-                    <th>难度名</th>
-                    <th>模式 / 键数</th>
-                    <th>星数</th>
-                    <th>大致 PP (98%/SS)</th>
-                    <th>时长</th>
+                    <th>{t('难度名', 'Difficulty')}</th>
+                    <th>{t('模式 / 键数', 'Mode / Keys')}</th>
+                    <th>{t('星数', 'Stars')}</th>
+                    <th>{t('大致 PP (98%/SS)', 'Est. PP (98%/SS)')}</th>
+                    <th>{t('时长', 'Length')}</th>
                     <th>OD / HP</th>
-                    <th>单键 / 长条 (LN%)</th>
+                    <th>{t('单键 / 长条 (LN%)', 'Rice / LN (LN%)')}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {beatmapset.beatmaps.map((bm) => {
                     const color = getStarColor(bm.difficultyRating);
-                    const lnInfo = getLnCategory(bm.lnRatio);
+                    const lnInfo = getLnCategory(bm.lnRatio, lang);
                     const ppQuick = rankedForPp ? getQuickPpSummary(bm, 1) : null;
                     const isPicked = selectedDiffId === bm.id;
                     return (
@@ -348,11 +357,11 @@ export function BeatmapDetailModal({
                                   onClose();
                                   onPreviewBeatmap(beatmapset, bm.id);
                                 }}
-                                title="使用此难度打开 Mania 谱面预览"
+                                title={t('使用此难度打开 Mania 谱面预览', 'Preview this Mania difficulty')}
                                 className="btn btn-sm min-h-[22px] shrink-0 px-1.5 text-[0.71875rem] font-semibold text-osu-soft"
                               >
                                 <Eye className="h-2.5 w-2.5" />
-                                <span>预览</span>
+                                <span>{t('预览', 'Preview')}</span>
                               </button>
                             )}
                           </div>
@@ -384,7 +393,9 @@ export function BeatmapDetailModal({
                               ~{formatPp(ppQuick.pp98)} / {formatPp(ppQuick.pp100)}pp
                             </span>
                           ) : (
-                            <span className="text-[0.78125rem] font-medium text-ink-3">未上架</span>
+                            <span className="text-[0.78125rem] font-medium text-ink-3">
+                              {t('未上架', 'Unranked')}
+                            </span>
                           )}
                         </td>
                         <td className="font-mono whitespace-nowrap text-ink-2">
@@ -437,7 +448,7 @@ export function BeatmapDetailModal({
           {tags.length > 0 && (
             <div>
               <div className="overline mb-2 flex items-center gap-1.5">
-                <Tag className="h-3 w-3" /> 标签
+                <Tag className="h-3 w-3" /> {t('标签', 'Tags')}
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {tags.map((tag, i) => (
@@ -462,46 +473,46 @@ export function BeatmapDetailModal({
         <div className="flex flex-wrap items-end justify-between gap-3 border-t border-hairline bg-surface-1/75 px-5 py-3.5">
           <div className="flex min-w-0 flex-1 flex-wrap items-end gap-2.5">
             <div className="min-w-[260px]">
-              <div className="field-label mb-1">安装目标</div>
+              <div className="field-label mb-1">{t('安装目标', 'Install Target')}</div>
               <div className="segmented">
-                {TARGET_ORDER.map((t) => (
+                {TARGET_ORDER.map((tgt) => (
                   <button
-                    key={t}
+                    key={tgt}
                     type="button"
-                    title={TARGET_TITLE[t]}
-                    onClick={() => setTarget(t)}
-                    className={target === t ? TARGET_META[t].activeSegCls : ''}
+                    title={targetTitle[tgt]}
+                    onClick={() => setTarget(tgt)}
+                    className={target === tgt ? allTargetMeta[tgt].activeSegCls : ''}
                   >
-                    {TARGET_SEG_LABEL[t]}
+                    {targetSegLabel[tgt]}
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="min-w-[148px]">
-              <div className="field-label mb-1">包类型</div>
+              <div className="field-label mb-1">{t('包类型', 'Package')}</div>
               <SelectField
                 value={variant}
                 onChange={(val) => setVariant(val as DownloadVariant)}
               >
-                <option value="novideo">无视频 (推荐)</option>
-                <option value="full">完整包 (含视频)</option>
-                <option value="mini">精简 Mini 包</option>
+                <option value="novideo">{t('无视频 (推荐)', 'No Video (Default)')}</option>
+                <option value="full">{t('完整包 (含视频)', 'Full (With Video)')}</option>
+                <option value="mini">{t('精简 Mini 包', 'Mini (Compact)')}</option>
               </SelectField>
             </div>
 
             <div className="min-w-[210px]">
-              <div className="field-label mb-1">下载源</div>
+              <div className="field-label mb-1">{t('下载源', 'Mirror')}</div>
               <SelectField
                 value={mirror}
                 onChange={(val) => setMirror(val as PreferredMirror)}
                 className="font-mono tabular-nums"
               >
-                <option value="auto">自动选择最快镜像</option>
+                <option value="auto">{t('自动选择最快镜像', 'Auto (Fastest Mirror)')}</option>
                 {network?.mirrors.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.shortName} {m.latencyMs != null ? `(${m.latencyMs}ms)` : ''}
-                    {!m.healthy ? ' [不可用]' : ''}
+                    {!m.healthy ? t(' [不可用]', ' [Offline]') : ''}
                   </option>
                 ))}
               </SelectField>
@@ -514,10 +525,10 @@ export function BeatmapDetailModal({
               onDownload(beatmapset, target, variant, mirror);
               onClose();
             }}
-            className={`btn min-h-[38px] px-4 text-[0.875rem] font-semibold ${TARGET_META[target].btnCls}`}
+            className={`btn min-h-[38px] px-4 text-[0.875rem] font-semibold ${allTargetMeta[target].btnCls}`}
           >
             <Download className="h-4 w-4" />
-            <span>立即下载并安装</span>
+            <span>{t('立即下载并安装', 'Download & Install')}</span>
           </button>
         </div>
       </div>

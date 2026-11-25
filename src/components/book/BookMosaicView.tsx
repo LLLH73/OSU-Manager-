@@ -6,6 +6,7 @@ import {
   useRef,
 } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useI18n } from '../../i18n';
 import { BookSummary } from '../../types';
 
 export type MosaicGridKey = '3x2' | '4x2' | '4x3' | '5x3';
@@ -135,6 +136,7 @@ export const BookMosaicView = forwardRef<BookMosaicHandle, BookMosaicViewProps>(
     },
     ref,
   ) {
+    const { t } = useI18n();
     const containerRef = useRef<HTMLDivElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -1022,7 +1024,7 @@ export const BookMosaicView = forwardRef<BookMosaicHandle, BookMosaicViewProps>(
                 e.stopPropagation();
                 triggerIrisTransition(renderedPageRef.current - 1);
               }}
-              aria-label="上一页封面阵列"
+              aria-label={t('上一页封面阵列', 'Previous cover grid page')}
               className="absolute top-1/2 left-3 flex h-11 w-9 -translate-y-1/2 items-center justify-center border border-[var(--rb-line)]/70 bg-[var(--rb-paper)]/72 text-[var(--rb-ink)] opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover/mosaic:opacity-90 hover:border-[var(--rb-accent)] hover:!opacity-100"
             >
               <ChevronLeft className="h-4.5 w-4.5" />
@@ -1033,7 +1035,7 @@ export const BookMosaicView = forwardRef<BookMosaicHandle, BookMosaicViewProps>(
                 e.stopPropagation();
                 triggerIrisTransition(renderedPageRef.current + 1);
               }}
-              aria-label="下一页封面阵列"
+              aria-label={t('下一页封面阵列', 'Next cover grid page')}
               className="absolute top-1/2 right-3 flex h-11 w-9 -translate-y-1/2 items-center justify-center border border-[var(--rb-line)]/70 bg-[var(--rb-paper)]/72 text-[var(--rb-ink)] opacity-0 backdrop-blur-md transition-opacity duration-200 group-hover/mosaic:opacity-90 hover:border-[var(--rb-accent)] hover:!opacity-100"
             >
               <ChevronRight className="h-4.5 w-4.5" />

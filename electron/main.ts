@@ -43,6 +43,7 @@ let overlayExpandedHeight = 660;
 let overlayCompact = false;
 let quitting = false;
 let hiddenToTray = false;
+let currentLanguage: 'zh' | 'en' = 'zh';
 
 function resolveAppIconPath(): string {
   const baseDir = path.resolve(__dirname, '..');
@@ -94,6 +95,7 @@ function loadInitialOverlayPrefs(): void {
     const parsed = JSON.parse(fs.readFileSync(cfgPath, 'utf8')) as {
       overlayHotkey?: string;
       theme?: string;
+      language?: string;
     };
     if (typeof parsed.overlayHotkey === 'string' && parsed.overlayHotkey.trim()) {
       currentHotkey = parsed.overlayHotkey.trim();
@@ -101,6 +103,7 @@ function loadInitialOverlayPrefs(): void {
     if (typeof parsed.theme === 'string' && THEME_ELECTRON_BG[parsed.theme]) {
       initialMainBg = THEME_ELECTRON_BG[parsed.theme];
     }
+    currentLanguage = parsed.language === 'en' ? 'en' : 'zh';
   } catch {
     // Ignore unreadable config
   }
@@ -244,41 +247,42 @@ function sendMusicCommand(cmd: 'toggle' | 'prev' | 'next'): void {
 
 function updateTrayMenu(): void {
   if (!tray) return;
+  const isEn = currentLanguage === 'en';
   const menu = Menu.buildFromTemplate([
     {
-      label: '播放 / 暂停音乐',
+      label: isEn ? 'Play / Pause Music' : '播放 / 暂停音乐',
       click: () => {
         sendMusicCommand('toggle');
       },
     },
     {
-      label: '上一曲',
+      label: isEn ? 'Previous Track' : '上一曲',
       click: () => {
         sendMusicCommand('prev');
       },
     },
     {
-      label: '下一曲',
+      label: isEn ? 'Next Track' : '下一曲',
       click: () => {
         sendMusicCommand('next');
       },
     },
     { type: 'separator' },
     {
-      label: `切换游戏内浮窗 (${currentHotkey})`,
+      label: isEn ? `Toggle In-Game Overlay (${currentHotkey})` : `切换游戏内浮窗 (${currentHotkey})`,
       click: () => {
         toggleOverlayWindow();
       },
     },
     {
-      label: '显示主窗口',
+      label: isEn ? 'Show Main Window' : '显示主窗口',
       click: () => {
         showMainWindow();
       },
     },
     { type: 'separator' },
     {
-      label: '退出 OSU!Manager!',
+      label: isEn ? 'Quit OSU!Manager!' : '退出 OSU!Manager!',
       click: () => {
         quitting = true;
         if (overlayWindow && !overlayWindow.isDestroyed()) overlayWindow.destroy();
@@ -315,9 +319,10 @@ function createTray(): void {
 }
 
 function registerOverlayHotkey(hotkey: string): { ok: boolean; error?: string } {
+  const isEn = currentLanguage === 'en';
   const trimmed = hotkey.trim();
   if (!trimmed) {
-    return { ok: false, error: '快捷键不能为空' };
+    return { ok: false, error: isEn ? 'Shortcut cannot be empty' : '快捷键不能为空' };
   }
   const previous = currentHotkey;
   globalShortcut.unregisterAll();
@@ -345,7 +350,12 @@ function registerOverlayHotkey(hotkey: string): { ok: boolean; error?: string } 
       // Ignore restore error
     }
   }
-  return { ok: false, error: `无法注册全局快捷键 "${trimmed}"（可能与系统或其他软件冲突）` };
+  return {
+    ok: false,
+    error: isEn
+      ? `Failed to register global shortcut "${trimmed}" (may conflict with another app)`
+      : `无法注册全局快捷键 "${trimmed}"（可能与系统或其他软件冲突）`,
+  };
 }
 
 function registerIpcHandlers(): void {
@@ -437,6 +447,11 @@ function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('app:version', () => app.getVersion());
+
+  ipcMain.handle('app:setLanguage', (_event, lang: string) => {
+    currentLanguage = lang === 'en' ? 'en' : 'zh';
+    updateTrayMenu();
+  });
 
   // Overlay IPC
   ipcMain.handle('overlay:toggle', () => toggleOverlayWindow());

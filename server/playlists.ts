@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
+import { st } from './i18n.js';
 import { MusicPlaylist } from './types.js';
 
 const MAX_PLAYLISTS = 100;
@@ -34,9 +35,10 @@ function sanitizeBookKeys(raw: unknown): string[] {
 }
 
 function sanitizeName(raw: unknown): string {
-  if (typeof raw !== 'string') return '未命名歌单';
+  const fallback = st('未命名歌单', 'Untitled Playlist');
+  if (typeof raw !== 'string') return fallback;
   const trimmed = raw.trim().slice(0, 80);
-  return trimmed || '未命名歌单';
+  return trimmed || fallback;
 }
 
 function sanitizeDescription(raw: unknown): string {

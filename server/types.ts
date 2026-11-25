@@ -5,6 +5,7 @@ export type DownloadTarget = 'lazer' | 'stable' | 'both';
 export type DownloadVariant = 'novideo' | 'full' | 'mini';
 export type SearchSource = 'auto' | 'osudirect' | 'sayobot';
 export type StableInstallMode = 'extract' | 'drop_osz';
+export type UiLanguage = 'zh' | 'en';
 export type ThemeId =
   | 'dark'
   | 'stone'
@@ -57,6 +58,7 @@ export interface AppConfig {
   accentColor: string;
   fontScale: number;
   ipFamily: IpFamilyMode;
+  language: UiLanguage;
   onboardingCompleted?: boolean;
 }
 
@@ -89,12 +91,15 @@ export type RoutePolicy = 'cn_first' | 'global_first' | 'direct_only' | 'proxy_o
 export interface MirrorDefinition {
   id: MirrorId;
   name: string;
+  nameEn: string;
   shortName: string;
+  shortNameEn: string;
   region: 'CN' | 'GLOBAL' | 'OFFICIAL';
   routePolicy: RoutePolicy;
   supportsVariants: DownloadVariant[];
   requiresAuth: boolean;
   description: string;
+  descriptionEn: string;
   probeUrl: string;
   probeMethod: 'GET' | 'HEAD';
   buildDownloadUrl: (setId: number, variant: DownloadVariant) => string;

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Award, Calculator, RotateCcw, Sparkles, Zap } from 'lucide-react';
+import { useI18n } from '../i18n';
 import { NormalizedBeatmap } from '../types';
 import {
   DEFAULT_PP_MODS,
@@ -49,16 +50,6 @@ const RATE_PRESETS = [
   { label: 'DT 1.5x', value: 1.5 },
 ];
 
-const MA_PRESETS: Array<{ label: string; ratio: number | null; hint: string }> = [
-  { label: '直算', ratio: null, hint: '直接按自定义准度计算 (不按 320:300 拆分)' },
-  { label: '1:1', ratio: 1, hint: '彩300:黄300 = 1:1 (彩占 50%)' },
-  { label: '2:1', ratio: 2, hint: '彩300:黄300 = 2:1 (彩占 66.7%)' },
-  { label: '3:1', ratio: 3, hint: '彩300:黄300 = 3:1 (彩占 75%)' },
-  { label: '5:1', ratio: 5, hint: '彩300:黄300 = 5:1 (彩占 83.3%)' },
-  { label: '8:1', ratio: 8, hint: '彩300:黄300 = 8:1 (彩占 88.9%)' },
-  { label: '全彩', ratio: 1000, hint: '近似全彩 320 MAX 上限' },
-];
-
 export function PpCalculatorPanel({
   beatmaps,
   selectedDiffId,
@@ -67,6 +58,27 @@ export function PpCalculatorPanel({
   bpm,
   initialScenario,
 }: PpCalculatorPanelProps) {
+  const { lang, t } = useI18n();
+  const maPresets = useMemo<Array<{ label: string; ratio: number | null; hint: string }>>(
+    () => [
+      {
+        label: t('直算', 'Direct'),
+        ratio: null,
+        hint: t('直接按自定义准度计算 (不按 320:300 拆分)', 'Calculate directly from accuracy (no 320:300 split)'),
+      },
+      { label: '1:1', ratio: 1, hint: t('彩300:黄300 = 1:1 (彩占 50%)', 'MAX:300 = 1:1 (50% MAX)') },
+      { label: '2:1', ratio: 2, hint: t('彩300:黄300 = 2:1 (彩占 66.7%)', 'MAX:300 = 2:1 (66.7% MAX)') },
+      { label: '3:1', ratio: 3, hint: t('彩300:黄300 = 3:1 (彩占 75%)', 'MAX:300 = 3:1 (75% MAX)') },
+      { label: '5:1', ratio: 5, hint: t('彩300:黄300 = 5:1 (彩占 83.3%)', 'MAX:300 = 5:1 (83.3% MAX)') },
+      { label: '8:1', ratio: 8, hint: t('彩300:黄300 = 8:1 (彩占 88.9%)', 'MAX:300 = 8:1 (88.9% MAX)') },
+      {
+        label: t('全彩', 'MAX'),
+        ratio: 1000,
+        hint: t('近似全彩 320 MAX 上限', 'Approximate 100% MAX (320) ceiling'),
+      },
+    ],
+    [t],
+  );
   const initAcc = initialScenario?.accuracy ?? 98;
   const initMisses = initialScenario?.misses ?? 0;
   const initRate = initialScenario?.rate ?? 1;
@@ -183,17 +195,29 @@ export function PpCalculatorPanel({
 
   const maDescription = (() => {
     if (maRatio === null) {
-      return '当前：直算模式（直接按上方准度计算，不区分黄/彩 300）';
+      return t(
+        '当前：直算模式（直接按上方准度计算，不区分黄/彩 300）',
+        'Mode: Direct (uses accuracy above without 320:300 split)',
+      );
     }
     const clean = Number(maRatio.toFixed(2));
     const maxPct = ((maRatio / (maRatio + 1)) * 100).toFixed(1);
     if (maRatio === 0) {
-      return `彩:黄 0:1 · 仅黄 300（彩占 0%）· 折算准度 ${result.effectiveAcc.toFixed(2)}%`;
+      return t(
+        `彩:黄 0:1 · 仅黄 300（彩占 0%）· 折算准度 ${result.effectiveAcc.toFixed(2)}%`,
+        `MAX:300 0:1 · 300 only (0% MAX) · Eff. ${result.effectiveAcc.toFixed(2)}%`,
+      );
     }
     if (maRatio >= 999) {
-      return `彩:黄 ${clean}:1 · 近乎全彩 320（彩占 ${maxPct}%）· 折算准度 ${result.effectiveAcc.toFixed(2)}%`;
+      return t(
+        `彩:黄 ${clean}:1 · 近乎全彩 320（彩占 ${maxPct}%）· 折算准度 ${result.effectiveAcc.toFixed(2)}%`,
+        `MAX:300 ${clean}:1 · Near-all MAX (${maxPct}%) · Eff. ${result.effectiveAcc.toFixed(2)}%`,
+      );
     }
-    return `彩:黄 ${clean}:1 · 黄:彩 1:${clean}（彩占 ${maxPct}%）· 折算准度 ${result.effectiveAcc.toFixed(2)}%`;
+    return t(
+      `彩:黄 ${clean}:1 · 黄:彩 1:${clean}（彩占 ${maxPct}%）· 折算准度 ${result.effectiveAcc.toFixed(2)}%`,
+      `MAX:300 ${clean}:1 · 300:MAX 1:${clean} (${maxPct}% MAX) · Eff. ${result.effectiveAcc.toFixed(2)}%`,
+    );
   })();
 
   const handleReset = () => {
@@ -214,10 +238,13 @@ export function PpCalculatorPanel({
           </div>
           <div>
             <h3 className="font-display text-[0.9375rem] font-bold text-ink">
-              PP 情景估算计算器
+              {t('PP 情景估算计算器', 'PP Scenario Calculator')}
             </h3>
             <p className="text-[0.78125rem] font-medium text-ink-3">
-              按当前选中难度实时模拟准度、黄彩比、失误、倍速与 Mod 组合
+              {t(
+                '按当前选中难度实时模拟准度、黄彩比、失误、倍速与 Mod 组合',
+                'Simulate accuracy, MA ratio, misses, rate & mods on the selected difficulty',
+              )}
             </p>
           </div>
         </div>
@@ -227,7 +254,7 @@ export function PpCalculatorPanel({
             <SelectField
               value={activeDiff.id}
               onChange={(val) => onSelectDiff(Number(val))}
-              title="选择用于 PP 计算的难度"
+              title={t('选择用于 PP 计算的难度', 'Select difficulty for PP calculation')}
             >
               {sortedDiffs.map((bm) => {
                 const keyTag = bm.modeInt === 3 ? `${Math.round(bm.cs)}K ` : `${bm.mode} `;
@@ -243,11 +270,11 @@ export function PpCalculatorPanel({
           <button
             type="button"
             onClick={handleReset}
-            title="重置为 NM 98% 0 Miss"
+            title={t('重置为 NM 98% 0 Miss', 'Reset to NM 98% 0 Miss')}
             className="btn btn-sm"
           >
             <RotateCcw className="h-3 w-3" />
-            <span>重置</span>
+            <span>{t('重置', 'Reset')}</span>
           </button>
         </div>
       </div>
@@ -258,7 +285,15 @@ export function PpCalculatorPanel({
           <div className="flex items-center gap-2 text-warn">
             <Sparkles className="h-3.5 w-3.5 shrink-0" />
             <span>
-              当前谱面状态为 <strong className="uppercase">{status}</strong>，未上架图在官方不计入 PP。
+              {lang === 'en' ? (
+                <>
+                  Current map status is <strong className="uppercase">{status}</strong>; unranked maps do not award official PP.
+                </>
+              ) : (
+                <>
+                  当前谱面状态为 <strong className="uppercase">{status}</strong>，未上架图在官方不计入 PP。
+                </>
+              )}
             </span>
           </div>
           <button
@@ -270,7 +305,9 @@ export function PpCalculatorPanel({
                 : 'border-amber-500/40 bg-surface-2 text-ink'
             }`}
           >
-            {simulateRanked ? '正在模拟上架 (If Ranked)' : '模拟上架计算 (If Ranked)'}
+            {simulateRanked
+              ? t('正在模拟上架 (If Ranked)', 'Simulating If Ranked')
+              : t('模拟上架计算 (If Ranked)', 'Simulate If Ranked')}
           </button>
         </div>
       )}
@@ -287,13 +324,13 @@ export function PpCalculatorPanel({
               {!ranked && !simulateRanked ? '—' : `${formatPp(result.pp)}`}
             </span>
             <span className="font-stat text-[0.875rem] font-bold text-ink-2">
-              {!ranked && !simulateRanked ? '不计官方 PP' : 'pp'}
+              {!ranked && !simulateRanked ? t('不计官方 PP', 'Unranked') : 'pp'}
             </span>
           </div>
 
           <div className="font-mono flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.75rem] font-medium text-ink-2 tabular-nums">
             <span>
-              等效 SR:{' '}
+              {t('等效 SR', 'Eff. SR')}:{' '}
               <strong className="text-ink">
                 {result.isRateEstimated ? '≈' : ''}
                 {result.effectiveSr.toFixed(2)}★
@@ -303,14 +340,14 @@ export function PpCalculatorPanel({
               BPM: <strong className="text-ink">{effectiveBpm}</strong>
             </span>
             <span>
-              长度加成: <strong className="text-ink">×{result.lengthBonus.toFixed(2)}</strong>
+              {t('长度加成', 'Len Bonus')}: <strong className="text-ink">×{result.lengthBonus.toFixed(2)}</strong>
             </span>
             <span>
               Mod: <strong className="text-ink">×{result.modMultiplier.toFixed(2)}</strong>
             </span>
             {activeDiff.modeInt === 3 && maRatio !== null && (
               <span>
-                折算准度: <strong className="text-ink">{result.effectiveAcc.toFixed(2)}%</strong>
+                {t('折算准度', 'Eff. Acc')}: <strong className="text-ink">{result.effectiveAcc.toFixed(2)}%</strong>
               </span>
             )}
           </div>
@@ -325,7 +362,7 @@ export function PpCalculatorPanel({
                 key={item.acc}
                 type="button"
                 onClick={() => setAccuracy(item.acc)}
-                title={`点击将准度设为 ${item.label}`}
+                title={t(`点击将准度设为 ${item.label}`, `Set accuracy to ${item.label}`)}
                 className={`flex flex-col items-center justify-center rounded-[9px] border px-2 py-2 text-center transition-colors ${
                   active
                     ? 'border-lazer/60 bg-lazer/16 text-ink'
@@ -347,7 +384,9 @@ export function PpCalculatorPanel({
       {/* Master-Detail Quick Scenario Presets Library */}
       <div className="space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <span className="field-label">情景预设库（左侧主模式 · 右侧副词条）</span>
+          <span className="field-label">
+            {t('情景预设库（左侧主模式 · 右侧副词条）', 'Scenario Presets (Mode on left · Presets on right)')}
+          </span>
         </div>
         <PpScenarioLibrary
           variant="wide"
@@ -399,7 +438,7 @@ export function PpCalculatorPanel({
           <div className="flex items-center justify-between gap-2">
             <span className="field-label flex items-center gap-1">
               <Award className="h-3 w-3 text-osu" />
-              准度 (Accuracy)
+              {t('准度 (Accuracy)', 'Accuracy')}
             </span>
             <div className="flex items-center gap-1">
               <input
@@ -412,7 +451,7 @@ export function PpCalculatorPanel({
                   const v = Number(e.target.value);
                   if (Number.isFinite(v)) setAccuracy(Math.min(100, Math.max(0, v)));
                 }}
-                aria-label="准度百分比"
+                aria-label={t('准度百分比', 'Accuracy percent')}
                 className="field font-mono min-h-[28px] w-20 text-right text-[0.8125rem] tabular-nums"
               />
               <span className="font-mono text-[0.75rem] text-ink-3">%</span>
@@ -428,7 +467,7 @@ export function PpCalculatorPanel({
             onChange={(e) => setAccuracy(Number(e.target.value))}
             style={{ '--fill': `${accFillPct}%` } as CSSProperties}
             className="slim-range w-full"
-            aria-label="准度滑块"
+            aria-label={t('准度滑块', 'Accuracy slider')}
           />
 
           <div className="flex flex-wrap gap-1">
@@ -454,7 +493,7 @@ export function PpCalculatorPanel({
           <div className="flex items-center justify-between gap-2">
             <span className="field-label flex items-center gap-1">
               <Zap className="h-3 w-3 text-lazer-soft" />
-              倍速调节 (HT / NM / DT)
+              {t('倍速调节 (HT / NM / DT)', 'Rate / Speed (HT / NM / DT)')}
             </span>
             <span className="font-mono text-[0.78125rem] font-semibold text-ink tabular-nums">
               {rate.toFixed(2)}x · {effectiveBpm} BPM
@@ -470,7 +509,7 @@ export function PpCalculatorPanel({
             onChange={(e) => setRate(Number(e.target.value))}
             style={{ '--fill': `${rateFillPct}%` } as CSSProperties}
             className="slim-range w-full"
-            aria-label="倍速滑块"
+            aria-label={t('倍速滑块', 'Rate slider')}
           />
 
           <div className="flex flex-wrap gap-1">
@@ -495,7 +534,9 @@ export function PpCalculatorPanel({
         {activeDiff.modeInt === 3 && (
           <div className="space-y-2 rounded-[10px] border border-hairline bg-surface-1/55 p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="field-label">自定义黄彩比 (彩300 : 黄300)</span>
+              <span className="field-label">
+                {t('自定义黄彩比 (彩300 : 黄300)', 'Custom MA Ratio (320 : 300)')}
+              </span>
               <div className="flex items-center gap-1">
                 <input
                   type="number"
@@ -503,7 +544,7 @@ export function PpCalculatorPanel({
                   max={999}
                   step={0.1}
                   value={maRatio !== null ? maRatio : ''}
-                  placeholder="直算"
+                  placeholder={t('直算', 'Direct')}
                   onChange={(e) => {
                     const raw = e.target.value.trim();
                     if (raw === '') {
@@ -515,7 +556,7 @@ export function PpCalculatorPanel({
                       setMaRatio(Math.min(999, Math.max(0, Math.round(v * 100) / 100)));
                     }
                   }}
-                  aria-label="黄彩比数值"
+                  aria-label={t('黄彩比数值', 'MA ratio value')}
                   className="field font-mono min-h-[28px] w-20 text-right text-[0.8125rem] tabular-nums"
                 />
                 <span className="font-mono text-[0.75rem] font-semibold text-ink-3">: 1</span>
@@ -523,10 +564,10 @@ export function PpCalculatorPanel({
                   <button
                     type="button"
                     onClick={() => setMaRatio(null)}
-                    title="清除自定义黄彩比，恢复直算"
+                    title={t('清除自定义黄彩比，恢复直算', 'Clear MA ratio & use direct mode')}
                     className="btn btn-sm min-h-[26px] px-1.5 text-[0.6875rem] text-ink-3"
                   >
-                    直算
+                    {t('直算', 'Direct')}
                   </button>
                 )}
               </div>
@@ -541,7 +582,7 @@ export function PpCalculatorPanel({
               onChange={(e) => setMaRatio(Math.round(Number(e.target.value) * 10) / 10)}
               style={{ '--fill': `${maFillPct}%` } as CSSProperties}
               className={`slim-range w-full ${maRatio === null ? 'opacity-60' : ''}`}
-              aria-label="黄彩比滑块"
+              aria-label={t('黄彩比滑块', 'MA ratio slider')}
             />
 
             <p className="font-mono text-[0.6875rem] font-medium text-ink-3 tabular-nums">
@@ -549,7 +590,7 @@ export function PpCalculatorPanel({
             </p>
 
             <div className="flex flex-wrap gap-1">
-              {MA_PRESETS.map((opt) => {
+              {maPresets.map((opt) => {
                 const active =
                   opt.ratio === null
                     ? maRatio === null
@@ -577,7 +618,7 @@ export function PpCalculatorPanel({
           <div className="flex flex-col justify-between space-y-2.5 rounded-[10px] border border-hairline bg-surface-1/55 p-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
-                <span className="field-label">失误数 (Miss)</span>
+                <span className="field-label">{t('失误数 (Miss)', 'Misses')}</span>
                 <input
                   type="number"
                   min={0}
@@ -590,7 +631,7 @@ export function PpCalculatorPanel({
                       setMisses(Math.min(totalHits, Math.max(0, Math.round(v))));
                     }
                   }}
-                  aria-label="失误数"
+                  aria-label={t('失误数', 'Miss count')}
                   className="field font-mono min-h-[28px] w-20 text-right text-[0.8125rem] tabular-nums"
                 />
               </div>
@@ -611,12 +652,12 @@ export function PpCalculatorPanel({
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-t border-hairline pt-2.5">
-              <span className="field-label">计分与 Mod</span>
+              <span className="field-label">{t('计分与 Mod', 'Scoring & Mods')}</span>
               <div className="flex flex-wrap gap-1">
                 <button
                   type="button"
                   onClick={() => setMods((m) => ({ ...m, classic: !m.classic }))}
-                  title="Classic / Stable 计分规则 (×0.96)"
+                  title={t('Classic / Stable 计分规则 (×0.96)', 'Classic / Stable scoring (×0.96)')}
                   className={`btn btn-sm font-stat min-h-[26px] px-2 text-[0.75rem] font-semibold ${
                     mods.classic
                       ? 'border-stable/60 bg-stable/16 text-stable-soft'
@@ -652,7 +693,7 @@ export function PpCalculatorPanel({
           <>
             <div className="space-y-2 rounded-[10px] border border-hairline bg-surface-1/55 p-3">
               <div className="flex items-center justify-between gap-2">
-                <span className="field-label">失误数 (Miss)</span>
+                <span className="field-label">{t('失误数 (Miss)', 'Misses')}</span>
                 <input
                   type="number"
                   min={0}
@@ -665,7 +706,7 @@ export function PpCalculatorPanel({
                       setMisses(Math.min(totalHits, Math.max(0, Math.round(v))));
                     }
                   }}
-                  aria-label="失误数"
+                  aria-label={t('失误数', 'Miss count')}
                   className="field font-mono min-h-[28px] w-20 text-right text-[0.8125rem] tabular-nums"
                 />
               </div>
@@ -687,12 +728,12 @@ export function PpCalculatorPanel({
 
             <div className="space-y-2 rounded-[10px] border border-hairline bg-surface-1/55 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="field-label">计分规则与减分 Mod</span>
+                <span className="field-label">{t('计分规则与减分 Mod', 'Scoring & Mods')}</span>
                 <div className="flex flex-wrap gap-1">
                   <button
                     type="button"
                     onClick={() => setMods((m) => ({ ...m, classic: !m.classic }))}
-                    title="Classic / Stable 计分规则 (×0.96)"
+                    title={t('Classic / Stable 计分规则 (×0.96)', 'Classic / Stable scoring (×0.96)')}
                     className={`btn btn-sm font-stat min-h-[26px] px-2 text-[0.75rem] font-semibold ${
                       mods.classic
                         ? 'border-stable/60 bg-stable/16 text-stable-soft'
@@ -730,7 +771,15 @@ export function PpCalculatorPanel({
 
       {/* Concise Disclaimer */}
       <p className="text-[0.75rem] font-medium leading-relaxed text-ink-3">
-        说明：NM (1.00x) 依据 <code className="font-mono">ppy/osu</code> 官方 Mania 准度制公式计算（含 80% 门槛与物件数长度加成）；HT / DT / 自定义倍速的等效星数与 PP 为基于原星数的近似估算，最终结算以官服在线算分为准。
+        {lang === 'en' ? (
+          <>
+            Note: NM (1.00x) uses the official <code className="font-mono">ppy/osu</code> Mania accuracy formula (80% threshold &amp; object length bonus). HT / DT / custom-rate SR and PP are approximations based on base SR; final values follow official server calculations.
+          </>
+        ) : (
+          <>
+            说明：NM (1.00x) 依据 <code className="font-mono">ppy/osu</code> 官方 Mania 准度制公式计算（含 80% 门槛与物件数长度加成）；HT / DT / 自定义倍速的等效星数与 PP 为基于原星数的近似估算，最终结算以官服在线算分为准。
+          </>
+        )}
       </p>
     </section>
   );

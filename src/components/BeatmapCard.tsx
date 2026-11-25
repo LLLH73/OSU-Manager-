@@ -1,4 +1,4 @@
-import { memo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import {
   Calculator,
   Check,
@@ -17,14 +17,15 @@ import {
   User,
 } from 'lucide-react';
 import {
-  TARGET_META,
   formatCount,
   formatDuration,
   getLnCategory,
   getStarColor,
   getStatusBadge,
+  getTargetMeta,
   openExternalLink,
 } from '../constants';
+import { useI18n } from '../i18n';
 import { DownloadTarget, DownloadTask, NormalizedBeatmapset } from '../types';
 import {
   PpScenarioInput,
@@ -66,6 +67,7 @@ export const BeatmapCard = memo(function BeatmapCard({
   onOpenDetail,
   onPreviewBeatmap,
 }: BeatmapCardProps) {
+  const { lang, t } = useI18n();
   const [imgError, setImgError] = useState(false);
 
   const statusBadge = getStatusBadge(beatmapset.status);
@@ -75,8 +77,8 @@ export const BeatmapCard = memo(function BeatmapCard({
     (matchingDiffs.length > 0 ? matchingDiffs : beatmapset.beatmaps).length - displayDiffs.length;
 
   const primaryDiff = matchingDiffs[0] || beatmapset.beatmaps[0];
-  const lnBadge = primaryDiff ? getLnCategory(primaryDiff.lnRatio) : null;
-  const ppBadge = getBeatmapsetPpBadge(beatmapset, ppScenario);
+  const lnBadge = primaryDiff ? getLnCategory(primaryDiff.lnRatio, lang) : null;
+  const ppBadge = getBeatmapsetPpBadge(beatmapset, ppScenario, lang);
   const rankedForPp = isRankedForPp(beatmapset.status);
 
   const isInstalled = beatmapset.localStatus.inStable || beatmapset.localStatus.inLazer;
@@ -93,13 +95,14 @@ export const BeatmapCard = memo(function BeatmapCard({
         activeTask.status === 'installing'),
   );
 
-  const targetMeta = TARGET_META[activeTarget];
+  const allTargetMeta = useMemo(() => getTargetMeta(lang), [lang]);
+  const targetMeta = allTargetMeta[activeTarget];
   const primaryBtnLabel =
     activeTarget === 'lazer'
-      ? '下载到 Lazer'
+      ? t('下载到 Lazer', 'Download Lazer')
       : activeTarget === 'stable'
-        ? '下载到 Stable'
-        : '双端同步下载';
+        ? t('下载到 Stable', 'Download Stable')
+        : t('双端同步下载', 'Download Both');
 
   const cardFrameClass = selected
     ? '!border-amber-400/80 ring-2 ring-amber-400/25'
@@ -145,7 +148,7 @@ export const BeatmapCard = memo(function BeatmapCard({
                   ? 'border-amber-300 bg-amber-400 text-[#120d02]'
                   : 'border-white/35 bg-black/55 text-white hover:border-white/70'
               }`}
-              title={selected ? '取消选择' : '选中'}
+              title={selected ? t('取消选择', 'Deselect') : t('选中', 'Select')}
             >
               {selected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
             </button>
@@ -157,7 +160,7 @@ export const BeatmapCard = memo(function BeatmapCard({
           </span>
           {beatmapset.video && (
             <span
-              title="包含视频"
+              title={t('包含视频', 'Has video')}
               className="flex h-[19px] items-center rounded-[5px] border border-white/15 bg-black/60 px-1.5 text-slate-100 backdrop-blur-sm"
             >
               <Film className="h-3 w-3" />
@@ -165,7 +168,7 @@ export const BeatmapCard = memo(function BeatmapCard({
           )}
           {beatmapset.spotlight && (
             <span
-              title="官方 Spotlight"
+              title={t('官方 Spotlight', 'Official Spotlight')}
               className="flex h-[19px] items-center rounded-[5px] border border-amber-300/40 bg-amber-500/25 px-1.5 text-amber-200 backdrop-blur-sm"
             >
               <Sparkles className="h-3 w-3" />
@@ -178,18 +181,18 @@ export const BeatmapCard = memo(function BeatmapCard({
           {beatmapset.localStatus.inLazer && (
             <span className="chip chip-gold backdrop-blur-sm">
               <CheckCircle2 className="h-3 w-3" />
-              Lazer 已装
+              {t('Lazer 已装', 'In Lazer')}
             </span>
           )}
           {beatmapset.localStatus.inStable && (
             <span className="chip chip-gold backdrop-blur-sm">
               <CheckCircle2 className="h-3 w-3" />
-              Stable 已装
+              {t('Stable 已装', 'In Stable')}
             </span>
           )}
           {!beatmapset.localStatus.inLazer && beatmapset.localStatus.inLazerPending && (
             <span className="chip border-amber-300/60 bg-black/75 text-amber-200 backdrop-blur-sm">
-              Lazer 待导入
+              {t('Lazer 待导入', 'Lazer Pending')}
             </span>
           )}
         </div>
@@ -198,7 +201,7 @@ export const BeatmapCard = memo(function BeatmapCard({
         <button
           type="button"
           onClick={() => onTogglePlay(beatmapset)}
-          title={isPlaying ? '暂停试听' : '试听音频预览'}
+          title={isPlaying ? t('暂停试听', 'Pause preview') : t('试听音频预览', 'Preview audio')}
           className={`absolute bottom-2.5 left-2.5 flex min-h-[26px] items-center gap-1.5 rounded-full border px-2.5 text-[0.75rem] font-semibold backdrop-blur-md transition-colors ${
             isPlaying
               ? 'border-osu bg-osu text-white'
@@ -218,7 +221,7 @@ export const BeatmapCard = memo(function BeatmapCard({
           ) : (
             <>
               <Play className="h-3 w-3 fill-current" />
-              <span>试听</span>
+              <span>{t('试听', 'Preview')}</span>
             </>
           )}
         </button>
@@ -350,7 +353,7 @@ export const BeatmapCard = memo(function BeatmapCard({
           <button
             type="button"
             onClick={() => onDownload(beatmapset, 'stable')}
-            title="单独下载到 Stable"
+            title={t('单独下载到 Stable', 'Download to Stable only')}
             className="font-stat btn btn-sm px-2 text-stable-soft hover:border-stable/50 hover:bg-stable/12 hover:text-stable"
           >
             S
@@ -358,7 +361,7 @@ export const BeatmapCard = memo(function BeatmapCard({
           <button
             type="button"
             onClick={() => onDownload(beatmapset, 'lazer')}
-            title="单独下载到 Lazer"
+            title={t('单独下载到 Lazer', 'Download to Lazer only')}
             className="font-stat btn btn-sm px-2 text-lazer-soft hover:border-lazer/50 hover:bg-lazer/12 hover:text-lazer"
           >
             L
@@ -366,16 +369,16 @@ export const BeatmapCard = memo(function BeatmapCard({
           <button
             type="button"
             onClick={() => onDownload(beatmapset, 'both')}
-            title="同时安装到 Stable + Lazer"
+            title={t('同时安装到 Stable + Lazer', 'Install to Stable + Lazer')}
             className="btn btn-sm px-2 text-osu-soft hover:border-osu/50 hover:bg-osu/12 hover:text-osu"
           >
-            双
+            {allTargetMeta.both.short}
           </button>
           {canPreview && onPreviewBeatmap && (
             <button
               type="button"
               onClick={() => onPreviewBeatmap(beatmapset)}
-              title="预览 Mania 谱面下落"
+              title={t('预览 Mania 谱面下落', 'Preview Mania chart')}
               className="btn btn-sm btn-icon border-osu/35 bg-osu/10 text-osu-soft hover:border-osu/60 hover:bg-osu/20"
             >
               <Eye className="h-3.5 w-3.5" />
@@ -386,7 +389,7 @@ export const BeatmapCard = memo(function BeatmapCard({
             target="_blank"
             rel="noreferrer"
             onClick={(e) => openExternalLink(e, beatmapset.officialUrl)}
-            title="在浏览器中打开官网详情页"
+            title={t('在浏览器中打开官网详情页', 'Open beatmapset on osu! web')}
             className="btn btn-sm btn-icon text-ink-3"
           >
             <ExternalLink className="h-3 w-3" />

@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('dialog:selectFile', defaultPath, filters),
   openExternal: (url) => ipcRenderer.invoke('shell:openExternal', url),
   getAppVersion: () => ipcRenderer.invoke('app:version'),
+  setLanguage: (lang) => ipcRenderer.invoke('app:setLanguage', lang),
 
   // Overlay APIs
   toggleOverlay: () => ipcRenderer.invoke('overlay:toggle'),

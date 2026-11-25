@@ -69,12 +69,13 @@ import {
   DEFAULT_FILTERS,
   DEFAULT_FONT_SCALE,
   THEME_OPTIONS,
-  VIEW_MODE_OPTIONS,
   WorkflowPreset,
   clampFontScale,
+  getViewModeOptions,
   isDarkTheme,
   isValidTheme,
 } from './constants';
+import { tx, useI18n } from './i18n';
 import { sanitizeFiltersForArchive } from './utils/filterArchive';
 import {
   applyAccentVariables,
@@ -157,6 +158,8 @@ function AppWorkspace({
   notifyBridgeRef: MutableRefObject<((msg: string) => void) | null>;
   pausePreviewBridgeRef: MutableRefObject<(() => void) | null>;
 }) {
+  const { lang, setLang, t } = useI18n();
+  const viewModeOptions = useMemo(() => getViewModeOptions(lang), [lang]);
   const {
     isPlaying: musicIsPlaying,
     currentTrack: musicCurrentTrack,
@@ -314,21 +317,36 @@ function AppWorkspace({
     };
   }, [notify, notifyBridgeRef, pausePreviewBridgeRef]);
 
-  const handleCompleteOnboarding = useCallback((openSettingsAfter = false) => {
-    setOnboardingOpen(false);
-    try {
-      localStorage.setItem('osu4k-onboarding-completed', 'true');
-    } catch {
-      // Ignore storage error
-    }
-    setConfig((prev) => (prev ? { ...prev, onboardingCompleted: true } : prev));
-    void updateConfig({ onboardingCompleted: true })
-      .then((cfg) => setConfig(cfg))
-      .catch(() => {});
-    if (openSettingsAfter) {
-      setSettingsOpen(true);
-    }
-  }, []);
+  const syncConfigLanguage = useCallback(
+    (cfg: AppConfig | null | undefined) => {
+      if (!cfg) return;
+      const cfgLang = cfg.language === 'en' ? 'en' : 'zh';
+      setLang(cfgLang);
+      void window.electronAPI?.setLanguage?.(cfgLang);
+    },
+    [setLang],
+  );
+
+  const handleCompleteOnboarding = useCallback(
+    (openSettingsAfter = false) => {
+      setOnboardingOpen(false);
+      try {
+        localStorage.setItem('osu4k-onboarding-completed', 'true');
+      } catch {
+        // Ignore storage error
+      }
+      setConfig((prev) => (prev ? { ...prev, onboardingCompleted: true } : prev));
+      void updateConfig({ onboardingCompleted: true })
+        .then((cfg) => {
+          setConfig(cfg);
+        })
+        .catch(() => {});
+      if (openSettingsAfter) {
+        setSettingsOpen(true);
+      }
+    },
+    [],
+  );
 
   const handleSaveConfigRef = useRef<((patch: Partial<AppConfig>) => Promise<void>) | null>(null);
 
@@ -370,8 +388,9 @@ function AppWorkspace({
     if (config?.theme && isValidTheme(config.theme)) {
       applyTheme(config.theme, false);
     }
+    syncConfigLanguage(config);
     handleCompleteOnboarding(false);
-  }, [applyTheme, config?.theme, handleCompleteOnboarding]);
+  }, [applyTheme, config, handleCompleteOnboarding, syncConfigLanguage]);
 
   const handleSaveOnboardingConfig = useCallback(
     async (patch: Partial<AppConfig>, openSettingsAfter = false) => {
@@ -615,7 +634,7 @@ function AppWorkspace({
       });
     } catch (err) {
       if (myEpoch !== searchEpochRef.current) return;
-      setSearchError(err instanceof Error ? err.message : '搜索失败');
+      setSearchError(err instanceof Error ? err.message : tx('搜索失败', 'Search failed'));
     } finally {
       if (myEpoch === searchEpochRef.current) {
         if (append) {
@@ -645,6 +664,7 @@ function AppWorkspace({
           fetchFilterArchives().catch(() => [] as FilterArchive[]),
         ]);
         setConfig(cfg);
+        syncConfigLanguage(cfg);
         let localSeenOnboarding = false;
         try {
           localSeenOnboarding = localStorage.getItem('osu4k-onboarding-completed') === 'true';
@@ -755,7 +775,7 @@ function AppWorkspace({
       unsubOverlay?.();
       unsubOpenPreview?.();
     };
-  }, [applyTheme, applyViewMode, openManiaPreview, runSearch]);
+  }, [applyTheme, applyViewMode, openManiaPreview, runSearch, syncConfigLanguage]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -765,6 +785,7 @@ function AppWorkspace({
       } else if (settingsOpen) {
         setAppearancePreview(null);
         setSettingsOpen(false);
+        syncConfigLanguage(config);
       }
       else if (fastBatchOpen) setFastBatchOpen(false);
       else if (librarySyncOpen) setLibrarySyncOpen(false);
@@ -787,6 +808,8 @@ function AppWorkspace({
     onboardingOpen,
     handleSkipOnboarding,
     settingsOpen,
+    config,
+    syncConfigLanguage,
     fastBatchOpen,
     librarySyncOpen,
     previewState,
@@ -840,25 +863,25 @@ function AppWorkspace({
   );
   useEffect(() => {
     if (!initialDownloadsSyncedRef.current) return;
-    for (const t of downloads) {
+    for (const task of downloads) {
       if (
-        (t.status === 'completed' || t.status === 'queued_lazer') &&
-        !notifiedDoneIdsRef.current.has(t.id)
+        (task.status === 'completed' || task.status === 'queued_lazer') &&
+        !notifiedDoneIdsRef.current.has(task.id)
       ) {
-        notifiedDoneIdsRef.current.add(t.id);
+        notifiedDoneIdsRef.current.add(task.id);
         notify(
-          t.autoLoadedInGame
-            ? `${t.title} 已导入并在游戏中加载`
-            : `${t.title} 下载完成，可立即预览谱面`,
+          task.autoLoadedInGame
+            ? t(`${task.title} 已导入并在游戏中加载`, `${task.title} imported & loaded in-game`)
+            : t(`${task.title} 下载完成，可立即预览谱面`, `${task.title} downloaded — ready to preview`),
           {
-            actionLabel: '预览谱面',
-            onAction: () => openManiaPreview(t.beatmapsetId, { titleHint: t.title }),
+            actionLabel: t('预览谱面', 'Preview'),
+            onAction: () => openManiaPreview(task.beatmapsetId, { titleHint: task.title }),
           },
         );
         break;
       }
     }
-  }, [downloads, notify, openManiaPreview]);
+  }, [downloads, notify, openManiaPreview, t]);
 
   useEffect(() => {
     if (completedCount === 0) return;
@@ -905,14 +928,23 @@ function AppWorkspace({
   }, [downloads]);
 
   const handleBenchmark = async () => {
-    notify('正在检测代理 6174 与全部镜像源延迟...');
+    const activeProxyMode = network?.proxyMode ?? config?.proxyMode ?? 'auto';
+    const activePort = network?.proxyPort ?? config?.proxyPort ?? 6174;
+    notify(
+      activeProxyMode === 'direct'
+        ? t('正在检测直连与全部镜像源延迟...', 'Checking direct connection & all mirror latencies...')
+        : t(`正在检测代理 ${activePort} 与全部镜像源延迟...`, `Checking proxy :${activePort} & all mirror latencies...`),
+    );
     const st = await runNetworkBenchmark();
     setNetwork(st);
     const best = st.mirrors.find((m) => m.id === st.recommendedMirror);
     notify(
       best
-        ? `测速完成：最优源 ${best.shortName} (${best.latencyMs ?? '?'}ms)`
-        : '测速完成，请检查网络或代理设置',
+        ? t(
+            `测速完成：最优源 ${best.shortName} (${best.latencyMs ?? '?'}ms)`,
+            `Benchmark complete: Best ${best.shortName} (${best.latencyMs ?? '?'}ms)`,
+          )
+        : t('测速完成，请检查网络或代理设置', 'Benchmark complete — check network or proxy settings'),
     );
   };
 
@@ -1131,11 +1163,14 @@ function AppWorkspace({
       setActiveArchiveId(created.id);
       notify(
         browsePosition
-          ? `已保存存档「${created.name}」（含定位：${browsePosition.anchorTitle}）`
-          : `已保存存档「${created.name}」`,
+          ? t(
+              `已保存存档「${created.name}」（含定位：${browsePosition.anchorTitle}）`,
+              `Saved archive "${created.name}" (at ${browsePosition.anchorTitle})`,
+            )
+          : t(`已保存存档「${created.name}」`, `Saved archive "${created.name}"`),
       );
     },
-    [filters, captureCurrentBrowsePosition, notify],
+    [filters, captureCurrentBrowsePosition, notify, t],
   );
 
   const handleOverwriteArchive = useCallback(
@@ -1147,18 +1182,18 @@ function AppWorkspace({
       });
       setArchives((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
       setActiveArchiveId(updated.id);
-      notify(`已覆盖更新存档「${updated.name}」`);
+      notify(t(`已覆盖更新存档「${updated.name}」`, `Updated archive "${updated.name}"`));
     },
-    [filters, captureCurrentBrowsePosition, notify],
+    [filters, captureCurrentBrowsePosition, notify, t],
   );
 
   const handleRenameArchive = useCallback(
     async (id: string, name: string) => {
       const updated = await updateFilterArchive(id, { name });
       setArchives((prev) => prev.map((a) => (a.id === updated.id ? updated : a)));
-      notify(`已重命名存档为「${updated.name}」`);
+      notify(t(`已重命名存档为「${updated.name}」`, `Renamed archive to "${updated.name}"`));
     },
-    [notify],
+    [notify, t],
   );
 
   const handleTogglePinArchive = useCallback(async (archive: FilterArchive) => {
@@ -1178,9 +1213,9 @@ function AppWorkspace({
       await deleteFilterArchive(id);
       setArchives((prev) => prev.filter((a) => a.id !== id));
       setActiveArchiveId((prev) => (prev === id ? null : prev));
-      notify('已删除 Filter 存档');
+      notify(t('已删除 Filter 存档', 'Filter archive deleted'));
     },
-    [notify],
+    [notify, t],
   );
 
   const handleRestoreFilterArchive = useCallback(
@@ -1202,7 +1237,7 @@ function AppWorkspace({
           mainScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
         }
         await runSearch(nextFilters, false);
-        notify(`已应用存档「${archive.name}」`);
+        notify(t(`已应用存档「${archive.name}」`, `Applied archive "${archive.name}"`));
         return;
       }
 
@@ -1291,7 +1326,12 @@ function AppWorkspace({
         }
 
         if (acc.length === 0) {
-          notify(`存档「${archive.name}」已恢复筛选，但当前无匹配结果`);
+          notify(
+            t(
+              `存档「${archive.name}」已恢复筛选，但当前无匹配结果`,
+              `Restored filters for "${archive.name}", but no results matched`,
+            ),
+          );
           return;
         }
 
@@ -1331,26 +1371,38 @@ function AppWorkspace({
           } else {
             void fetchBeatmapsetDetail(pos.anchorBeatmapsetId)
               .then((detail) => openDetail(detail, { diffId: pos.anchorBeatmapId ?? undefined }))
-              .catch(() => notify('未能加载原谱面详情'));
+              .catch(() => notify(t('未能加载原谱面详情', 'Failed to load original beatmap details')));
           }
         };
 
         if (hitKind === 'exact') {
-          notify(`已定位至「${pos.anchorTitle}」`);
+          notify(t(`已定位至「${pos.anchorTitle}」`, `Located "${pos.anchorTitle}"`));
         } else if (hitKind === 'neighbor') {
-          notify(`原曲「${pos.anchorTitle}」排序已变动，已定位到相邻上下文`, {
-            actionLabel: '查看原谱面',
-            onAction: openSavedAnchorDetail,
-          });
+          notify(
+            t(
+              `原曲「${pos.anchorTitle}」排序已变动，已定位到相邻上下文`,
+              `"${pos.anchorTitle}" shifted in results; positioned at nearby context`,
+            ),
+            {
+              actionLabel: t('查看原谱面', 'View Original'),
+              onAction: openSavedAnchorDetail,
+            },
+          );
         } else {
-          notify(`未在当前窗口找到「${pos.anchorTitle}」，已恢复筛选与附近页面`, {
-            actionLabel: '查看原谱面',
-            onAction: openSavedAnchorDetail,
-          });
+          notify(
+            t(
+              `未在当前窗口找到「${pos.anchorTitle}」，已恢复筛选与附近页面`,
+              `"${pos.anchorTitle}" not in window; restored nearby page`,
+            ),
+            {
+              actionLabel: t('查看原谱面', 'View Original'),
+              onAction: openSavedAnchorDetail,
+            },
+          );
         }
       } catch (err) {
         if (myEpoch === searchEpochRef.current) {
-          setSearchError(err instanceof Error ? err.message : '恢复存档失败');
+          setSearchError(err instanceof Error ? err.message : t('恢复存档失败', 'Failed to restore archive'));
         }
       } finally {
         if (myEpoch === searchEpochRef.current) {
@@ -1359,7 +1411,7 @@ function AppWorkspace({
         }
       }
     },
-    [viewMode, runSearch, notify, scrollToGridListTarget, openDetail],
+    [viewMode, runSearch, notify, scrollToGridListTarget, openDetail, t],
   );
 
   const handleLoadEarlierResults = useCallback(async () => {
@@ -1388,18 +1440,18 @@ function AppWorkspace({
         prev ? { ...prev, headUpstreamOffset: prevOffset } : null,
       );
       if (prevOffset === 0) {
-        notify('已向上加载至第 1 页');
+        notify(t('已向上加载至第 1 页', 'Loaded back to page 1'));
       }
     } catch (err) {
       if (myEpoch === searchEpochRef.current) {
-        notify(err instanceof Error ? err.message : '向上加载更早谱面失败');
+        notify(err instanceof Error ? err.message : t('向上加载更早谱面失败', 'Failed to load earlier beatmaps'));
       }
     } finally {
       if (myEpoch === searchEpochRef.current) {
         setLoadingEarlier(false);
       }
     }
-  }, [loading, loadingEarlier, headUpstreamOffset, filters, notify]);
+  }, [loading, loadingEarlier, headUpstreamOffset, filters, notify, t]);
 
   const handleTogglePlay = useCallback(
     (set: NormalizedBeatmapset) => {
@@ -1451,10 +1503,14 @@ function AppWorkspace({
         preferredMirror: chosenMirror,
       });
       const label =
-        chosenTarget === 'lazer' ? 'Lazer' : chosenTarget === 'stable' ? 'Stable' : '双端';
-      notify(`已加入下载队列 (${label}): ${set.title}`);
+        chosenTarget === 'lazer'
+          ? 'Lazer'
+          : chosenTarget === 'stable'
+            ? 'Stable'
+            : t('双端', 'Both');
+      notify(t(`已加入下载队列 (${label}): ${set.title}`, `Queued download (${label}): ${set.title}`));
     },
-    [variant, config?.preferredDownloadSource, notify],
+    [variant, config?.preferredDownloadSource, notify, t],
   );
 
   const handleQuickDownload = useCallback(
@@ -1485,7 +1541,12 @@ function AppWorkspace({
       variant,
       preferredMirror: config?.preferredDownloadSource || 'auto',
     });
-    notify(`已批量加入 ${picked.length} 首谱面到下载队列`);
+    notify(
+      t(
+        `已批量加入 ${picked.length} 首谱面到下载队列`,
+        `Queued ${picked.length} beatmapsets for download`,
+      ),
+    );
     setSelectedIds(new Set());
     setBatchMode(false);
     setDownloadsOpen(true);
@@ -1499,7 +1560,12 @@ function AppWorkspace({
 
   const handleClearLazerPending = async () => {
     const res = await clearLazerPending();
-    notify(`已清理 ${res.deletedCount} 个待导入 .osz 文件`);
+    notify(
+      t(
+        `已清理 ${res.deletedCount} 个待导入 .osz 文件`,
+        `Cleared ${res.deletedCount} pending .osz files`,
+      ),
+    );
     setLibrary(await fetchLibraryStatus(false));
   };
 
@@ -1507,6 +1573,7 @@ function AppWorkspace({
     const prevHotkey = config?.overlayHotkey;
     const updated = await updateConfig(patch);
     setConfig(updated);
+    syncConfigLanguage(updated);
     try {
       localStorage.setItem(
         'osu4k-font-scale',
@@ -1524,12 +1591,22 @@ function AppWorkspace({
     ) {
       const hkRes = await window.electronAPI.setOverlayHotkey(patch.overlayHotkey);
       if (!hkRes.ok) {
-        notify(hkRes.error || '热键注册失败');
+        notify(hkRes.error || t('热键注册失败', 'Failed to register hotkey'));
       } else {
-        notify(`设置已保存，浮窗热键已更新为 ${patch.overlayHotkey}`);
+        notify(
+          t(
+            `设置已保存，浮窗热键已更新为 ${patch.overlayHotkey}`,
+            `Settings saved; overlay hotkey updated to ${patch.overlayHotkey}`,
+          ),
+        );
       }
     } else {
-      notify('设置已保存，正在刷新网络与本地曲库...');
+      notify(
+        t(
+          '设置已保存，正在刷新网络与本地曲库...',
+          'Settings saved; refreshing network & local library...',
+        ),
+      );
     }
     const [net, lib] = await Promise.all([runNetworkBenchmark(), fetchLibraryStatus(true)]);
     setNetwork(net);
@@ -1552,7 +1629,7 @@ function AppWorkspace({
       const res = await loadBeatmapIntoGame(beatmapsetId, 'auto');
       notify(res.message);
     } catch (err) {
-      notify(err instanceof Error ? err.message : '发送加载请求失败');
+      notify(err instanceof Error ? err.message : t('发送加载请求失败', 'Failed to send load request'));
     }
   };
 
@@ -1564,7 +1641,7 @@ function AppWorkspace({
         const res = await launchGameClient(client);
         if (!res.ok) {
           notify(res.message, {
-            actionLabel: '打开设置',
+            actionLabel: t('打开设置', 'Settings'),
             onAction: () => setSettingsOpen(true),
           });
         } else if (
@@ -1573,7 +1650,10 @@ function AppWorkspace({
           (library?.lazerPendingCount ?? 0) > 0
         ) {
           notify(res.message, {
-            actionLabel: `导入 ${library?.lazerPendingCount} 个待导入`,
+            actionLabel: t(
+              `导入 ${library?.lazerPendingCount} 个待导入`,
+              `Import ${library?.lazerPendingCount} pending`,
+            ),
             onAction: () => {
               void importLazerPending().then(async (imp) => {
                 notify(imp.message);
@@ -1590,12 +1670,12 @@ function AppWorkspace({
             .catch(() => {});
         }, 1600);
       } catch (err) {
-        notify(err instanceof Error ? err.message : '启动游戏失败');
+        notify(err instanceof Error ? err.message : t('启动游戏失败', 'Failed to launch game'));
       } finally {
         setLaunchingClient(null);
       }
     },
-    [launchingClient, library?.lazerPendingCount, notify],
+    [launchingClient, library?.lazerPendingCount, notify, t],
   );
 
   const activePpScenario = useMemo(() => extractPpScenarioFromFilters(filters), [filters]);
@@ -1664,6 +1744,8 @@ function AppWorkspace({
 
       <TitleBar
         network={network}
+        configProxyPort={config?.proxyPort}
+        configProxyMode={config?.proxyMode}
         theme={theme}
         overlayOpen={overlayOpen}
         overlayHotkey={config?.overlayHotkey}
@@ -1672,7 +1754,7 @@ function AppWorkspace({
         archiveCount={archives.length}
         activeAccentHex={activeAccentHex}
         onToggleOverlay={() => void handleToggleOverlay()}
-        onChangeTheme={(t) => applyTheme(t, true)}
+        onChangeTheme={(nextTheme) => applyTheme(nextTheme, true)}
         onBenchmark={handleBenchmark}
         onToggleNav={() => setNavOpen((v) => !v)}
         onToggleSidebar={toggleSidebarCollapsed}
@@ -1748,7 +1830,7 @@ function AppWorkspace({
               onLoadIntoGame={(setId) => void handleLoadIntoGame(setId)}
               onOpenFolder={(subFolder) => {
                 void openStableSongFolder(subFolder).catch((err) =>
-                  notify(err instanceof Error ? err.message : '打开本地文件夹失败'),
+                  notify(err instanceof Error ? err.message : t('打开本地文件夹失败', 'Failed to open local folder')),
                 );
               }}
               onNotify={notify}
@@ -1783,11 +1865,22 @@ function AppWorkspace({
                 }`}
               >
                 <span>
-                  当前显示 <strong className="font-stat font-bold text-ink">{results.length}</strong> 套谱面
+                  {lang === 'en' ? (
+                    <>
+                      Showing <strong className="font-stat font-bold text-ink">{results.length}</strong> beatmapsets
+                    </>
+                  ) : (
+                    <>
+                      当前显示 <strong className="font-stat font-bold text-ink">{results.length}</strong> 套谱面
+                    </>
+                  )}
                 </span>
                 {searchMeta && (
                   <span className="chip">
-                    搜索源: {searchMeta.provider === 'osudirect' ? 'osu.direct' : '小夜镜像 (Sayobot)'}
+                    {t('搜索源', 'Source')}:{' '}
+                    {searchMeta.provider === 'osudirect'
+                      ? 'osu.direct'
+                      : t('小夜镜像 (Sayobot)', 'Sayobot Mirror')}
                   </span>
                 )}
                 {searchMeta?.fallbackUsed && searchMeta.fallbackReason && (
@@ -1796,17 +1889,21 @@ function AppWorkspace({
                     {searchMeta.fallbackReason}
                   </span>
                 )}
-                {searchError && <span className="text-bad">错误: {searchError}</span>}
+                {searchError && (
+                  <span className="text-bad">
+                    {t('错误', 'Error')}: {searchError}
+                  </span>
+                )}
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
-                {/* 3-mode Song View Switcher (卡片 / 列表 / Lazer) */}
+                {/* 3-mode Song View Switcher (Grid / List / Lazer) */}
                 <div
                   role="group"
-                  aria-label="谱面呈现形式"
+                  aria-label={t('谱面呈现形式', 'Beatmap view mode')}
                   className="inline-flex min-h-[30px] items-center gap-0.5 rounded-[9px] border border-hairline bg-surface-1 p-0.5"
                 >
-                  {VIEW_MODE_OPTIONS.map((opt) => {
+                  {viewModeOptions.map((opt) => {
                     const active = viewMode === opt.id;
                     const Icon = VIEW_MODE_ICONS[opt.id];
                     return (
@@ -1847,8 +1944,11 @@ function AppWorkspace({
                   )}
                   <span>
                     {fastBatch?.state === 'running' || fastBatch?.state === 'paused'
-                      ? `快速批量 ${fastBatch.completedCount}/${fastBatch.targetCount}`
-                      : '快速批量下载'}
+                      ? t(
+                          `快速批量 ${fastBatch.completedCount}/${fastBatch.targetCount}`,
+                          `Fast Batch ${fastBatch.completedCount}/${fastBatch.targetCount}`,
+                        )
+                      : t('快速批量下载', 'Fast Batch')}
                   </span>
                 </button>
 
@@ -1865,7 +1965,7 @@ function AppWorkspace({
                   }`}
                 >
                   {batchMode ? <CheckSquare className="h-3.5 w-3.5" /> : <Layers className="h-3.5 w-3.5" />}
-                  <span>{batchMode ? '退出批量' : '批量选择'}</span>
+                  <span>{batchMode ? t('退出批量', 'Exit Batch') : t('批量选择', 'Batch Select')}</span>
                 </button>
 
                 {batchMode && (
@@ -1882,7 +1982,11 @@ function AppWorkspace({
                       className="btn btn-sm"
                     >
                       <Square className="h-3.5 w-3.5" />
-                      <span>{selectedIds.size === results.length && results.length > 0 ? '取消全选' : '全选本页'}</span>
+                      <span>
+                        {selectedIds.size === results.length && results.length > 0
+                          ? t('取消全选', 'Deselect All')
+                          : t('全选本页', 'Select Page')}
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -1891,7 +1995,7 @@ function AppWorkspace({
                       className="btn btn-sm btn-primary font-stat"
                     >
                       <Download className="h-3.5 w-3.5" />
-                      <span>下载已选 ({selectedIds.size})</span>
+                      <span>{t(`下载已选 (${selectedIds.size})`, `Download (${selectedIds.size})`)}</span>
                     </button>
                   </>
                 )}
@@ -1904,9 +2008,18 @@ function AppWorkspace({
                 <div className="flex min-w-0 items-center gap-2 text-ink-2">
                   <MapPin className="h-3.5 w-3.5 shrink-0 text-lazer-soft" />
                   <span className="truncate">
-                    已跳转至存档 <strong className="text-ink">「{restoredContextInfo.archiveName}」</strong>{' '}
-                    第 <span className="font-mono font-bold text-lazer-soft">{headUpstreamOffset}+</span>{' '}
-                    位附近上下文
+                    {lang === 'en' ? (
+                      <>
+                        Jumped to archive <strong className="text-ink">"{restoredContextInfo.archiveName}"</strong>{' '}
+                        around rank <span className="font-mono font-bold text-lazer-soft">#{headUpstreamOffset}+</span>
+                      </>
+                    ) : (
+                      <>
+                        已跳转至存档 <strong className="text-ink">「{restoredContextInfo.archiveName}」</strong>{' '}
+                        第 <span className="font-mono font-bold text-lazer-soft">{headUpstreamOffset}+</span>{' '}
+                        位附近上下文
+                      </>
+                    )}
                   </span>
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
@@ -1921,7 +2034,7 @@ function AppWorkspace({
                     ) : (
                       <ArrowUp className="h-3 w-3" />
                     )}
-                    <span>{loadingEarlier ? '加载中…' : '向上加载更早谱面'}</span>
+                    <span>{loadingEarlier ? t('加载中…', 'Loading…') : t('向上加载更早谱面', 'Load Earlier')}</span>
                   </button>
                   <button
                     type="button"
@@ -1932,12 +2045,12 @@ function AppWorkspace({
                     className="btn btn-sm min-h-[24px] px-2 text-[0.71875rem]"
                   >
                     <RotateCcw className="h-3 w-3" />
-                    <span>回到第 1 页</span>
+                    <span>{t('回到第 1 页', 'Back to Page 1')}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setRestoredContextInfo(null)}
-                    aria-label="关闭上下文提示"
+                    aria-label={t('关闭上下文提示', 'Close context banner')}
                     className="flex h-6 w-6 items-center justify-center rounded text-ink-3 hover:bg-tint-hover hover:text-ink"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -1984,9 +2097,14 @@ function AppWorkspace({
                 <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-hairline bg-surface-2 text-ink-3">
                   <Music className="h-6 w-6" />
                 </div>
-                <p className="font-display text-[0.9375rem] font-semibold text-ink">没有找到符合当前筛选条件的谱面</p>
+                <p className="font-display text-[0.9375rem] font-semibold text-ink">
+                  {t('没有找到符合当前筛选条件的谱面', 'No beatmapsets match the current filters')}
+                </p>
                 <p className="mt-1 text-[0.8125rem] font-medium text-ink-3">
-                  可以放宽星数 / LN% / 状态限制，或切换至「全部状态 (Any)」搜索更多练习图
+                  {t(
+                    '可以放宽星数 / LN% / 状态限制，或切换至「全部状态 (Any)」搜索更多练习图',
+                    'Try widening Star / LN% / Status limits, or switch to "Any Status" to find more maps.',
+                  )}
                 </p>
               </div>
             ) : (
@@ -2084,7 +2202,7 @@ function AppWorkspace({
                       {loadingMore ? (
                         <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-surface-1 px-4 py-1.5 text-[0.78125rem] font-medium text-ink-2">
                           <Loader2 className="h-3.5 w-3.5 animate-spin text-osu" />
-                          <span>正在自动加载更多谱面…</span>
+                          <span>{t('正在自动加载更多谱面…', 'Loading more beatmapsets…')}</span>
                         </div>
                       ) : searchError && searchMeta?.hasMore ? (
                         <button
@@ -2093,7 +2211,7 @@ function AppWorkspace({
                           className="btn min-h-[36px] border-amber-500/45 px-5 text-[0.8125rem] text-warn"
                         >
                           <ChevronDown className="h-4 w-4" />
-                          <span>加载失败，点击重试加载更多</span>
+                          <span>{t('加载失败，点击重试加载更多', 'Load failed — click to retry')}</span>
                         </button>
                       ) : searchMeta?.hasMore ? (
                         <button
@@ -2102,12 +2220,12 @@ function AppWorkspace({
                           className="btn min-h-[36px] px-6 text-[0.84375rem]"
                         >
                           <ChevronDown className="h-4 w-4 text-osu" />
-                          <span>加载更多谱面</span>
+                          <span>{t('加载更多谱面', 'Load More')}</span>
                         </button>
                       ) : (
                         results.length > 0 && (
                           <span className="text-[0.75rem] font-medium text-ink-3">
-                            已显示全部 {results.length} 套搜索结果
+                            {t(`已显示全部 ${results.length} 套搜索结果`, `Showing all ${results.length} beatmapsets`)}
                           </span>
                         )
                       )}
@@ -2154,7 +2272,7 @@ function AppWorkspace({
           <aside
             role="dialog"
             aria-modal="true"
-            aria-label="左侧导航栏"
+            aria-label={t('左侧导航栏', 'Left navigation rail')}
             className="animate-rail-in h-full w-[var(--sidebar-w)] border-r border-hairline-strong bg-surface-0 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2206,7 +2324,7 @@ function AppWorkspace({
           <aside
             role="dialog"
             aria-modal="true"
-            aria-label="Filter 存档右侧栏"
+            aria-label={t('Filter 存档右侧栏', 'Filter archive sidebar')}
             className="animate-drawer-in h-full w-[min(92vw,336px)] border-l border-hairline-strong bg-surface-0 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2242,12 +2360,12 @@ function AppWorkspace({
           <button
             type="button"
             onClick={() => mainScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
-            title="回到顶部"
-            aria-label="回到顶部"
+            title={t('回到顶部', 'Back to Top')}
+            aria-label={t('回到顶部', 'Back to Top')}
             className="glass animate-fade-in pointer-events-auto inline-flex min-h-[36px] items-center gap-1.5 rounded-full px-3.5 text-[0.78125rem] font-semibold text-ink transition-all duration-150 hover:border-osu/60 hover:text-osu"
           >
             <ArrowUp className="h-3.5 w-3.5 text-osu" />
-            <span>回到顶部</span>
+            <span>{t('回到顶部', 'Top')}</span>
           </button>
         </div>
       )}
@@ -2383,7 +2501,10 @@ function AppWorkspace({
           setSettingsOpen(false);
           setOnboardingOpen(true);
         }}
-        onClose={() => setSettingsOpen(false)}
+        onClose={() => {
+          setAppearancePreview(null);
+          setSettingsOpen(false);
+        }}
         onSave={handleSaveConfig}
         onBenchmark={handleBenchmark}
       />

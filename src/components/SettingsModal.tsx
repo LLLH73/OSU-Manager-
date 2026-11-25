@@ -7,6 +7,7 @@ import {
   Copy,
   ExternalLink,
   FolderOpen,
+  Globe,
   ImagePlus,
   Info,
   Loader2,
@@ -21,17 +22,18 @@ import {
   X,
 } from 'lucide-react';
 import {
-  ACCENT_PRESETS,
   APP_VERSION,
   DEFAULT_FONT_SCALE,
   FONT_SCALE_MAX,
   FONT_SCALE_MIN,
-  FONT_SCALE_PRESETS,
   PROJECT_REPO_URL,
-  THEME_OPTIONS,
   clampFontScale,
+  getAccentPresets,
+  getFontScalePresets,
+  getThemeOptions,
   openExternalLink,
 } from '../constants';
+import { useI18n } from '../i18n';
 import {
   AppConfig,
   DownloadTarget,
@@ -44,6 +46,7 @@ import {
   SearchSource,
   StableInstallMode,
   ThemeId,
+  UiLanguage,
 } from '../types';
 import { SelectField } from './SelectField';
 import { LaneEmblem } from './TitleBar';
@@ -130,6 +133,7 @@ export function SettingsModal({
   onSave,
   onBenchmark,
 }: SettingsModalProps) {
+  const { lang, isEn, setLang, t } = useI18n();
   const [form, setForm] = useState<AppConfig | null>(config);
   const [saving, setSaving] = useState(false);
   const [bgUploading, setBgUploading] = useState(false);
@@ -137,10 +141,21 @@ export function SettingsModal({
   const [bgUrlDraft, setBgUrlDraft] = useState('');
   const [copiedRepo, setCopiedRepo] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const prevOpenRef = useRef(false);
+  const initialLangRef = useRef<UiLanguage>(lang);
 
   useEffect(() => {
+    const justOpened = open && !prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (justOpened) {
+      initialLangRef.current = lang;
+    }
     if (open && config) {
-      setForm({ ...config, theme });
+      setForm((prev) => ({
+        ...config,
+        theme,
+        language: justOpened ? lang : (prev?.language ?? config.language ?? lang),
+      }));
       setBgError(null);
       setCopiedRepo(false);
       setBgUrlDraft(
@@ -154,10 +169,14 @@ export function SettingsModal({
   if (!open || !form) return null;
 
   const isElectron = !!window.electronAPI?.isElectron;
+  const themeOptions = getThemeOptions(lang);
+  const fontScalePresets = getFontScalePresets(lang);
+  const accentPresets = getAccentPresets(lang);
   const currentFontScale = clampFontScale(form.fontScale, DEFAULT_FONT_SCALE);
   const currentBgOpacity = form.customBgOpacity ?? 0.75;
 
   const handleCloseCancel = () => {
+    setLang(initialLangRef.current);
     onPreviewAppearance?.(null);
     onClose();
   };
@@ -171,7 +190,9 @@ export function SettingsModal({
     e.preventDefault();
     setSaving(true);
     try {
-      await onSave({ ...form, theme });
+      const nextLanguage: UiLanguage = form.language || lang;
+      await onSave({ ...form, theme, language: nextLanguage });
+      void window.electronAPI?.setLanguage?.(nextLanguage);
       onPreviewAppearance?.(null);
       onClose();
     } finally {
@@ -185,7 +206,7 @@ export function SettingsModal({
     const api = window.electronAPI;
     if (api?.isElectron && api.selectFile) {
       const picked = await api.selectFile(undefined, [
-        { name: '图片文件', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif'] },
+        { name: t('图片文件', 'Image Files'), extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'avif'] },
       ]);
       if (!picked) return;
       setBgUploading(true);
@@ -194,7 +215,7 @@ export function SettingsModal({
         setForm((prev) => (prev ? { ...prev, customBgImage: updated.customBgImage } : prev));
         setBgUrlDraft('');
       } catch (err) {
-        setBgError(err instanceof Error ? err.message : '设置背景图失败');
+        setBgError(err instanceof Error ? err.message : t('设置背景图失败', 'Failed to set background image'));
       } finally {
         setBgUploading(false);
       }
@@ -208,7 +229,7 @@ export function SettingsModal({
     e.target.value = '';
     if (!file || !onUploadBackground) return;
     if (file.size > 20 * 1024 * 1024) {
-      setBgError('背景图片不能超过 20 MB');
+      setBgError(t('背景图片不能超过 20 MB', 'Background image must be 20 MB or smaller'));
       return;
     }
     setBgError(null);
@@ -217,18 +238,18 @@ export function SettingsModal({
     reader.onload = async () => {
       try {
         const dataUrl = typeof reader.result === 'string' ? reader.result : '';
-        if (!dataUrl) throw new Error('读取图片失败');
+        if (!dataUrl) throw new Error(t('读取图片失败', 'Failed to read image'));
         const updated = await onUploadBackground({ dataUrl });
         setForm((prev) => (prev ? { ...prev, customBgImage: updated.customBgImage } : prev));
         setBgUrlDraft('');
       } catch (err) {
-        setBgError(err instanceof Error ? err.message : '上传背景图失败');
+        setBgError(err instanceof Error ? err.message : t('上传背景图失败', 'Failed to upload background image'));
       } finally {
         setBgUploading(false);
       }
     };
     reader.onerror = () => {
-      setBgError('读取图片失败');
+      setBgError(t('读取图片失败', 'Failed to read image'));
       setBgUploading(false);
     };
     reader.readAsDataURL(file);
@@ -238,7 +259,7 @@ export function SettingsModal({
     if (!onUploadBackground) return;
     const trimmed = bgUrlDraft.trim();
     if (!/^https?:\/\//i.test(trimmed)) {
-      setBgError('请输入以 http:// 或 https:// 开头的图片链接');
+      setBgError(t('请输入以 http:// 或 https:// 开头的图片链接', 'Enter an image URL starting with http:// or https://'));
       return;
     }
     setBgError(null);
@@ -247,7 +268,7 @@ export function SettingsModal({
       const updated = await onUploadBackground({ url: trimmed });
       setForm((prev) => (prev ? { ...prev, customBgImage: updated.customBgImage } : prev));
     } catch (err) {
-      setBgError(err instanceof Error ? err.message : '应用链接失败');
+      setBgError(err instanceof Error ? err.message : t('应用链接失败', 'Failed to apply image URL'));
     } finally {
       setBgUploading(false);
     }
@@ -262,7 +283,7 @@ export function SettingsModal({
       setForm((prev) => (prev ? { ...prev, customBgImage: updated.customBgImage } : prev));
       setBgUrlDraft('');
     } catch (err) {
-      setBgError(err instanceof Error ? err.message : '清除背景图失败');
+      setBgError(err instanceof Error ? err.message : t('清除背景图失败', 'Failed to clear background image'));
     } finally {
       setBgUploading(false);
     }
@@ -280,7 +301,7 @@ export function SettingsModal({
     if (!api) return;
     const result = await api.selectFile(form.lazerExePath || undefined, [
       { name: 'osu!lazer', extensions: ['exe'] },
-      { name: '所有文件', extensions: ['*'] },
+      { name: t('所有文件', 'All Files'), extensions: ['*'] },
     ]);
     if (result != null) setForm((prev) => (prev ? { ...prev, lazerExePath: result } : prev));
   };
@@ -309,7 +330,7 @@ export function SettingsModal({
         {isElectron && (
           <button type="button" onClick={onBrowse} className="btn shrink-0 px-2.5">
             <FolderOpen className="h-3.5 w-3.5" />
-            <span>浏览...</span>
+            <span>{t('浏览...', 'Browse...')}</span>
           </button>
         )}
       </div>
@@ -321,7 +342,7 @@ export function SettingsModal({
       <form
         role="dialog"
         aria-modal="true"
-        aria-label="客户端路径、代理与主题背景设置"
+        aria-label={t('客户端路径、代理与主题背景设置', 'Client Paths, Proxy & Appearance Settings')}
         onSubmit={handleSubmit}
         onClick={(e) => e.stopPropagation()}
         className="modal-surface flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden"
@@ -335,18 +356,31 @@ export function SettingsModal({
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="font-display text-[1.0625rem] font-bold text-ink">
-                  客户端路径、代理与主题背景设置
+                  {t('客户端路径、代理与主题背景设置', 'Client Paths, Proxy & Appearance')}
                 </h2>
                 <span className="font-mono shrink-0 rounded-full border border-osu/35 bg-osu/10 px-2 py-0.5 text-[0.6875rem] font-bold text-osu-soft tabular-nums">
                   v{APP_VERSION}
                 </span>
               </div>
               <p className="truncate text-[0.78125rem] font-medium text-ink-3">
-                默认已自动绑定本机 Stable / Lazer 路径及 <span className="font-mono tabular-nums">6174</span> 代理端口
+                {form.proxyMode === 'direct'
+                  ? t(
+                      '当前使用纯直连模式与本机 Stable / Lazer 路径',
+                      'Configured with local Stable / Lazer paths (Direct mode)',
+                    )
+                  : t(
+                      `已配置本机 Stable / Lazer 路径及 ${form.proxyPort} 代理端口`,
+                      `Configured with local Stable / Lazer paths & proxy :${form.proxyPort}`,
+                    )}
               </p>
             </div>
           </div>
-          <button type="button" onClick={handleCloseCancel} className="btn btn-icon shrink-0" aria-label="关闭">
+          <button
+            type="button"
+            onClick={handleCloseCancel}
+            className="btn btn-icon shrink-0"
+            aria-label={t('关闭', 'Close')}
+          >
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -354,32 +388,32 @@ export function SettingsModal({
         {/* Body */}
         <div className="flex-1 space-y-3 overflow-y-auto p-4 text-[0.84375rem]">
           {/* 1. Client Paths */}
-          <Section index={1} title="本地客户端路径">
+          <Section index={1} title={t('本地客户端路径', 'Local Client Paths')}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {renderPathField(
                 'cfg-stable-path',
-                'osu!stable 根目录',
+                t('osu!stable 根目录', 'osu!stable Root Folder'),
                 form.stablePath,
                 (v) => setForm({ ...form, stablePath: v }),
                 () => void browseDirectory('stablePath'),
               )}
               {renderPathField(
                 'cfg-lazer-data',
-                'osu!lazer 数据目录',
+                t('osu!lazer 数据目录', 'osu!lazer Data Folder'),
                 form.lazerDataPath,
                 (v) => setForm({ ...form, lazerDataPath: v }),
                 () => void browseDirectory('lazerDataPath'),
               )}
               {renderPathField(
                 'cfg-lazer-exe',
-                'osu!lazer 可执行文件 (用于一键导入)',
+                t('osu!lazer 可执行文件 (用于一键导入)', 'osu!lazer Executable (Auto-Import)'),
                 form.lazerExePath,
                 (v) => setForm({ ...form, lazerExePath: v }),
                 () => void browseLazerExe(),
               )}
               {renderPathField(
                 'cfg-lazer-import',
-                'Lazer 待导入队列目录',
+                t('Lazer 待导入队列目录', 'Lazer Import Queue Folder'),
                 form.lazerImportDir,
                 (v) => setForm({ ...form, lazerImportDir: v }),
                 () => void browseDirectory('lazerImportDir'),
@@ -390,7 +424,7 @@ export function SettingsModal({
           {/* 2. Proxy & Mirror Benchmark */}
           <Section
             index={2}
-            title="智能网络与代理设置"
+            title={t('智能网络与代理设置', 'Network & Proxy')}
             action={
               <div className="flex flex-wrap items-center gap-2">
                 {network && (
@@ -401,7 +435,7 @@ export function SettingsModal({
                         : 'border-hairline bg-surface-1 text-ink-3'
                     }`}
                   >
-                    {network.hasGlobalIpv6 ? 'IPv6 已就绪' : '仅 IPv4'}
+                    {network.hasGlobalIpv6 ? t('IPv6 已就绪', 'IPv6 Ready') : t('仅 IPv4', 'IPv4 Only')}
                   </span>
                 )}
                 <button
@@ -415,38 +449,38 @@ export function SettingsModal({
                   ) : (
                     <Activity className="h-3.5 w-3.5" />
                   )}
-                  <span>立即检测代理与全部镜像测速</span>
+                  <span>{t('立即检测代理与全部镜像测速', 'Test Proxy & Benchmark Mirrors')}</span>
                 </button>
               </div>
             }
           >
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1.25fr)_minmax(0,0.85fr)_minmax(0,0.6fr)]">
               <div className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">代理策略</span>
+                <span className="field-label">{t('代理策略', 'Proxy Strategy')}</span>
                 <SelectField
                   value={form.proxyMode}
                   onChange={(val) => setForm({ ...form, proxyMode: val as ProxyMode })}
                 >
-                  <option value="auto">自动检测 (国内直连 · 海外优先代理)</option>
-                  <option value="proxy">强制走本地代理</option>
-                  <option value="direct">强制全直连</option>
+                  <option value="auto">{t('自动检测 (国内直连 · 海外优先代理)', 'Auto (CN Direct · Global Proxy)')}</option>
+                  <option value="proxy">{t('强制走本地代理', 'Force Local Proxy')}</option>
+                  <option value="direct">{t('强制全直连', 'Direct Only')}</option>
                 </SelectField>
               </div>
               <div className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">网络协议 (IPv6)</span>
+                <span className="field-label">{t('网络协议 (IPv6)', 'IP Stack (IPv6)')}</span>
                 <SelectField
                   value={form.ipFamily || 'auto'}
                   onChange={(val) => setForm({ ...form, ipFamily: val as IpFamilyMode })}
                 >
-                  <option value="auto">自动双栈 (Happy Eyeballs)</option>
-                  <option value="ipv6_first">IPv6 优先 (直连加速)</option>
-                  <option value="ipv6_only">强制仅 IPv6</option>
-                  <option value="ipv4_first">IPv4 优先</option>
-                  <option value="ipv4_only">强制仅 IPv4</option>
+                  <option value="auto">{t('自动双栈 (Happy Eyeballs)', 'Auto Dual-Stack (Happy Eyeballs)')}</option>
+                  <option value="ipv6_first">{t('IPv6 优先 (直连加速)', 'Prefer IPv6 (Fast Direct)')}</option>
+                  <option value="ipv6_only">{t('强制仅 IPv6', 'IPv6 Only')}</option>
+                  <option value="ipv4_first">{t('IPv4 优先', 'Prefer IPv4')}</option>
+                  <option value="ipv4_only">{t('强制仅 IPv4', 'IPv4 Only')}</option>
                 </SelectField>
               </div>
               <label className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">代理主机</span>
+                <span className="field-label">{t('代理主机', 'Proxy Host')}</span>
                 <input
                   type="text"
                   value={form.proxyHost}
@@ -456,7 +490,7 @@ export function SettingsModal({
                 />
               </label>
               <label className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">代理端口</span>
+                <span className="field-label">{t('代理端口', 'Proxy Port')}</span>
                 <input
                   type="number"
                   value={form.proxyPort}
@@ -471,11 +505,11 @@ export function SettingsModal({
                 <table className="data-table">
                   <thead>
                     <tr>
-                      <th>下载源</th>
-                      <th>区域</th>
-                      <th>路由</th>
-                      <th className="text-right">延迟</th>
-                      <th>状态</th>
+                      <th>{t('下载源', 'Mirror')}</th>
+                      <th>{t('区域', 'Region')}</th>
+                      <th>{t('路由', 'Route')}</th>
+                      <th className="text-right">{t('延迟', 'Latency')}</th>
+                      <th>{t('状态', 'Status')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -492,7 +526,9 @@ export function SettingsModal({
                                 <div className="truncate font-mono text-[0.71875rem] text-ink-3">{m.shortName}</div>
                               </div>
                               {best && (
-                                <span className="chip shrink-0 border-osu/40 bg-osu/12 text-osu-soft">最优</span>
+                                <span className="chip shrink-0 border-osu/40 bg-osu/12 text-osu-soft">
+                                  {t('最优', 'Best')}
+                                </span>
                               )}
                             </div>
                           </td>
@@ -502,10 +538,10 @@ export function SettingsModal({
                           <td className="whitespace-nowrap text-ink-2">
                             {m.routeUsed === 'proxy' ? (
                               <span>
-                                代理 <span className="font-mono text-ink-3">:{network.proxyPort}</span>
+                                {t('代理', 'Proxy')} <span className="font-mono text-ink-3">:{network.proxyPort}</span>
                               </span>
                             ) : m.routeUsed === 'direct' ? (
-                              '直连'
+                              t('直连', 'Direct')
                             ) : (
                               <span className="text-ink-4">—</span>
                             )}
@@ -530,7 +566,7 @@ export function SettingsModal({
                           <td className="max-w-[200px]">
                             {m.healthy ? (
                               <span className="inline-flex items-center gap-1.5 font-medium text-ok">
-                                <span className="live-dot" /> 可用
+                                <span className="live-dot" /> {t('可用', 'OK')}
                               </span>
                             ) : (
                               <span
@@ -539,7 +575,9 @@ export function SettingsModal({
                               >
                                 <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-rose-500" />
                                 <span className="truncate">
-                                  {m.requiresAuth ? '未登录(已自动跳过)' : m.error || '不可用'}
+                                  {m.requiresAuth
+                                    ? t('未登录(已自动跳过)', 'Auth required (skipped)')
+                                    : m.error || t('不可用', 'Offline')}
                                 </span>
                               </span>
                             )}
@@ -553,16 +591,60 @@ export function SettingsModal({
             )}
           </Section>
 
-          {/* 3. Theme, Custom Background & Download Preferences */}
-          {/* 3. Theme, Font Size, Custom Background & Download Preferences */}
+          {/* 3. Theme, Language, Font Scale, Custom Background & Download Preferences */}
           <Section
             index={3}
-            title="界面主题、字体与桌面背景"
+            title={t('界面主题、语言、字号与偏好设置', 'Theme, Language, Scale & Preferences')}
             icon={<Palette className="h-3.5 w-3.5 shrink-0 text-osu-soft" />}
           >
+            {/* Interface Language Switcher */}
+            <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-[10px] border border-hairline bg-surface-2/55 px-3 py-2.5">
+              <div className="flex min-w-0 items-center gap-2">
+                <Globe className="h-3.5 w-3.5 shrink-0 text-osu-soft" />
+                <div className="min-w-0">
+                  <div className="field-label font-semibold text-ink">
+                    {t('界面语言', 'Interface Language')}
+                  </div>
+                  <div className="text-[0.71875rem] font-medium text-ink-3">
+                    {t(
+                      '即时切换主界面与浮窗语言（取消将还原）',
+                      'Switch UI & overlay language live (reverts on Cancel)',
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="segmented segmented-auto shrink-0">
+                {(
+                  [
+                    { id: 'zh', label: '简体中文' },
+                    { id: 'en', label: 'English' },
+                  ] as const
+                ).map((opt) => {
+                  const active = (form.language || lang) === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        setLang(opt.id);
+                        setForm((prev) => (prev ? { ...prev, language: opt.id } : prev));
+                      }}
+                      className={
+                        active
+                          ? '!bg-surface-2 !px-3 !text-ink shadow-[inset_0_0_0_1px_var(--t-osu)]'
+                          : '!px-3'
+                      }
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* 8 Theme Picker */}
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {THEME_OPTIONS.map((opt) => {
+              {themeOptions.map((opt) => {
                 const active = theme === opt.id;
                 return (
                   <button
@@ -591,7 +673,7 @@ export function SettingsModal({
                         {opt.label}
                       </div>
                       <div className="truncate text-[0.71875rem] font-medium text-ink-3">
-                        {opt.isDark ? '暗色' : '浅色'}
+                        {opt.isDark ? t('暗色', 'Dark') : t('浅色', 'Light')}
                       </div>
                     </div>
                   </button>
@@ -604,14 +686,14 @@ export function SettingsModal({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <Type className="h-3.5 w-3.5 shrink-0 text-osu-soft" />
-                  <span className="field-label font-semibold text-ink">界面字体大小</span>
+                  <span className="field-label font-semibold text-ink">{t('界面字体大小', 'UI Font Scale')}</span>
                   <span className="font-mono rounded-[6px] border border-hairline bg-surface-1 px-1.5 py-0.5 text-[0.75rem] font-bold text-osu-soft tabular-nums">
                     {Math.round(currentFontScale * 100)}%
                   </span>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-1">
-                  {FONT_SCALE_PRESETS.map((preset) => {
+                  {fontScalePresets.map((preset) => {
                     const active = Math.abs(currentFontScale - preset.value) < 0.015;
                     return (
                       <button
@@ -633,7 +715,7 @@ export function SettingsModal({
                       className="btn btn-sm min-h-[26px] px-2 text-[0.75rem]"
                     >
                       <RotateCcw className="h-3 w-3" />
-                      <span>恢复默认</span>
+                      <span>{t('恢复默认', 'Reset')}</span>
                     </button>
                   )}
                 </div>
@@ -641,7 +723,7 @@ export function SettingsModal({
 
               <input
                 type="range"
-                aria-label="界面字体大小缩放"
+                aria-label={t('界面字体大小缩放', 'UI font scale')}
                 min={FONT_SCALE_MIN}
                 max={FONT_SCALE_MAX}
                 step={0.01}
@@ -654,9 +736,17 @@ export function SettingsModal({
               />
 
               <div className="flex flex-wrap items-center justify-between gap-2 text-[0.75rem] font-medium text-ink-3">
-                <span>默认 120%，实时缩放全部中英文界面字号，取消保存将还原原设定</span>
+                <span>
+                  {t(
+                    '默认 120%，实时缩放全部中英文界面字号，取消保存将还原原设定',
+                    'Default 120%; scales UI live and reverts on Cancel',
+                  )}
+                </span>
                 <span className="truncate font-semibold text-ink-2">
-                  预览示例：双端曲库同步 · Mania 4K 谱面下载器 · 98.50% ~420pp
+                  {t(
+                    '预览示例：双端曲库同步 · Mania 4K 谱面下载器 · 98.50% ~420pp',
+                    'Preview: Dual-Client Sync · Mania 4K Downloader · 98.50% ~420pp',
+                  )}
                 </span>
               </div>
             </div>
@@ -664,13 +754,13 @@ export function SettingsModal({
             {/* Custom Accent Color Picker */}
             <div className="space-y-2 rounded-[10px] border border-hairline bg-surface-2/55 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="field-label font-semibold text-ink">自定义主题强调色</span>
+                <span className="field-label font-semibold text-ink">{t('自定义主题强调色', 'Custom Accent Color')}</span>
                 <div className="flex items-center gap-2">
                   {form.dynamicThemeFromBg && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-osu/35 bg-osu/10 px-2 py-0.5 text-[0.71875rem] font-medium text-osu-soft">
                       <Sparkles className="h-3 w-3" />
                       <span>
-                        随背景变色中
+                        {t('随背景变色中', 'Auto from BG')}
                         {activeExtractedColor ? ` (${activeExtractedColor})` : ''}
                       </span>
                     </span>
@@ -683,13 +773,13 @@ export function SettingsModal({
                     }`}
                   >
                     <RotateCcw className="h-3 w-3" />
-                    <span>主题默认</span>
+                    <span>{t('主题默认', 'Theme Default')}</span>
                   </button>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                {ACCENT_PRESETS.map((preset) => {
+                {accentPresets.map((preset) => {
                   const active = form.accentColor.toLowerCase() === preset.hex.toLowerCase();
                   return (
                     <button
@@ -707,7 +797,7 @@ export function SettingsModal({
 
                 <label
                   className="ml-1 inline-flex min-h-[30px] cursor-pointer items-center gap-1.5 rounded-full border border-hairline bg-surface-1 px-2.5 text-[0.75rem] font-semibold text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink"
-                  title="自由选取任意强调色"
+                  title={t('自由选取任意强调色', 'Pick any custom accent color')}
                 >
                   <input
                     type="color"
@@ -716,7 +806,7 @@ export function SettingsModal({
                     className="h-4 w-4 cursor-pointer rounded border-none bg-transparent p-0"
                   />
                   <span className="font-mono text-[0.75rem] uppercase">
-                    {form.accentColor || '自选颜色'}
+                    {form.accentColor || t('自选颜色', 'Custom')}
                   </span>
                 </label>
               </div>
@@ -737,12 +827,12 @@ export function SettingsModal({
                   {form.customBgImage ? (
                     <img
                       src={form.customBgImage}
-                      alt="自定义桌面背景预览"
+                      alt={t('自定义桌面背景预览', 'Custom background preview')}
                       className="h-full w-full object-cover"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-[0.75rem] font-medium text-ink-4">
-                      未设置壁纸
+                      {t('未设置壁纸', 'No Wallpaper')}
                     </div>
                   )}
                 </div>
@@ -760,7 +850,7 @@ export function SettingsModal({
                       ) : (
                         <ImagePlus className="h-3.5 w-3.5 text-osu" />
                       )}
-                      <span>选择本地背景图...</span>
+                      <span>{t('选择本地背景图...', 'Choose Local Image...')}</span>
                     </button>
 
                     {form.customBgImage && (
@@ -771,7 +861,7 @@ export function SettingsModal({
                         className="btn btn-sm btn-danger"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
-                        <span>清除背景图</span>
+                        <span>{t('清除背景图', 'Clear Image')}</span>
                       </button>
                     )}
                   </div>
@@ -781,7 +871,7 @@ export function SettingsModal({
                       type="url"
                       value={bgUrlDraft}
                       onChange={(e) => setBgUrlDraft(e.target.value)}
-                      placeholder="或粘贴网络图片链接 (https://...)"
+                      placeholder={t('或粘贴网络图片链接 (https://...)', 'Or paste image URL (https://...)')}
                       className="field min-h-[30px] flex-1 font-mono text-[0.78125rem]"
                     />
                     <button
@@ -790,7 +880,7 @@ export function SettingsModal({
                       onClick={() => void handleApplyBgUrl()}
                       className="btn btn-sm min-h-[30px] px-2.5"
                     >
-                      应用链接
+                      {t('应用链接', 'Apply URL')}
                     </button>
                   </div>
                   {bgError && <div className="text-[0.78125rem] font-medium text-bad">{bgError}</div>}
@@ -800,14 +890,16 @@ export function SettingsModal({
               {/* Background Opacity Slider */}
               <div className="space-y-1.5 border-t border-hairline pt-2.5">
                 <div className="flex items-center justify-between text-[0.8125rem]">
-                  <span className="font-semibold text-ink-2">背景图不透明度（默认 75%，越高背景越清晰）</span>
+                  <span className="font-semibold text-ink-2">
+                    {t('背景图不透明度（默认 75%，越高背景越清晰）', 'Background Opacity (Default 75%, higher = clearer)')}
+                  </span>
                   <span className="font-mono font-bold text-ink tabular-nums">
                     {Math.round(currentBgOpacity * 100)}%
                   </span>
                 </div>
                 <input
                   type="range"
-                  aria-label="背景图不透明度"
+                  aria-label={t('背景图不透明度', 'Background opacity')}
                   min={0.04}
                   max={1}
                   step={0.01}
@@ -829,7 +921,7 @@ export function SettingsModal({
                     onChange={(e) => updateAppearance({ dynamicBgFromSong: e.target.checked })}
                     className="check"
                   />
-                  <span>Lazer 模式随选中歌曲更换桌面背景</span>
+                  <span>{t('Lazer 模式随选中歌曲更换桌面背景', 'Sync background to selected song in Lazer mode')}</span>
                 </label>
 
                 <label className="flex cursor-pointer items-center gap-2.5 rounded-[8px] border border-hairline bg-surface-1/70 px-3 py-2 text-[0.8125rem] font-medium text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
@@ -839,84 +931,84 @@ export function SettingsModal({
                     onChange={(e) => updateAppearance({ dynamicThemeFromBg: e.target.checked })}
                     className="check check-lazer"
                   />
-                  <span>主题强调色随背景图主色调自动改变</span>
+                  <span>{t('主题强调色随背景图主色调自动改变', 'Adapt accent color to background palette')}</span>
                 </label>
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">默认下载目标</span>
+                <span className="field-label">{t('默认下载目标', 'Default Target')}</span>
                 <SelectField
                   value={form.defaultTarget}
                   onChange={(val) => setForm({ ...form, defaultTarget: val as DownloadTarget })}
                 >
                   <option value="lazer">osu!lazer</option>
                   <option value="stable">osu!stable</option>
-                  <option value="both">双端同时安装</option>
+                  <option value="both">{t('双端同时安装', 'Both Clients')}</option>
                 </SelectField>
               </div>
 
               <div className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">默认包体格式</span>
+                <span className="field-label">{t('默认包体格式', 'Default Package')}</span>
                 <SelectField
                   value={form.defaultVariant}
                   onChange={(val) => setForm({ ...form, defaultVariant: val as DownloadVariant })}
                 >
-                  <option value="novideo">无视频 (No Video)</option>
-                  <option value="full">完整版 (含视频)</option>
-                  <option value="mini">精简 Mini 版</option>
+                  <option value="novideo">{t('无视频 (No Video)', 'No Video')}</option>
+                  <option value="full">{t('完整版 (含视频)', 'Full (With Video)')}</option>
+                  <option value="mini">{t('精简 Mini 版', 'Mini')}</option>
                 </SelectField>
               </div>
 
               <div className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">首选下载源</span>
+                <span className="field-label">{t('首选下载源', 'Preferred Mirror')}</span>
                 <SelectField
                   value={form.preferredDownloadSource}
                   onChange={(val) =>
                     setForm({ ...form, preferredDownloadSource: val as PreferredMirror })
                   }
                 >
-                  <option value="auto">自动选择最快镜像 (推荐)</option>
-                  <option value="sayobot-auto">小夜镜像 · 自动</option>
-                  <option value="sayobot-txy">小夜镜像 · 腾讯云</option>
-                  <option value="nekoha">Nekoha 镜像</option>
-                  <option value="osudirect">osu.direct 镜像</option>
-                  <option value="beatconnect">BeatConnect 镜像</option>
-                  <option value="nerinyan">Nerinyan 镜像</option>
-                  <option value="official">官方源 (需下方 Cookie)</option>
+                  <option value="auto">{t('自动选择最快镜像 (推荐)', 'Auto Fastest Mirror (Recommended)')}</option>
+                  <option value="sayobot-auto">{t('小夜镜像 · 自动', 'Sayobot · Auto')}</option>
+                  <option value="sayobot-txy">{t('小夜镜像 · 腾讯云', 'Sayobot · Tencent Cloud')}</option>
+                  <option value="nekoha">{t('Nekoha 镜像', 'Nekoha')}</option>
+                  <option value="osudirect">{t('osu.direct 镜像', 'osu.direct')}</option>
+                  <option value="beatconnect">{t('BeatConnect 镜像', 'BeatConnect')}</option>
+                  <option value="nerinyan">{t('Nerinyan 镜像', 'Nerinyan')}</option>
+                  <option value="official">{t('官方源 (需下方 Cookie)', 'Official (Cookie required)')}</option>
                 </SelectField>
               </div>
 
               <div className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">默认搜索引擎</span>
+                <span className="field-label">{t('默认搜索引擎', 'Default Search Source')}</span>
                 <SelectField
                   value={form.preferredSearchSource}
                   onChange={(val) =>
                     setForm({ ...form, preferredSearchSource: val as SearchSource })
                   }
                 >
-                  <option value="auto">自动 (osu.direct + 故障转移)</option>
+                  <option value="auto">{t('自动 (osu.direct + 故障转移)', 'Auto (osu.direct + Failover)')}</option>
                   <option value="osudirect">osu.direct</option>
-                  <option value="sayobot">小夜镜像 (国内直连)</option>
+                  <option value="sayobot">{t('小夜镜像 (国内直连)', 'Sayobot (CN Direct)')}</option>
                 </SelectField>
               </div>
 
               <div className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">Stable 安装方式</span>
+                <span className="field-label">{t('Stable 安装方式', 'Stable Install Mode')}</span>
                 <SelectField
                   value={form.stableInstallMode}
                   onChange={(val) =>
                     setForm({ ...form, stableInstallMode: val as StableInstallMode })
                   }
                 >
-                  <option value="extract">直接解压到 Songs 目录 (推荐)</option>
-                  <option value="drop_osz">保留 .osz 到 Songs 目录</option>
+                  <option value="extract">{t('直接解压到 Songs 目录 (推荐)', 'Extract to Songs Folder (Recommended)')}</option>
+                  <option value="drop_osz">{t('保留 .osz 到 Songs 目录', 'Keep .osz in Songs Folder')}</option>
                 </SelectField>
               </div>
 
               <label className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">并发下载数 (1-6)</span>
+                <span className="field-label">{t('并发下载数 (1-6)', 'Concurrency (1-6)')}</span>
                 <input
                   type="number"
                   min={1}
@@ -937,7 +1029,12 @@ export function SettingsModal({
                 }
                 className="check check-lazer"
               />
-              <span>检测到 osu!lazer 正在运行时，下载完成后自动触发客户端导入</span>
+              <span>
+                {t(
+                  '检测到 osu!lazer 正在运行时，下载完成后自动触发客户端导入',
+                  'Auto-import into osu!lazer on completion while running',
+                )}
+              </span>
             </label>
 
             <label className="flex cursor-pointer items-center gap-2.5 rounded-[9px] border border-hairline bg-surface-2/70 px-3 py-2.5 text-[0.8125rem] font-medium text-ink-2 transition-colors hover:border-hairline-strong hover:text-ink">
@@ -949,17 +1046,22 @@ export function SettingsModal({
                 }
                 className="check"
               />
-              <span>检测到 osu!stable 正在运行时，下载完成后自动调用客户端导入并加载</span>
+              <span>
+                {t(
+                  '检测到 osu!stable 正在运行时，下载完成后自动调用客户端导入并加载',
+                  'Auto-load into osu!stable on completion while running',
+                )}
+              </span>
             </label>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex min-w-0 flex-col gap-1.5">
-                <span className="field-label">游戏内浮窗全局热键</span>
+                <span className="field-label">{t('游戏内浮窗全局热键', 'In-Game Overlay Hotkey')}</span>
                 <SelectField
                   value={form.overlayHotkey}
                   onChange={(val) => setForm({ ...form, overlayHotkey: val })}
                 >
-                  <option value="Alt+Shift+O">Alt + Shift + O (默认)</option>
+                  <option value="Alt+Shift+O">{t('Alt + Shift + O (默认)', 'Alt + Shift + O (Default)')}</option>
                   <option value="Ctrl+Shift+O">Ctrl + Shift + O</option>
                   <option value="Alt+O">Alt + O</option>
                   <option value="F9">F9</option>
@@ -969,7 +1071,10 @@ export function SettingsModal({
               </div>
               <div className="flex min-w-0 flex-col justify-end text-[0.78125rem] font-medium text-ink-3">
                 <span>
-                  提示：在游戏内使用「无边框窗口 (Borderless)」模式时，热键可一键呼出 macOS 磨砂浮窗。
+                  {t(
+                    '提示：在游戏内使用「无边框窗口 (Borderless)」模式时，热键可一键呼出 macOS 磨砂浮窗。',
+                    'Tip: Use Borderless Windowed mode in osu! so this hotkey brings up the quick overlay.',
+                  )}
                 </span>
               </div>
             </div>
@@ -978,21 +1083,33 @@ export function SettingsModal({
           {/* 4. Optional Official Auth */}
           <Section
             index={4}
-            title="官方源 Cookie"
-            hint="(完全可选，无需登录即可使用全部镜像)"
+            title={t('官方源 Cookie', 'Official Source Cookie')}
+            hint={t('(完全可选，无需登录即可使用全部镜像)', '(Optional — all mirrors work without login)')}
             icon={<ShieldCheck className="h-3.5 w-3.5 shrink-0 text-ok" />}
           >
             <p className="text-[0.8125rem] font-medium leading-relaxed text-ink-2">
-              不填任何账号信息即可通过小夜、Nekoha、osu.direct 等镜像站自由搜索与下载。仅当你明确想走官方下载通道时才需填写浏览器中的
-              <code className="mx-1 rounded-[5px] border border-hairline bg-tint px-1 py-px font-mono text-[0.78125rem] text-osu-soft">
-                osu_session
-              </code>
-              。
+              {isEn ? (
+                <>
+                  All mirrors (Sayobot, Nekoha, osu.direct, etc.) work without any login. Only paste your browser{' '}
+                  <code className="mx-1 rounded-[5px] border border-hairline bg-tint px-1 py-px font-mono text-[0.78125rem] text-osu-soft">
+                    osu_session
+                  </code>{' '}
+                  cookie if you explicitly want to download from official osu! servers.
+                </>
+              ) : (
+                <>
+                  不填任何账号信息即可通过小夜、Nekoha、osu.direct 等镜像站自由搜索与下载。仅当你明确想走官方下载通道时才需填写浏览器中的
+                  <code className="mx-1 rounded-[5px] border border-hairline bg-tint px-1 py-px font-mono text-[0.78125rem] text-osu-soft">
+                    osu_session
+                  </code>
+                  。
+                </>
+              )}
             </p>
             <input
               type="password"
               value={form.officialCookie}
-              placeholder="可选：留空则完全免登录使用镜像站"
+              placeholder={t('可选：留空则完全免登录使用镜像站', 'Optional: leave blank to use mirrors without login')}
               onChange={(e) => setForm({ ...form, officialCookie: e.target.value })}
               className="field font-mono"
             />
@@ -1001,8 +1118,8 @@ export function SettingsModal({
           {/* 5. About, Version, Open-Source Repo & Onboarding */}
           <Section
             index={5}
-            title="关于与帮助"
-            hint="版本信息、开源仓库与新手引导"
+            title={t('关于与帮助', 'About & Help')}
+            hint={t('版本信息、开源仓库与新手引导', 'Version, GitHub repo & setup wizard')}
             icon={<Info className="h-3.5 w-3.5 shrink-0 text-osu-soft" />}
           >
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-[10px] border border-hairline bg-surface-2/65 px-3.5 py-2.5">
@@ -1018,19 +1135,22 @@ export function SettingsModal({
                     </span>
                   </div>
                   <div className="truncate text-[0.75rem] font-medium text-ink-3">
-                    osu!mania 双端管理下载器 · Book 档案库 · OSU! 音乐台
+                    {t(
+                      'osu!mania 双端管理下载器 · Book 档案库 · OSU! 音乐台',
+                      'Dual-Client osu!mania Manager · Book Archive · OSU! Audio',
+                    )}
                   </div>
                 </div>
               </div>
 
               <span className="chip font-mono border-hairline bg-surface-1 text-ink-2">
-                {isElectron ? 'Electron 桌面版' : 'Web 浏览器版'}
+                {isElectron ? t('Electron 桌面版', 'Electron Desktop') : t('Web 浏览器版', 'Web Browser')}
               </span>
             </div>
 
             <div className="flex flex-col gap-2 rounded-[10px] border border-hairline bg-surface-2/55 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0 space-y-0.5">
-                <div className="field-label">开源项目地址 (GitHub)</div>
+                <div className="field-label">{t('开源项目地址 (GitHub)', 'GitHub Repository')}</div>
                 <a
                   href={PROJECT_REPO_URL}
                   target="_blank"
@@ -1058,7 +1178,7 @@ export function SettingsModal({
                 ) : (
                   <Copy className="h-3.5 w-3.5" />
                 )}
-                <span>{copiedRepo ? '已复制链接' : '复制地址'}</span>
+                <span>{copiedRepo ? t('已复制链接', 'Copied URL') : t('复制地址', 'Copy URL')}</span>
               </button>
             </div>
 
@@ -1066,10 +1186,13 @@ export function SettingsModal({
               <div className="flex flex-col gap-2 rounded-[10px] border border-hairline bg-surface-2/55 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 space-y-0.5">
                   <div className="font-display text-[0.84375rem] font-bold text-ink">
-                    新手引导
+                    {t('新手引导', 'Setup Wizard')}
                   </div>
                   <p className="text-[0.78125rem] font-medium text-ink-3">
-                    重新打开新手配置与功能引导（支持探测本机客户端路径与代理端口）
+                    {t(
+                      '重新打开新手配置与功能引导（支持探测本机客户端路径与代理端口）',
+                      'Re-open the setup walkthrough (detects local client paths & proxy ports)',
+                    )}
                   </p>
                 </div>
 
@@ -1079,7 +1202,7 @@ export function SettingsModal({
                   className="btn btn-sm shrink-0 border-osu/35 bg-osu/10 text-osu-soft hover:border-osu/55 hover:bg-osu/16"
                 >
                   <BookOpen className="h-3.5 w-3.5" />
-                  <span>重新观看新手引导</span>
+                  <span>{t('重新观看新手引导', 'Replay Setup Wizard')}</span>
                 </button>
               </div>
             )}
@@ -1093,11 +1216,11 @@ export function SettingsModal({
           </span>
           <div className="flex items-center gap-2">
             <button type="button" onClick={handleCloseCancel} className="btn">
-              取消
+              {t('取消', 'Cancel')}
             </button>
             <button type="submit" disabled={saving} className="btn btn-primary px-4">
               {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              <span>{saving ? '保存中...' : '保存并刷新状态'}</span>
+              <span>{saving ? t('保存中...', 'Saving...') : t('保存并刷新状态', 'Save & Refresh')}</span>
             </button>
           </div>
         </div>

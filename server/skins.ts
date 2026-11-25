@@ -3,37 +3,51 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import type { Response } from 'express';
 import { getConfig } from './config.js';
+import { st } from './i18n.js';
 import { ManiaSkinAsset, ResolvedManiaSkin, SkinSummary, SkinsListResponse } from './types.js';
 
-const BUILTIN_SKINS: SkinSummary[] = [
-  {
-    id: '__builtin_bar__',
-    name: '内置 · 极简条形 (Bar)',
-    author: 'osu! 4K Workshop',
-    source: 'builtin',
-    isActiveInStable: false,
-    hasManiaConfig: true,
-    supportedKeys: [4, 5, 6, 7, 8, 9, 10],
-  },
-  {
-    id: '__builtin_circle__',
-    name: '内置 · 霓虹圆珠 (Circle)',
-    author: 'osu! 4K Workshop',
-    source: 'builtin',
-    isActiveInStable: false,
-    hasManiaConfig: true,
-    supportedKeys: [4, 5, 6, 7, 8, 9, 10],
-  },
-  {
-    id: '__builtin_arrow__',
-    name: '内置 · 炫彩箭头 (Arrow)',
-    author: 'osu! 4K Workshop',
-    source: 'builtin',
-    isActiveInStable: false,
-    hasManiaConfig: true,
-    supportedKeys: [4, 5, 6, 7, 8, 9, 10],
-  },
-];
+function getBuiltinSkinName(style: 'bar' | 'circle' | 'arrow'): string {
+  switch (style) {
+    case 'circle':
+      return st('内置 · 霓虹圆珠 (Circle)', 'Built-in · Neon Circle');
+    case 'arrow':
+      return st('内置 · 炫彩箭头 (Arrow)', 'Built-in · Neon Arrow');
+    default:
+      return st('内置 · 极简条形 (Bar)', 'Built-in · Minimalist Bar');
+  }
+}
+
+function getBuiltinSkins(): SkinSummary[] {
+  return [
+    {
+      id: '__builtin_bar__',
+      name: getBuiltinSkinName('bar'),
+      author: 'osu! 4K Workshop',
+      source: 'builtin',
+      isActiveInStable: false,
+      hasManiaConfig: true,
+      supportedKeys: [4, 5, 6, 7, 8, 9, 10],
+    },
+    {
+      id: '__builtin_circle__',
+      name: getBuiltinSkinName('circle'),
+      author: 'osu! 4K Workshop',
+      source: 'builtin',
+      isActiveInStable: false,
+      hasManiaConfig: true,
+      supportedKeys: [4, 5, 6, 7, 8, 9, 10],
+    },
+    {
+      id: '__builtin_arrow__',
+      name: getBuiltinSkinName('arrow'),
+      author: 'osu! 4K Workshop',
+      source: 'builtin',
+      isActiveInStable: false,
+      hasManiaConfig: true,
+      supportedKeys: [4, 5, 6, 7, 8, 9, 10],
+    },
+  ];
+}
 
 // IEEE 802.3 CRC32 table for PNG chunk rewriting
 const CRC_TABLE = (() => {
@@ -350,7 +364,7 @@ export function listSkins(): SkinsListResponse {
   return {
     activeStableSkin: activeSkin,
     stableManiaSpeed: maniaSpeed,
-    skins: [...activeLocal, ...BUILTIN_SKINS, ...otherLocal],
+    skins: [...activeLocal, ...getBuiltinSkins(), ...otherLocal],
   };
 }
 
@@ -408,12 +422,6 @@ function buildBuiltinSkin(skinId: string, keys: number): ResolvedManiaSkin {
         ? 'arrow'
         : 'bar';
 
-  const nameMap = {
-    bar: '内置 · 极简条形 (Bar)',
-    circle: '内置 · 霓虹圆珠 (Circle)',
-    arrow: '内置 · 炫彩箭头 (Arrow)',
-  };
-
   const slots = defaultColumnSlots(keys);
   const colours = slots.map((slot) =>
     slot === 'S'
@@ -434,7 +442,7 @@ function buildBuiltinSkin(skinId: string, keys: number): ResolvedManiaSkin {
 
   return {
     skinId,
-    name: nameMap[style],
+    name: getBuiltinSkinName(style),
     source: 'builtin',
     builtinStyle: style,
     keys,

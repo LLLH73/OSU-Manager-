@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Award, RotateCcw, SlidersHorizontal, X } from 'lucide-react';
 import { QUICK_PRACTICE_TAGS } from '../../constants';
+import { useI18n } from '../../i18n';
 import { PpRangeSlider } from '../PpRangeSlider';
 import { SelectField } from '../SelectField';
 import { StarRangeSlider } from '../StarRangeSlider';
@@ -25,24 +26,10 @@ interface BookFilterPanelProps {
   onClose: () => void;
 }
 
-const STAR_CHIPS: Array<{ label: string; min?: number; max?: number }> = [
-  { label: '不限' },
-  { label: '<3★', max: 3 },
-  { label: '3–5★', min: 3, max: 5 },
-  { label: '5–7★', min: 5, max: 7 },
-  { label: '7★+', min: 7 },
-];
-
 const BPM_CHIPS: Array<{ label: string; min?: number; max?: number }> = [
   { label: '≤150', max: 150 },
   { label: '150–190', min: 150, max: 190 },
   { label: '190+', min: 190 },
-];
-
-const LENGTH_CHIPS: Array<{ label: string; min?: number; max?: number }> = [
-  { label: '短曲 ≤90s', max: 90 },
-  { label: '90–210s', min: 90, max: 210 },
-  { label: '耐力 ≥210s', min: 210 },
 ];
 
 function RangePair({
@@ -136,7 +123,22 @@ export function BookFilterPanel({
   onReset,
   onClose,
 }: BookFilterPanelProps) {
+  const { isEn, t } = useI18n();
   const panelRef = useRef<HTMLDivElement | null>(null);
+
+  const starChips: Array<{ label: string; min?: number; max?: number }> = [
+    { label: t('不限', 'Any') },
+    { label: '<3★', max: 3 },
+    { label: '3–5★', min: 3, max: 5 },
+    { label: '5–7★', min: 5, max: 7 },
+    { label: '7★+', min: 7 },
+  ];
+
+  const lengthChips: Array<{ label: string; min?: number; max?: number }> = [
+    { label: t('短曲 ≤90s', 'Short ≤90s'), max: 90 },
+    { label: '90–210s', min: 90, max: 210 },
+    { label: t('耐力 ≥210s', 'Long ≥210s'), min: 210 },
+  ];
 
   useEffect(() => {
     if (!open) return;
@@ -177,10 +179,18 @@ export function BookFilterPanel({
         <div className="flex items-center gap-2">
           <SlidersHorizontal className="h-3.5 w-3.5 text-[var(--rb-accent)]" />
           <span className="font-mono text-[0.71875rem] font-bold tracking-[0.12em] text-[var(--rb-ink)] uppercase">
-            LOCAL ARCHIVE FILTERS // 高级筛选矩阵
+            {t('LOCAL ARCHIVE FILTERS // 高级筛选矩阵', 'LOCAL ARCHIVE FILTERS')}
           </span>
           <span className="font-mono text-[0.6875rem] text-[var(--rb-muted)] tabular-nums">
-            命中 <strong className="text-[var(--rb-ink)]">{matchedCount}</strong> / {totalCount} 本
+            {isEn ? (
+              <>
+                <strong className="text-[var(--rb-ink)]">{matchedCount}</strong> / {totalCount} matched
+              </>
+            ) : (
+              <>
+                命中 <strong className="text-[var(--rb-ink)]">{matchedCount}</strong> / {totalCount} 本
+              </>
+            )}
           </span>
         </div>
 
@@ -192,12 +202,12 @@ export function BookFilterPanel({
             className="rhine-btn-outline inline-flex h-7 items-center gap-1.5 px-2.5 text-[0.6875rem] font-semibold disabled:opacity-35"
           >
             <RotateCcw className="h-3 w-3" />
-            <span>重置筛选</span>
+            <span>{t('重置筛选', 'Reset')}</span>
           </button>
           <button
             type="button"
             onClick={onClose}
-            aria-label="关闭筛选面板"
+            aria-label={t('关闭筛选面板', 'Close filter panel')}
             className="rhine-btn-outline flex h-7 w-7 items-center justify-center"
           >
             <X className="h-3.5 w-3.5" />
@@ -208,7 +218,7 @@ export function BookFilterPanel({
       {/* Quick Practice Tags (Consistent with Download FilterPanel) */}
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 font-mono text-[0.65625rem] font-semibold tracking-[0.1em] text-[var(--rb-muted)] uppercase">
-          高频词条
+          {t('高频词条', 'Quick Tags')}
         </span>
         {QUICK_PRACTICE_TAGS.map((tag) => {
           const active = filters.q.trim().toLowerCase() === tag;
@@ -233,25 +243,25 @@ export function BookFilterPanel({
       <div className="grid grid-cols-2 gap-2.5 border-t border-[var(--rb-line)]/70 pt-3 sm:grid-cols-3 lg:grid-cols-5">
         <div className="flex min-w-0 flex-col gap-1">
           <label className="font-mono text-[0.65625rem] font-semibold tracking-[0.08em] text-[var(--rb-muted)] uppercase">
-            本地来源 / 游玩
+            {t('本地来源 / 游玩', 'Source / Play')}
           </label>
           <SelectField
             value={filters.source}
             onChange={(v) => onUpdate({ source: v as BookSourceFilter }, true)}
             className="h-8 !rounded-none !border-[var(--rb-line)] !bg-[var(--rb-paper)]/75 text-[0.75rem]"
           >
-            <option value="all">全部本地曲目</option>
-            <option value="stable">仅 osu!stable</option>
-            <option value="lazer">仅 osu!lazer</option>
-            <option value="both">双端共有</option>
-            <option value="played">已有游玩记录</option>
-            <option value="unplayed">尚未游玩 (0 Plays)</option>
+            <option value="all">{t('全部本地曲目', 'All Local Books')}</option>
+            <option value="stable">{t('仅 osu!stable', 'osu!stable Only')}</option>
+            <option value="lazer">{t('仅 osu!lazer', 'osu!lazer Only')}</option>
+            <option value="both">{t('双端共有', 'Stable & Lazer')}</option>
+            <option value="played">{t('已有游玩记录', 'Played')}</option>
+            <option value="unplayed">{t('尚未游玩 (0 Plays)', 'Unplayed (0 Plays)')}</option>
           </SelectField>
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">
           <label className="font-mono text-[0.65625rem] font-semibold tracking-[0.08em] text-[var(--rb-muted)] uppercase">
-            游戏模式 (Mode)
+            {t('游戏模式 (Mode)', 'Mode')}
           </label>
           <SelectField
             value={filters.mode}
@@ -264,7 +274,7 @@ export function BookFilterPanel({
             }}
             className="h-8 !rounded-none !border-[var(--rb-line)] !bg-[var(--rb-paper)]/75 text-[0.75rem]"
           >
-            <option value="all">全部模式 (Any)</option>
+            <option value="all">{t('全部模式 (Any)', 'Any Mode')}</option>
             <option value="3">osu!mania</option>
             <option value="0">osu!standard</option>
             <option value="1">osu!taiko</option>
@@ -274,7 +284,7 @@ export function BookFilterPanel({
 
         <div className="flex min-w-0 flex-col gap-1">
           <label className="font-mono text-[0.65625rem] font-semibold tracking-[0.08em] text-[var(--rb-muted)] uppercase">
-            键数 (Keys)
+            {t('键数 (Keys)', 'Keys')}
           </label>
           <SelectField
             disabled={isKeysDisabled}
@@ -282,7 +292,7 @@ export function BookFilterPanel({
             onChange={(v) => onUpdate({ keys: v as BookKeysFilter }, true)}
             className="h-8 !rounded-none !border-[var(--rb-line)] !bg-[var(--rb-paper)]/75 text-[0.75rem]"
           >
-            <option value="any">全部键数</option>
+            <option value="any">{t('全部键数', 'Any Keys')}</option>
             <option value="4">4K</option>
             <option value="5">5K</option>
             <option value="6">6K</option>
@@ -290,45 +300,45 @@ export function BookFilterPanel({
             <option value="8">8K</option>
             <option value="9">9K</option>
             <option value="10">10K</option>
-            <option value="other">其他键数</option>
+            <option value="other">{t('其他键数', 'Other Keys')}</option>
           </SelectField>
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">
           <label className="font-mono text-[0.65625rem] font-semibold tracking-[0.08em] text-[var(--rb-muted)] uppercase">
-            谱面状态 (Status)
+            {t('谱面状态 (Status)', 'Status')}
           </label>
           <SelectField
             value={filters.status}
             onChange={(v) => onUpdate({ status: v as BookStatusFilter }, true)}
             className="h-8 !rounded-none !border-[var(--rb-line)] !bg-[var(--rb-paper)]/75 text-[0.75rem]"
           >
-            <option value="all">全部状态</option>
-            <option value="leaderboard">有排行榜 (Ranked/Loved)</option>
-            <option value="ranked">已上架 (Ranked/Approved)</option>
-            <option value="loved">社区喜爱 (Loved)</option>
-            <option value="qualified">入选 (Qualified)</option>
-            <option value="pending">待审核 / WIP</option>
-            <option value="graveyard">坟场 (Graveyard)</option>
-            <option value="local">纯本地自制 (Local)</option>
+            <option value="all">{t('全部状态', 'Any Status')}</option>
+            <option value="leaderboard">{t('有排行榜 (Ranked/Loved)', 'Has Leaderboard')}</option>
+            <option value="ranked">{t('已上架 (Ranked/Approved)', 'Ranked / Approved')}</option>
+            <option value="loved">{t('社区喜爱 (Loved)', 'Loved')}</option>
+            <option value="qualified">{t('入选 (Qualified)', 'Qualified')}</option>
+            <option value="pending">{t('待审核 / WIP', 'Pending / WIP')}</option>
+            <option value="graveyard">{t('坟场 (Graveyard)', 'Graveyard')}</option>
+            <option value="local">{t('纯本地自制 (Local)', 'Local Only')}</option>
           </SelectField>
         </div>
 
         <div className="flex min-w-0 flex-col gap-1">
           <label className="font-mono text-[0.65625rem] font-semibold tracking-[0.08em] text-[var(--rb-muted)] uppercase">
-            最高评级 (Grade)
+            {t('最高评级 (Grade)', 'Best Grade')}
           </label>
           <SelectField
             value={filters.grade}
             onChange={(v) => onUpdate({ grade: v as BookGradeFilter }, true)}
             className="h-8 !rounded-none !border-[var(--rb-line)] !bg-[var(--rb-paper)]/75 text-[0.75rem]"
           >
-            <option value="all">全部评级</option>
+            <option value="all">{t('全部评级', 'Any Grade')}</option>
             <option value="ss">SS (XH / X)</option>
             <option value="s">S (SH / S)</option>
             <option value="a">A</option>
             <option value="b_or_lower">B / C / D / F</option>
-            <option value="none">尚无评级</option>
+            <option value="none">{t('尚无评级', 'No Grade')}</option>
           </SelectField>
         </div>
       </div>
@@ -344,7 +354,7 @@ export function BookFilterPanel({
             }
           />
           <div className="flex flex-wrap items-center gap-1 pl-1">
-            {STAR_CHIPS.map((c) => {
+            {starChips.map((c) => {
               const active =
                 (filters.minStars ?? undefined) === c.min &&
                 (filters.maxStars ?? undefined) === c.max;
@@ -377,7 +387,7 @@ export function BookFilterPanel({
               <button
                 type="button"
                 onClick={() => onUpdate({ rankedPpOnly: !filters.rankedPpOnly }, true)}
-                title="仅显示有 Ranked/Approved 官方 PP 记录的曲目"
+                title={t('仅显示有 Ranked/Approved 官方 PP 记录的曲目', 'Only show maps with Ranked/Approved PP records')}
                 className={`inline-flex h-[24px] shrink-0 items-center gap-1 border px-2 font-mono text-[0.6875rem] font-semibold transition-colors ${
                   filters.rankedPpOnly
                     ? 'border-[var(--rb-accent)] bg-[var(--rb-ink)] text-[var(--rb-paper)]'
@@ -385,7 +395,7 @@ export function BookFilterPanel({
                 }`}
               >
                 <Award className="h-3 w-3" />
-                <span>仅 Ranked PP</span>
+                <span>{t('仅 Ranked PP', 'Ranked PP Only')}</span>
               </button>
             }
           />
@@ -395,7 +405,7 @@ export function BookFilterPanel({
       {/* Row 3: BPM, Length, LN Ratio + Style Segmented Chips, Mapper */}
       <div className="grid grid-cols-1 gap-3 border-t border-[var(--rb-line)]/70 pt-3 sm:grid-cols-2 lg:grid-cols-4">
         <RangePair
-          label="BPM 区间"
+          label={t('BPM 区间', 'BPM Range')}
           minVal={filters.minBpm}
           maxVal={filters.maxBpm}
           minPlaceholder="60"
@@ -407,21 +417,21 @@ export function BookFilterPanel({
         />
 
         <RangePair
-          label="时长 (秒)"
+          label={t('时长 (秒)', 'Length (s)')}
           minVal={filters.minLength}
           maxVal={filters.maxLength}
           minPlaceholder="30"
           maxPlaceholder="600"
           onChangeMin={(v) => onUpdate({ minLength: v }, false)}
           onChangeMax={(v) => onUpdate({ maxLength: v }, false)}
-          chips={LENGTH_CHIPS}
+          chips={lengthChips}
           onPickChip={(min, max) => onUpdate({ minLength: min, maxLength: max }, true)}
         />
 
         <div className="flex min-w-0 flex-col gap-1.5">
           <div className="flex items-center justify-between gap-2">
             <span className="font-mono text-[0.65625rem] font-semibold tracking-[0.08em] text-[var(--rb-muted)] uppercase">
-              LN 面条倾向 (%)
+              {t('LN 面条倾向 (%)', 'LN Ratio (%)')}
             </span>
             <div className="flex items-center gap-1">
               <button
@@ -503,12 +513,12 @@ export function BookFilterPanel({
 
         <div className="flex min-w-0 flex-col gap-1.5">
           <label className="font-mono text-[0.65625rem] font-semibold tracking-[0.08em] text-[var(--rb-muted)] uppercase">
-            谱师筛选 (Mapper)
+            {t('谱师筛选 (Mapper)', 'Mapper')}
           </label>
           <input
             type="text"
             value={filters.creator}
-            placeholder="输入谱师 ID 过滤..."
+            placeholder={t('输入谱师 ID 过滤...', 'Filter by mapper...')}
             onChange={(e) => onUpdate({ creator: e.target.value }, false)}
             className="h-8 w-full border border-[var(--rb-line)] bg-[var(--rb-paper)]/65 px-2.5 text-[0.75rem] text-[var(--rb-ink)] placeholder:text-[var(--rb-muted)]/60 focus:border-[var(--rb-accent)] focus:outline-none"
           />

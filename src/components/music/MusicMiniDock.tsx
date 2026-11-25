@@ -9,6 +9,7 @@ import {
   X,
 } from 'lucide-react';
 import { formatDuration } from '../../constants';
+import { useI18n } from '../../i18n';
 import { MarqueeText } from '../MarqueeText';
 import { useMusicPlayer, useMusicTime } from './MusicPlayerContext';
 import { OsuMusicMark } from './OsuMusicMark';
@@ -39,6 +40,7 @@ export function MusicMiniDock({
     stopAndClear,
   } = useMusicPlayer();
   const { currentTime, duration } = useMusicTime();
+  const { t } = useI18n();
 
   if (!currentTrack) return null;
 
@@ -76,7 +78,7 @@ export function MusicMiniDock({
         <button
           type="button"
           onClick={onOpenPlayer}
-          title="进入 OSU 音乐台"
+          title={t('进入 OSU 音乐台', 'Open OSU! Audio Station')}
           className="cover-frame relative h-9 w-9 shrink-0 overflow-hidden border border-hairline bg-surface-1"
         >
           <img
@@ -91,7 +93,7 @@ export function MusicMiniDock({
           type="button"
           onClick={onOpenPlayer}
           className="min-w-0 flex-1 text-left"
-          title="点击返回音乐台界面"
+          title={t('点击返回音乐台界面', 'Click to return to Audio Station')}
         >
           <MarqueeText
             text={currentTrack.titleUnicode || currentTrack.title}
@@ -110,7 +112,7 @@ export function MusicMiniDock({
           <button
             type="button"
             onClick={prevTrack}
-            title="上一首"
+            title={t('上一首', 'Previous track')}
             className="flex h-7 w-7 items-center justify-center rounded-[2px] text-ink-2 transition-colors hover:bg-tint-hover hover:text-ink"
           >
             <SkipBack className="h-3.5 w-3.5" />
@@ -119,7 +121,7 @@ export function MusicMiniDock({
           <button
             type="button"
             onClick={togglePlay}
-            title={isPlaying ? '暂停播放' : '继续播放'}
+            title={isPlaying ? t('暂停播放', 'Pause') : t('继续播放', 'Play')}
             className={`flex h-8 w-8 items-center justify-center rounded-[2px] text-white transition-opacity hover:opacity-90 ${
               isPlaying ? 'bg-[var(--mp-signal)]' : 'bg-ink text-canvas'
             }`}
@@ -134,7 +136,7 @@ export function MusicMiniDock({
           <button
             type="button"
             onClick={nextTrack}
-            title="下一首"
+            title={t('下一首', 'Next track')}
             className="flex h-7 w-7 items-center justify-center rounded-[2px] text-ink-2 transition-colors hover:bg-tint-hover hover:text-ink"
           >
             <SkipForward className="h-3.5 w-3.5" />
@@ -150,7 +152,7 @@ export function MusicMiniDock({
           <button
             type="button"
             onClick={toggleMute}
-            title={muted ? '取消静音' : '静音'}
+            title={muted ? t('取消静音', 'Unmute') : t('静音', 'Mute')}
             className="hidden h-7 w-7 items-center justify-center rounded-[2px] text-ink-2 transition-colors hover:bg-tint-hover hover:text-ink sm:flex"
           >
             {muted || volume === 0 ? (
@@ -166,14 +168,14 @@ export function MusicMiniDock({
             className="inline-flex h-7 items-center gap-1.5 rounded-[2px] border border-hairline-strong bg-surface-1 px-2.5 text-[0.71875rem] font-bold text-ink transition-colors hover:border-ink"
           >
             <OsuMusicMark className="h-3.5 w-3.5 text-ink" active playing={isPlaying} />
-            <span className="hidden sm:inline">音乐台</span>
+            <span className="hidden sm:inline">{t('音乐台', 'Music')}</span>
             <Maximize2 className="h-3 w-3 sm:hidden" />
           </button>
 
           <button
             type="button"
             onClick={stopAndClear}
-            title="停止并收起后台播放器"
+            title={t('停止并收起后台播放器', 'Stop and close mini player')}
             className="flex h-7 w-7 items-center justify-center rounded-[2px] text-ink-3 transition-colors hover:bg-tint-hover hover:text-ink"
           >
             <X className="h-3.5 w-3.5" />

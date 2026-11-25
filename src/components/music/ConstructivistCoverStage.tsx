@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Eye, FolderOpen, Gamepad2, Heart, ListPlus, Plus } from 'lucide-react';
+import { useI18n } from '../../i18n';
 import type { BookSummary, MusicPlaylist } from '../../types';
 import { MarqueeText } from '../MarqueeText';
 import {
@@ -55,6 +56,7 @@ export function ConstructivistCoverStage({
   onOpenFolder,
 }: ConstructivistCoverStageProps) {
   const { audioRef, analyserRef, audioContextRef, rhythmDataRef, rhythmData } = useMusicPlayer();
+  const { isEn, t } = useI18n();
   const [playlistMenuOpen, setPlaylistMenuOpen] = useState(false);
   const playlistMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -240,7 +242,7 @@ export function ConstructivistCoverStage({
       <div className="flex flex-1 flex-col items-center justify-center border border-[var(--mp-line)] bg-[var(--mp-panel)] p-6 text-center">
         <OsuMusicMark className="h-11 w-11 text-[var(--mp-ink)]" active />
         <p className="mt-4 font-display text-[1rem] font-bold tracking-tight text-[var(--mp-ink)]">
-          选择左侧或右侧本地曲目开始播放
+          {t('选择左侧或右侧本地曲目开始播放', 'Select a local track to start playback')}
         </p>
         <p className="mt-1 font-mono text-[0.6875rem] tracking-[0.12em] text-[var(--mp-muted)] uppercase">
           SELECT LOCAL OSU! TRACK TO INITIALIZE DECK
@@ -433,7 +435,13 @@ export function ConstructivistCoverStage({
             {track.artistUnicode || track.artist} · <span className="text-[var(--mp-ink-2)]">{track.creator}</span>
           </span>
           <span className="shrink-0 font-mono text-[0.6875rem] tabular-nums">
-            {track.playCount > 0 ? `${track.playCount} 次游玩` : `${track.difficultyCount} 难度`}
+            {track.playCount > 0
+              ? isEn
+                ? `${track.playCount} ${track.playCount === 1 ? 'play' : 'plays'}`
+                : `${track.playCount} 次游玩`
+              : isEn
+                ? `${track.difficultyCount} ${track.difficultyCount === 1 ? 'diff' : 'diffs'}`
+                : `${track.difficultyCount} 难度`}
           </span>
         </div>
         <div className="mt-2.5 h-[2px] w-full bg-[var(--mp-rule)]" />
@@ -441,7 +449,7 @@ export function ConstructivistCoverStage({
 
       {/* Beat Follow Metronome Matrix + Live BPM Telemetry */}
       <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--mp-line)] pb-2.5">
-        <div className="flex items-center gap-1" role="status" aria-label="节拍矩阵">
+        <div className="flex items-center gap-1" role="status" aria-label={t('节拍矩阵', 'Beat matrix')}>
           {Array.from({ length: Math.min(8, meter) }, (_, i) => (
             <span
               key={i}
@@ -478,7 +486,7 @@ export function ConstructivistCoverStage({
           }`}
         >
           <Heart className={`h-3.5 w-3.5 ${isLiked ? 'fill-current' : ''}`} />
-          <span>{isLiked ? '已红心' : '红心'}</span>
+          <span>{isLiked ? t('已红心', 'Liked') : t('红心', 'Like')}</span>
         </button>
 
         <div ref={playlistMenuRef} className="relative">
@@ -488,7 +496,7 @@ export function ConstructivistCoverStage({
             className="swiss-btn inline-flex h-7 items-center gap-1.5 px-2.5 text-[0.71875rem] font-semibold"
           >
             <ListPlus className="h-3.5 w-3.5" />
-            <span>加入歌单</span>
+            <span>{t('加入歌单', 'Playlist')}</span>
           </button>
 
           {playlistMenuOpen && (
@@ -499,7 +507,7 @@ export function ConstructivistCoverStage({
               <div className="mt-1 max-h-40 space-y-0.5 overflow-y-auto">
                 {playlists.length === 0 ? (
                   <div className="px-2 py-2 text-[0.71875rem] text-[var(--mp-muted)]">
-                    暂无自定义歌单
+                    {t('暂无自定义歌单', 'No custom playlists')}
                   </div>
                 ) : (
                   playlists.map((pl) => {
@@ -516,7 +524,7 @@ export function ConstructivistCoverStage({
                       >
                         <span className="truncate">{pl.name}</span>
                         <span className="font-mono text-[0.65625rem] text-[var(--mp-muted)]">
-                          {exists ? '已存在' : `${pl.bookKeys.length}`}
+                          {exists ? t('已存在', 'Added') : `${pl.bookKeys.length}`}
                         </span>
                       </button>
                     );
@@ -532,7 +540,7 @@ export function ConstructivistCoverStage({
                 className="mt-1 flex w-full items-center gap-1.5 border-t border-[var(--mp-line)] px-2 py-1.5 text-left text-[0.75rem] font-bold text-[var(--mp-signal)] hover:bg-[var(--mp-surface-alt)]"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>新建歌单并加入</span>
+                <span>{t('新建歌单并加入', 'New Playlist & Add')}</span>
               </button>
             </div>
           )}
@@ -545,10 +553,10 @@ export function ConstructivistCoverStage({
               onPreviewBeatmap(track.beatmapsetId!, null, track.titleUnicode || track.title)
             }
             className="swiss-btn inline-flex h-7 items-center gap-1 px-2 text-[0.71875rem] font-semibold"
-            title="打开 Mania 谱面预览"
+            title={t('打开 Mania 谱面预览', 'Open Mania beatmap preview')}
           >
             <Eye className="h-3.5 w-3.5" />
-            <span>看谱</span>
+            <span>{t('看谱', 'Preview')}</span>
           </button>
         )}
 
@@ -557,10 +565,10 @@ export function ConstructivistCoverStage({
             type="button"
             onClick={() => onLoadIntoGame(track.beatmapsetId!)}
             className="swiss-btn inline-flex h-7 items-center gap-1 px-2 text-[0.71875rem] font-semibold"
-            title="载入正在运行的 osu! 客户端"
+            title={t('载入正在运行的 osu! 客户端', 'Load into running osu! client')}
           >
             <Gamepad2 className="h-3.5 w-3.5 text-[var(--mp-signal)]" />
-            <span>载入 osu!</span>
+            <span>{t('载入 osu!', 'Load osu!')}</span>
           </button>
         )}
 
@@ -569,7 +577,7 @@ export function ConstructivistCoverStage({
             type="button"
             onClick={() => onOpenFolder(track.stableFolder!)}
             className="swiss-btn inline-flex h-7 items-center gap-1 px-2 text-[0.71875rem] font-semibold"
-            title="打开本地文件夹"
+            title={t('打开本地文件夹', 'Open local folder')}
           >
             <FolderOpen className="h-3.5 w-3.5" />
           </button>

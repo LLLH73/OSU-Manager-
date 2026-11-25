@@ -1,3 +1,4 @@
+import { getCurrentLang, tx, type UiLanguage } from '../i18n';
 import { NormalizedBeatmap, NormalizedBeatmapset, SearchFilters } from '../types';
 
 export interface PpMods {
@@ -81,16 +82,23 @@ export interface SavedPpScenario {
 export const SAVED_PP_SCENARIOS_KEY = 'osu4k-saved-pp-scenarios';
 export const SAVED_PP_SCENARIOS_EVENT = 'osu4k-pp-scenarios-changed';
 
-export const PP_SCENARIO_CATEGORY_META: Record<
+export function getPpScenarioCategoryMeta(
+  lang: UiLanguage = getCurrentLang(),
+): Record<
   PpScenarioCategory,
   { code: string; label: string; short: string; subtitle: string; tone: PpCategoryTone }
-> = {
-  nm: { code: 'NM', label: 'NM 常速', short: 'NM', subtitle: '1.0x 常速', tone: 'lazer' },
-  dt: { code: 'DT', label: 'DT 1.5x', short: 'DT', subtitle: '1.5x 加速', tone: 'osu' },
-  ht: { code: 'HT', label: 'HT 0.75x', short: 'HT', subtitle: '0.75x 减速', tone: 'stable' },
-  rate: { code: 'Rate', label: '变速 Rate', short: '变速', subtitle: '0.85–1.4x', tone: 'warn' },
-  custom: { code: '自定义', label: '自定义', short: '自定义', subtitle: '已保存组合', tone: 'lazer' },
-};
+> {
+  const isEn = lang === 'en';
+  return {
+    nm: { code: 'NM', label: isEn ? 'NM 1.0x' : 'NM 常速', short: 'NM', subtitle: isEn ? '1.0x Normal' : '1.0x 常速', tone: 'lazer' },
+    dt: { code: 'DT', label: 'DT 1.5x', short: 'DT', subtitle: isEn ? '1.5x Speedup' : '1.5x 加速', tone: 'osu' },
+    ht: { code: 'HT', label: 'HT 0.75x', short: 'HT', subtitle: isEn ? '0.75x Halftime' : '0.75x 减速', tone: 'stable' },
+    rate: { code: 'Rate', label: isEn ? 'Custom Rate' : '变速 Rate', short: isEn ? 'Rate' : '变速', subtitle: '0.85–1.4x', tone: 'warn' },
+    custom: { code: isEn ? 'Custom' : '自定义', label: isEn ? 'Custom' : '自定义', short: isEn ? 'Custom' : '自定义', subtitle: isEn ? 'Saved presets' : '已保存组合', tone: 'lazer' },
+  };
+}
+
+export const PP_SCENARIO_CATEGORY_META = getPpScenarioCategoryMeta('zh');
 
 const mkPreset = (
   id: string,
@@ -106,7 +114,9 @@ const mkPreset = (
     ez?: boolean;
     nf?: boolean;
   },
+  lang: UiLanguage = 'zh',
 ): PpScenarioPreset => {
+  const isEn = lang === 'en';
   const misses = opts.misses ?? 0;
   const primaryText =
     category === 'rate'
@@ -117,7 +127,7 @@ const mkPreset = (
   const secondaryText =
     category === 'rate'
       ? `${opts.acc}% · ${opts.maRatio != null ? `${opts.maRatio}:1 · ` : ''}${misses}M`
-      : `${opts.maRatio != null ? `${opts.maRatio}:1` : opts.acc === 100 ? '全彩/SS' : '直算'} · ${misses}M`;
+      : `${opts.maRatio != null ? `${opts.maRatio}:1` : opts.acc === 100 ? (isEn ? 'MAX/SS' : '全彩/SS') : (isEn ? 'Direct' : '直算')} · ${misses}M`;
 
   return {
     id,
@@ -138,206 +148,213 @@ const mkPreset = (
   };
 };
 
-export const PP_SCENARIO_PRESETS: PpScenarioPreset[] = [
-  // NM 常速 (1.0x) — 9 presets
-  mkPreset('nm-95-2-5m', 'nm', 'NM 95%·2:1·5M', 'NM 1.0x 95% · 黄彩比 2:1 · 5 Miss', {
-    acc: 95,
-    rate: 1,
-    maRatio: 2,
-    misses: 5,
-  }),
-  mkPreset('nm-965-2-3m', 'nm', 'NM 96.5%·2:1·3M', 'NM 1.0x 96.5% · 黄彩比 2:1 · 3 Miss', {
-    acc: 96.5,
-    rate: 1,
-    maRatio: 2,
-    misses: 3,
-  }),
-  mkPreset('nm-975-25-2m', 'nm', 'NM 97.5%·2.5:1·2M', 'NM 1.0x 97.5% · 黄彩比 2.5:1 · 2 Miss', {
-    acc: 97.5,
-    rate: 1,
-    maRatio: 2.5,
-    misses: 2,
-  }),
-  mkPreset('nm-98', 'nm', 'NM 98%', '默认 NM 1.0x 98% · 0 Miss（直算）', {
-    acc: 98,
-    rate: 1,
-  }),
-  mkPreset('nm-98-3', 'nm', 'NM 98%·3:1', 'NM 1.0x 98% · 黄彩比 3:1 · 0 Miss', {
-    acc: 98,
-    rate: 1,
-    maRatio: 3,
-  }),
-  mkPreset('nm-985-35-1m', 'nm', 'NM 98.5%·3.5:1·1M', 'NM 1.0x 98.5% · 黄彩比 3.5:1 · 1 Miss', {
-    acc: 98.5,
-    rate: 1,
-    maRatio: 3.5,
-    misses: 1,
-  }),
-  mkPreset('nm-99-5', 'nm', 'NM 99%·5:1', 'NM 1.0x 99% · 黄彩比 5:1 · 0 Miss', {
-    acc: 99,
-    rate: 1,
-    maRatio: 5,
-  }),
-  mkPreset('nm-995-8', 'nm', 'NM 99.5%·8:1', 'NM 1.0x 99.5% · 黄彩比 8:1 · 0 Miss', {
-    acc: 99.5,
-    rate: 1,
-    maRatio: 8,
-  }),
-  mkPreset('nm-ss', 'nm', 'NM SS 100%', 'NM 1.0x 100% SS · 0 Miss', {
-    acc: 100,
-    rate: 1,
-  }),
+export function getPpScenarioPresets(lang: UiLanguage = getCurrentLang()): PpScenarioPreset[] {
+  const isEn = lang === 'en';
+  const ratioDesc = (base: string, ratio: number, misses: number) =>
+    isEn ? `${base} · MA ${ratio}:1 · ${misses} Miss` : `${base} · 黄彩比 ${ratio}:1 · ${misses} Miss`;
+  return [
+    // NM 1.0x — 9 presets
+    mkPreset('nm-95-2-5m', 'nm', 'NM 95%·2:1·5M', ratioDesc('NM 1.0x 95%', 2, 5), {
+      acc: 95,
+      rate: 1,
+      maRatio: 2,
+      misses: 5,
+    }, lang),
+    mkPreset('nm-965-2-3m', 'nm', 'NM 96.5%·2:1·3M', ratioDesc('NM 1.0x 96.5%', 2, 3), {
+      acc: 96.5,
+      rate: 1,
+      maRatio: 2,
+      misses: 3,
+    }, lang),
+    mkPreset('nm-975-25-2m', 'nm', 'NM 97.5%·2.5:1·2M', ratioDesc('NM 1.0x 97.5%', 2.5, 2), {
+      acc: 97.5,
+      rate: 1,
+      maRatio: 2.5,
+      misses: 2,
+    }, lang),
+    mkPreset('nm-98', 'nm', 'NM 98%', isEn ? 'Default NM 1.0x 98% · 0 Miss (Direct)' : '默认 NM 1.0x 98% · 0 Miss（直算）', {
+      acc: 98,
+      rate: 1,
+    }, lang),
+    mkPreset('nm-98-3', 'nm', 'NM 98%·3:1', ratioDesc('NM 1.0x 98%', 3, 0), {
+      acc: 98,
+      rate: 1,
+      maRatio: 3,
+    }, lang),
+    mkPreset('nm-985-35-1m', 'nm', 'NM 98.5%·3.5:1·1M', ratioDesc('NM 1.0x 98.5%', 3.5, 1), {
+      acc: 98.5,
+      rate: 1,
+      maRatio: 3.5,
+      misses: 1,
+    }, lang),
+    mkPreset('nm-99-5', 'nm', 'NM 99%·5:1', ratioDesc('NM 1.0x 99%', 5, 0), {
+      acc: 99,
+      rate: 1,
+      maRatio: 5,
+    }, lang),
+    mkPreset('nm-995-8', 'nm', 'NM 99.5%·8:1', ratioDesc('NM 1.0x 99.5%', 8, 0), {
+      acc: 99.5,
+      rate: 1,
+      maRatio: 8,
+    }, lang),
+    mkPreset('nm-ss', 'nm', 'NM SS 100%', 'NM 1.0x 100% SS · 0 Miss', {
+      acc: 100,
+      rate: 1,
+    }, lang),
 
-  // DT 1.5x — 9 presets
-  mkPreset('dt-94-15-8m', 'dt', 'DT 94%·1.5:1·8M', 'DT 1.5x 94% · 黄彩比 1.5:1 · 8 Miss', {
-    acc: 94,
-    rate: 1.5,
-    maRatio: 1.5,
-    misses: 8,
-  }),
-  mkPreset('dt-95-2-5m', 'dt', 'DT 95%·2:1·5M', 'DT 1.5x 95% · 黄彩比 2:1 · 5 Miss', {
-    acc: 95,
-    rate: 1.5,
-    maRatio: 2,
-    misses: 5,
-  }),
-  mkPreset('dt-965-2-3m', 'dt', 'DT 96.5%·2:1·3M', 'DT 1.5x 96.5% · 黄彩比 2:1 · 3 Miss', {
-    acc: 96.5,
-    rate: 1.5,
-    maRatio: 2,
-    misses: 3,
-  }),
-  mkPreset('dt-975-25-2m', 'dt', 'DT 97.5%·2.5:1·2M', 'DT 1.5x 97.5% · 黄彩比 2.5:1 · 2 Miss', {
-    acc: 97.5,
-    rate: 1.5,
-    maRatio: 2.5,
-    misses: 2,
-  }),
-  mkPreset('dt-98', 'dt', 'DT 98%', 'DT 1.5x 98% · 0 Miss（直算）', {
-    acc: 98,
-    rate: 1.5,
-  }),
-  mkPreset('dt-98-3-1m', 'dt', 'DT 98%·3:1·1M', 'DT 1.5x 98% · 黄彩比 3:1 · 1 Miss', {
-    acc: 98,
-    rate: 1.5,
-    maRatio: 3,
-    misses: 1,
-  }),
-  mkPreset('dt-985-35', 'dt', 'DT 98.5%·3.5:1', 'DT 1.5x 98.5% · 黄彩比 3.5:1 · 0 Miss', {
-    acc: 98.5,
-    rate: 1.5,
-    maRatio: 3.5,
-  }),
-  mkPreset('dt-99-5', 'dt', 'DT 99%·5:1', 'DT 1.5x 99% · 黄彩比 5:1 · 0 Miss', {
-    acc: 99,
-    rate: 1.5,
-    maRatio: 5,
-  }),
-  mkPreset('dt-ss', 'dt', 'DT SS 100%', 'DT 1.5x 100% SS · 0 Miss', {
-    acc: 100,
-    rate: 1.5,
-  }),
+    // DT 1.5x — 9 presets
+    mkPreset('dt-94-15-8m', 'dt', 'DT 94%·1.5:1·8M', ratioDesc('DT 1.5x 94%', 1.5, 8), {
+      acc: 94,
+      rate: 1.5,
+      maRatio: 1.5,
+      misses: 8,
+    }, lang),
+    mkPreset('dt-95-2-5m', 'dt', 'DT 95%·2:1·5M', ratioDesc('DT 1.5x 95%', 2, 5), {
+      acc: 95,
+      rate: 1.5,
+      maRatio: 2,
+      misses: 5,
+    }, lang),
+    mkPreset('dt-965-2-3m', 'dt', 'DT 96.5%·2:1·3M', ratioDesc('DT 1.5x 96.5%', 2, 3), {
+      acc: 96.5,
+      rate: 1.5,
+      maRatio: 2,
+      misses: 3,
+    }, lang),
+    mkPreset('dt-975-25-2m', 'dt', 'DT 97.5%·2.5:1·2M', ratioDesc('DT 1.5x 97.5%', 2.5, 2), {
+      acc: 97.5,
+      rate: 1.5,
+      maRatio: 2.5,
+      misses: 2,
+    }, lang),
+    mkPreset('dt-98', 'dt', 'DT 98%', isEn ? 'DT 1.5x 98% · 0 Miss (Direct)' : 'DT 1.5x 98% · 0 Miss（直算）', {
+      acc: 98,
+      rate: 1.5,
+    }, lang),
+    mkPreset('dt-98-3-1m', 'dt', 'DT 98%·3:1·1M', ratioDesc('DT 1.5x 98%', 3, 1), {
+      acc: 98,
+      rate: 1.5,
+      maRatio: 3,
+      misses: 1,
+    }, lang),
+    mkPreset('dt-985-35', 'dt', 'DT 98.5%·3.5:1', ratioDesc('DT 1.5x 98.5%', 3.5, 0), {
+      acc: 98.5,
+      rate: 1.5,
+      maRatio: 3.5,
+    }, lang),
+    mkPreset('dt-99-5', 'dt', 'DT 99%·5:1', ratioDesc('DT 1.5x 99%', 5, 0), {
+      acc: 99,
+      rate: 1.5,
+      maRatio: 5,
+    }, lang),
+    mkPreset('dt-ss', 'dt', 'DT SS 100%', 'DT 1.5x 100% SS · 0 Miss', {
+      acc: 100,
+      rate: 1.5,
+    }, lang),
 
-  // HT 0.75x — 9 presets
-  mkPreset('ht-94-15-8m', 'ht', 'HT 94%·1.5:1·8M', 'HT 0.75x 94% · 黄彩比 1.5:1 · 8 Miss', {
-    acc: 94,
-    rate: 0.75,
-    maRatio: 1.5,
-    misses: 8,
-  }),
-  mkPreset('ht-95-2-5m', 'ht', 'HT 95%·2:1·5M', 'HT 0.75x 95% · 黄彩比 2:1 · 5 Miss', {
-    acc: 95,
-    rate: 0.75,
-    maRatio: 2,
-    misses: 5,
-  }),
-  mkPreset('ht-965-25-3m', 'ht', 'HT 96.5%·2.5:1·3M', 'HT 0.75x 96.5% · 黄彩比 2.5:1 · 3 Miss', {
-    acc: 96.5,
-    rate: 0.75,
-    maRatio: 2.5,
-    misses: 3,
-  }),
-  mkPreset('ht-975-3-2m', 'ht', 'HT 97.5%·3:1·2M', 'HT 0.75x 97.5% · 黄彩比 3:1 · 2 Miss', {
-    acc: 97.5,
-    rate: 0.75,
-    maRatio: 3,
-    misses: 2,
-  }),
-  mkPreset('ht-98', 'ht', 'HT 98%', 'HT 0.75x 98% · 0 Miss（直算）', {
-    acc: 98,
-    rate: 0.75,
-  }),
-  mkPreset('ht-98-3-1m', 'ht', 'HT 98%·3:1·1M', 'HT 0.75x 98% · 黄彩比 3:1 · 1 Miss', {
-    acc: 98,
-    rate: 0.75,
-    maRatio: 3,
-    misses: 1,
-  }),
-  mkPreset('ht-99-5', 'ht', 'HT 99%·5:1', 'HT 0.75x 99% · 黄彩比 5:1 · 0 Miss', {
-    acc: 99,
-    rate: 0.75,
-    maRatio: 5,
-  }),
-  mkPreset('ht-995-8', 'ht', 'HT 99.5%·8:1', 'HT 0.75x 99.5% · 黄彩比 8:1 · 0 Miss', {
-    acc: 99.5,
-    rate: 0.75,
-    maRatio: 8,
-  }),
-  mkPreset('ht-ss', 'ht', 'HT SS 100%', 'HT 0.75x 100% SS · 0 Miss', {
-    acc: 100,
-    rate: 0.75,
-  }),
+    // HT 0.75x — 9 presets
+    mkPreset('ht-94-15-8m', 'ht', 'HT 94%·1.5:1·8M', ratioDesc('HT 0.75x 94%', 1.5, 8), {
+      acc: 94,
+      rate: 0.75,
+      maRatio: 1.5,
+      misses: 8,
+    }, lang),
+    mkPreset('ht-95-2-5m', 'ht', 'HT 95%·2:1·5M', ratioDesc('HT 0.75x 95%', 2, 5), {
+      acc: 95,
+      rate: 0.75,
+      maRatio: 2,
+      misses: 5,
+    }, lang),
+    mkPreset('ht-965-25-3m', 'ht', 'HT 96.5%·2.5:1·3M', ratioDesc('HT 0.75x 96.5%', 2.5, 3), {
+      acc: 96.5,
+      rate: 0.75,
+      maRatio: 2.5,
+      misses: 3,
+    }, lang),
+    mkPreset('ht-975-3-2m', 'ht', 'HT 97.5%·3:1·2M', ratioDesc('HT 0.75x 97.5%', 3, 2), {
+      acc: 97.5,
+      rate: 0.75,
+      maRatio: 3,
+      misses: 2,
+    }, lang),
+    mkPreset('ht-98', 'ht', 'HT 98%', isEn ? 'HT 0.75x 98% · 0 Miss (Direct)' : 'HT 0.75x 98% · 0 Miss（直算）', {
+      acc: 98,
+      rate: 0.75,
+    }, lang),
+    mkPreset('ht-98-3-1m', 'ht', 'HT 98%·3:1·1M', ratioDesc('HT 0.75x 98%', 3, 1), {
+      acc: 98,
+      rate: 0.75,
+      maRatio: 3,
+      misses: 1,
+    }, lang),
+    mkPreset('ht-99-5', 'ht', 'HT 99%·5:1', ratioDesc('HT 0.75x 99%', 5, 0), {
+      acc: 99,
+      rate: 0.75,
+      maRatio: 5,
+    }, lang),
+    mkPreset('ht-995-8', 'ht', 'HT 99.5%·8:1', ratioDesc('HT 0.75x 99.5%', 8, 0), {
+      acc: 99.5,
+      rate: 0.75,
+      maRatio: 8,
+    }, lang),
+    mkPreset('ht-ss', 'ht', 'HT SS 100%', 'HT 0.75x 100% SS · 0 Miss', {
+      acc: 100,
+      rate: 0.75,
+    }, lang),
 
-  // 变速 Rate (0.85x–1.4x) — 8 presets
-  mkPreset('rate-085-97-25-3m', 'rate', '0.85x 97%·2.5:1·3M', '0.85x 97% · 黄彩比 2.5:1 · 3 Miss', {
-    acc: 97,
-    rate: 0.85,
-    maRatio: 2.5,
-    misses: 3,
-  }),
-  mkPreset('rate-090-98-3-1m', 'rate', '0.9x 98%·3:1·1M', '0.9x 98% · 黄彩比 3:1 · 1 Miss', {
-    acc: 98,
-    rate: 0.9,
-    maRatio: 3,
-    misses: 1,
-  }),
-  mkPreset('rate-105-985-35-1m', 'rate', '1.05x 98.5%·3.5:1·1M', '1.05x 98.5% · 黄彩比 3.5:1 · 1 Miss', {
-    acc: 98.5,
-    rate: 1.05,
-    maRatio: 3.5,
-    misses: 1,
-  }),
-  mkPreset('rate-110-98-3-1m', 'rate', '1.1x 98%·3:1·1M', '1.1x 98% · 黄彩比 3:1 · 1 Miss', {
-    acc: 98,
-    rate: 1.1,
-    maRatio: 3,
-    misses: 1,
-  }),
-  mkPreset('rate-115-975-25-2m', 'rate', '1.15x 97.5%·2.5:1·2M', '1.15x 97.5% · 黄彩比 2.5:1 · 2 Miss', {
-    acc: 97.5,
-    rate: 1.15,
-    maRatio: 2.5,
-    misses: 2,
-  }),
-  mkPreset('rate-120-98-3-1m', 'rate', '1.2x 98%·3:1·1M', '1.2x 98% · 黄彩比 3:1 · 1 Miss', {
-    acc: 98,
-    rate: 1.2,
-    maRatio: 3,
-    misses: 1,
-  }),
-  mkPreset('rate-130-965-2-3m', 'rate', '1.3x 96.5%·2:1·3M', '1.3x 96.5% · 黄彩比 2:1 · 3 Miss', {
-    acc: 96.5,
-    rate: 1.3,
-    maRatio: 2,
-    misses: 3,
-  }),
-  mkPreset('rate-140-955-2-5m', 'rate', '1.4x 95.5%·2:1·5M', '1.4x 95.5% · 黄彩比 2:1 · 5 Miss', {
-    acc: 95.5,
-    rate: 1.4,
-    maRatio: 2,
-    misses: 5,
-  }),
-];
+    // Custom Rate (0.85x–1.4x) — 8 presets
+    mkPreset('rate-085-97-25-3m', 'rate', '0.85x 97%·2.5:1·3M', ratioDesc('0.85x 97%', 2.5, 3), {
+      acc: 97,
+      rate: 0.85,
+      maRatio: 2.5,
+      misses: 3,
+    }, lang),
+    mkPreset('rate-090-98-3-1m', 'rate', '0.9x 98%·3:1·1M', ratioDesc('0.9x 98%', 3, 1), {
+      acc: 98,
+      rate: 0.9,
+      maRatio: 3,
+      misses: 1,
+    }, lang),
+    mkPreset('rate-105-985-35-1m', 'rate', '1.05x 98.5%·3.5:1·1M', ratioDesc('1.05x 98.5%', 3.5, 1), {
+      acc: 98.5,
+      rate: 1.05,
+      maRatio: 3.5,
+      misses: 1,
+    }, lang),
+    mkPreset('rate-110-98-3-1m', 'rate', '1.1x 98%·3:1·1M', ratioDesc('1.1x 98%', 3, 1), {
+      acc: 98,
+      rate: 1.1,
+      maRatio: 3,
+      misses: 1,
+    }, lang),
+    mkPreset('rate-115-975-25-2m', 'rate', '1.15x 97.5%·2.5:1·2M', ratioDesc('1.15x 97.5%', 2.5, 2), {
+      acc: 97.5,
+      rate: 1.15,
+      maRatio: 2.5,
+      misses: 2,
+    }, lang),
+    mkPreset('rate-120-98-3-1m', 'rate', '1.2x 98%·3:1·1M', ratioDesc('1.2x 98%', 3, 1), {
+      acc: 98,
+      rate: 1.2,
+      maRatio: 3,
+      misses: 1,
+    }, lang),
+    mkPreset('rate-130-965-2-3m', 'rate', '1.3x 96.5%·2:1·3M', ratioDesc('1.3x 96.5%', 2, 3), {
+      acc: 96.5,
+      rate: 1.3,
+      maRatio: 2,
+      misses: 3,
+    }, lang),
+    mkPreset('rate-140-955-2-5m', 'rate', '1.4x 95.5%·2:1·5M', ratioDesc('1.4x 95.5%', 2, 5), {
+      acc: 95.5,
+      rate: 1.4,
+      maRatio: 2,
+      misses: 5,
+    }, lang),
+  ];
+}
+
+export const PP_SCENARIO_PRESETS: PpScenarioPreset[] = getPpScenarioPresets('zh');
 
 export function inferScenarioCategory(
   scenario?: Partial<PpScenarioInput>,
@@ -644,7 +661,10 @@ export function isDefaultPpScenario(s?: Partial<PpScenarioInput>): boolean {
   );
 }
 
-export function formatPpScenarioShort(s?: Partial<PpScenarioInput>): string {
+export function formatPpScenarioShort(
+  s?: Partial<PpScenarioInput>,
+  lang: UiLanguage = getCurrentLang(),
+): string {
   const acc = s?.accuracy ?? 98;
   const rate = s?.rate ?? 1;
   const misses = s?.misses ?? 0;
@@ -666,7 +686,7 @@ export function formatPpScenarioShort(s?: Partial<PpScenarioInput>): string {
 
   const parts = [`${rateTag} ${accTag}`];
   if (maRatio !== null && Number.isFinite(maRatio) && maRatio >= 0) {
-    parts.push(maRatio >= 999 ? '全彩' : `${Number(maRatio.toFixed(1))}:1`);
+    parts.push(maRatio >= 999 ? tx('全彩', 'MAX', lang) : `${Number(maRatio.toFixed(1))}:1`);
   }
   if (misses > 0) parts.push(`${misses}M`);
   if (s?.mods?.classic) parts.push('CL');
@@ -678,6 +698,7 @@ export function formatPpScenarioShort(s?: Partial<PpScenarioInput>): string {
 export function getBeatmapsetPpBadge(
   beatmapset: NormalizedBeatmapset,
   scenario?: Partial<PpScenarioInput>,
+  lang: UiLanguage = getCurrentLang(),
 ): { label: string; tooltip: string; focusDiffId: number } | null {
   if (!isRankedForPp(beatmapset.status) || beatmapset.beatmaps.length === 0) return null;
 
@@ -701,19 +722,24 @@ export function getBeatmapsetPpBadge(
 
   const q = getQuickPpSummary(highest, 1);
   const keyTag = highest.modeInt === 3 ? `${Math.round(highest.cs)}K ` : '';
+  const isEn = lang === 'en';
   const lines = [
-    `最高匹配难度: ${keyTag}${highest.difficultyRating.toFixed(2)}★ (${highest.version})`,
+    isEn
+      ? `Highest match: ${keyTag}${highest.difficultyRating.toFixed(2)}★ (${highest.version})`
+      : `最高匹配难度: ${keyTag}${highest.difficultyRating.toFixed(2)}★ (${highest.version})`,
   ];
   if (hasCustomScenario) {
     const customHighestPp = calculateBeatmapPp(highest, effectiveScenario).pp;
     lines.push(
-      `当前筛选情景 (${formatPpScenarioShort(effectiveScenario)}): ~${formatPp(customHighestPp)}pp`,
+      isEn
+        ? `Current scenario (${formatPpScenarioShort(effectiveScenario, lang)}): ~${formatPp(customHighestPp)}pp`
+        : `当前筛选情景 (${formatPpScenarioShort(effectiveScenario, lang)}): ~${formatPp(customHighestPp)}pp`,
     );
   }
   lines.push(
     `NM 95%: ~${formatPp(q.pp95)}pp · 98%: ~${formatPp(q.pp98)}pp · 99%: ~${formatPp(q.pp99)}pp · SS: ~${formatPp(q.pp100)}pp`,
     `DT(1.5x) 98%: ~${formatPp(q.pp98Dt)}pp · HT(0.75x) 98%: ~${formatPp(q.pp98Ht)}pp`,
-    '点击打开 PP 情景计算器',
+    isEn ? 'Click to open PP Scenario Calculator' : '点击打开 PP 情景计算器',
   );
 
   return {

@@ -18,6 +18,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import { useI18n } from '../i18n';
 import { FilterArchive, SearchFilters, SongViewMode } from '../types';
 import {
   ArchiveSummaryTag,
@@ -52,12 +53,6 @@ interface FilterArchiveRailProps {
   onClose: () => void;
 }
 
-const VIEW_MODE_BADGE: Record<SongViewMode, string> = {
-  lazer: 'Lazer',
-  list: '列表',
-  grid: '卡片',
-};
-
 function tagClass(tone?: ArchiveSummaryTag['tone']): string {
   switch (tone) {
     case 'osu':
@@ -88,6 +83,7 @@ export function FilterArchiveRail({
   onDelete,
   onClose,
 }: FilterArchiveRailProps) {
+  const { lang, t } = useI18n();
   const [nameInput, setNameInput] = useState('');
   const [savePosition, setSavePosition] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -118,8 +114,19 @@ export function FilterArchiveRail({
     return () => window.clearTimeout(timer);
   }, [confirmDeleteId]);
 
-  const autoName = useMemo(() => buildAutoArchiveName(currentFilters), [currentFilters]);
-  const currentSummary = useMemo(() => summarizeFilterArchive(currentFilters), [currentFilters]);
+  const viewModeBadge: Record<SongViewMode, string> = useMemo(
+    () => ({
+      lazer: 'Lazer',
+      list: t('列表', 'List'),
+      grid: t('卡片', 'Grid'),
+    }),
+    [t],
+  );
+  const autoName = useMemo(() => buildAutoArchiveName(currentFilters, lang), [currentFilters, lang]);
+  const currentSummary = useMemo(
+    () => summarizeFilterArchive(currentFilters, lang),
+    [currentFilters, lang],
+  );
   const activeArchive = useMemo(
     () => archives.find((a) => a.id === activeArchiveId) ?? null,
     [archives, activeArchiveId],
@@ -170,7 +177,7 @@ export function FilterArchiveRail({
         <div className="flex min-w-0 items-center gap-2">
           <Bookmark className="h-4 w-4 shrink-0 text-osu" />
           <span className="font-display truncate text-[0.875rem] font-bold text-ink">
-            Filter 存档
+            {t('Filter 存档', 'Filter Archives')}
           </span>
           <span className="font-mono rounded-full border border-hairline bg-tint px-1.5 py-px text-[0.6875rem] font-semibold text-ink-3 tabular-nums">
             {archives.length}
@@ -179,8 +186,8 @@ export function FilterArchiveRail({
         <button
           type="button"
           onClick={onClose}
-          title="收起 Filter 存档右侧栏"
-          aria-label="收起 Filter 存档右侧栏"
+          title={t('收起 Filter 存档右侧栏', 'Close Filter Archives')}
+          aria-label={t('收起 Filter 存档右侧栏', 'Close Filter Archives')}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors hover:bg-tint-hover hover:text-ink"
         >
           <PanelRightClose className="h-4 w-4" />
@@ -190,7 +197,7 @@ export function FilterArchiveRail({
       {/* Save Current Search State Card */}
       <div className="shrink-0 space-y-2 border-b border-hairline bg-surface-1/45 px-3.5 py-2.5">
         <div className="flex items-center justify-between gap-2">
-          <span className="overline">保存当前搜索状态</span>
+          <span className="overline">{t('保存当前搜索状态', 'Save Current Search')}</span>
           {currentSummary.query && (
             <span className="font-mono max-w-[140px] truncate text-[0.6875rem] text-osu-soft">
               “{currentSummary.query}”
@@ -210,8 +217,8 @@ export function FilterArchiveRail({
               void handleSave();
             }
           }}
-          placeholder={`名称（留空: ${autoName}）`}
-          aria-label="Filter 存档名称"
+          placeholder={t(`名称（留空: ${autoName}）`, `Name (auto: ${autoName})`)}
+          aria-label={t('Filter 存档名称', 'Archive name')}
           className="field min-h-[30px] px-2.5 py-1 text-[0.78125rem]"
         />
 
@@ -247,7 +254,7 @@ export function FilterArchiveRail({
               className="check"
             />
             <MapPin className="h-3.5 w-3.5 shrink-0 text-lazer-soft" />
-            <span className="truncate">保存当前浏览位置与上下文</span>
+            <span className="truncate">{t('保存当前浏览位置与上下文', 'Save browse position & context')}</span>
           </label>
 
           {currentBrowsePreview ? (
@@ -278,11 +285,16 @@ export function FilterArchiveRail({
               </div>
             ) : (
               <p className="text-[0.6875rem] text-ink-3">
-                仅保存搜索词与筛选条件，恢复时将从第 1 页开始。
+                {t(
+                  '仅保存搜索词与筛选条件，恢复时将从第 1 页开始。',
+                  'Saves query & filters only; restores from page 1.',
+                )}
               </p>
             )
           ) : (
-            <p className="text-[0.6875rem] text-ink-3">当前无搜索结果，仅保存搜索词与筛选条件。</p>
+            <p className="text-[0.6875rem] text-ink-3">
+              {t('当前无搜索结果，仅保存搜索词与筛选条件。', 'No active results; saves query & filters only.')}
+            </p>
           )}
         </div>
 
@@ -298,14 +310,17 @@ export function FilterArchiveRail({
             ) : (
               <BookmarkPlus className="h-3.5 w-3.5" />
             )}
-            <span>{saving ? '保存中…' : '保存当前状态'}</span>
+            <span>{saving ? t('保存中…', 'Saving…') : t('保存当前状态', 'Save Current')}</span>
           </button>
 
           {activeArchive && (
             <button
               type="button"
               disabled={saving || busyActionId === activeArchive.id}
-              title={`将当前搜索状态覆盖更新到「${activeArchive.name}」`}
+              title={t(
+                `将当前搜索状态覆盖更新到「${activeArchive.name}」`,
+                `Overwrite "${activeArchive.name}" with current state`,
+              )}
               onClick={() => {
                 setBusyActionId(activeArchive.id);
                 void onOverwrite(
@@ -316,7 +331,7 @@ export function FilterArchiveRail({
               className="btn btn-sm min-h-[30px] shrink-0 px-2.5 text-[0.71875rem]"
             >
               <RefreshCw className="h-3 w-3" />
-              <span>覆盖当前</span>
+              <span>{t('覆盖当前', 'Overwrite')}</span>
             </button>
           )}
         </div>
@@ -331,15 +346,15 @@ export function FilterArchiveRail({
               type="text"
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="过滤存档名称、搜索词或曲名..."
-              aria-label="过滤已保存的 Filter 存档"
+              placeholder={t('过滤存档名称、搜索词或曲名...', 'Filter archives by name, query, or song...')}
+              aria-label={t('过滤已保存的 Filter 存档', 'Filter saved archives')}
               className="field min-h-[28px] pr-7 pl-8 text-[0.75rem]"
             />
             {searchFilter && (
               <button
                 type="button"
                 onClick={() => setSearchFilter('')}
-                aria-label="清空存档搜索"
+                aria-label={t('清空存档搜索', 'Clear archive search')}
                 className="absolute top-1/2 right-2 -translate-y-1/2 text-ink-3 hover:text-ink"
               >
                 <X className="h-3.5 w-3.5" />
@@ -354,19 +369,26 @@ export function FilterArchiveRail({
         {archives.length === 0 ? (
           <div className="rounded-[12px] border border-dashed border-hairline px-3 py-6 text-center">
             <Bookmark className="mx-auto mb-2 h-6 w-6 text-ink-4" />
-            <p className="text-[0.8125rem] font-semibold text-ink-2">暂无 Filter 存档</p>
+            <p className="text-[0.8125rem] font-semibold text-ink-2">
+              {t('暂无 Filter 存档', 'No Filter Archives Yet')}
+            </p>
             <p className="mt-1 text-[0.71875rem] leading-relaxed text-ink-3">
-              可将常用的搜索关键词、筛选参数与当前浏览的歌曲位置保存于此，随时一键跳转继续找图。
+              {t(
+                '可将常用的搜索关键词、筛选参数与当前浏览的歌曲位置保存于此，随时一键跳转继续找图。',
+                'Save your search query, filters, and scroll position here to jump back in anytime.',
+              )}
             </p>
           </div>
         ) : filteredArchives.length === 0 ? (
-          <p className="py-6 text-center text-[0.75rem] text-ink-3">没有匹配的存档记录</p>
+          <p className="py-6 text-center text-[0.75rem] text-ink-3">
+            {t('没有匹配的存档记录', 'No matching archives')}
+          </p>
         ) : (
           filteredArchives.map((archive) => {
             const isActive = activeArchiveId === archive.id;
             const isRestoring = restoringArchiveId === archive.id;
             const isBusy = busyActionId === archive.id;
-            const summary = summarizeFilterArchive(archive.filters);
+            const summary = summarizeFilterArchive(archive.filters, lang);
             const timeMeta = formatArchiveTime(archive.createdAt);
             const pos = archive.browsePosition;
             const isEditing = editingId === archive.id;
@@ -401,12 +423,12 @@ export function FilterArchiveRail({
                             }
                           }}
                           className="field min-h-[24px] flex-1 px-1.5 py-0 text-[0.75rem]"
-                          aria-label="编辑存档名称"
+                          aria-label={t('编辑存档名称', 'Edit archive name')}
                         />
                         <button
                           type="button"
                           onClick={() => void handleCommitRename(archive.id)}
-                          title="确认重命名"
+                          title={t('确认重命名', 'Confirm rename')}
                           className="flex h-6 w-6 shrink-0 items-center justify-center rounded border border-osu/40 bg-osu/12 text-osu-soft"
                         >
                           <Check className="h-3 w-3" />
@@ -416,7 +438,7 @@ export function FilterArchiveRail({
                       <div className="flex items-center gap-1.5">
                         {isActive && (
                           <span
-                            title="当前正在使用此存档"
+                            title={t('当前正在使用此存档', 'Currently active archive')}
                             className="h-1.5 w-1.5 shrink-0 rounded-full bg-osu"
                           />
                         )}
@@ -438,8 +460,8 @@ export function FilterArchiveRail({
                         setBusyActionId(archive.id);
                         void onTogglePin(archive).finally(() => setBusyActionId(null));
                       }}
-                      title={archive.pinned ? '取消置顶' : '置顶该存档'}
-                      aria-label={archive.pinned ? '取消置顶' : '置顶'}
+                      title={archive.pinned ? t('取消置顶', 'Unpin') : t('置顶该存档', 'Pin archive')}
+                      aria-label={archive.pinned ? t('取消置顶', 'Unpin') : t('置顶', 'Pin')}
                       className={`flex h-6 w-6 items-center justify-center rounded transition-colors ${
                         archive.pinned
                           ? 'text-osu hover:bg-osu/12'
@@ -464,15 +486,15 @@ export function FilterArchiveRail({
                         }}
                         className="rounded border border-bad/50 bg-bad/15 px-1.5 py-0.5 text-[0.65625rem] font-bold text-bad"
                       >
-                        确认删
+                        {t('确认删', 'Confirm')}
                       </button>
                     ) : (
                       <button
                         type="button"
                         disabled={isBusy}
                         onClick={() => setConfirmDeleteId(archive.id)}
-                        title="删除此存档"
-                        aria-label={`删除存档 ${archive.name}`}
+                        title={t('删除此存档', 'Delete archive')}
+                        aria-label={t(`删除存档 ${archive.name}`, `Delete archive ${archive.name}`)}
                         className="flex h-6 w-6 items-center justify-center rounded text-ink-3 transition-colors hover:bg-bad/15 hover:text-bad"
                       >
                         <Trash2 className="h-3 w-3" />
@@ -483,13 +505,13 @@ export function FilterArchiveRail({
 
                 {/* Created Time Row */}
                 <div
-                  title={`创建于 ${timeMeta.full}`}
+                  title={t(`创建于 ${timeMeta.full}`, `Created ${timeMeta.full}`)}
                   className="font-mono mt-1 flex items-center gap-1 text-[0.65625rem] font-medium text-ink-3 tabular-nums"
                 >
                   <Clock className="h-3 w-3 shrink-0" />
                   <span>{timeMeta.short}</span>
                   {archive.updatedAt - archive.createdAt > 5000 && (
-                    <span className="text-ink-4">· 已更新</span>
+                    <span className="text-ink-4">{t('· 已更新', '· Updated')}</span>
                   )}
                 </div>
 
@@ -541,7 +563,7 @@ export function FilterArchiveRail({
                         #{pos.anchorIndex + 1}
                       </span>
                       <span className="text-[0.59375rem] font-semibold text-ink-3">
-                        {VIEW_MODE_BADGE[pos.viewMode]}
+                        {viewModeBadge[pos.viewMode]}
                       </span>
                     </div>
                   </div>
@@ -562,17 +584,17 @@ export function FilterArchiveRail({
                         ) : (
                           <MapPin className="h-3 w-3" />
                         )}
-                        <span>{isRestoring ? '定位中…' : '恢复并定位'}</span>
+                        <span>{isRestoring ? t('定位中…', 'Locating…') : t('恢复并定位', 'Restore & Locate')}</span>
                       </button>
                       <button
                         type="button"
                         disabled={isRestoring}
-                        title="仅恢复搜索词与筛选条件，从第 1 页开始搜索"
+                        title={t('仅恢复搜索词与筛选条件，从第 1 页开始搜索', 'Restore filters only & search from page 1')}
                         onClick={() => onRestore(archive, { ignorePosition: true })}
                         className="btn btn-sm min-h-[26px] shrink-0 px-2 text-[0.6875rem]"
                       >
                         <RotateCcw className="h-3 w-3" />
-                        <span>从头搜</span>
+                        <span>{t('从头搜', 'From Top')}</span>
                       </button>
                     </>
                   ) : (
@@ -587,15 +609,15 @@ export function FilterArchiveRail({
                       ) : (
                         <Play className="h-3 w-3 fill-current" />
                       )}
-                      <span>应用此筛选</span>
+                      <span>{t('应用此筛选', 'Apply Filters')}</span>
                     </button>
                   )}
 
                   <button
                     type="button"
                     disabled={isBusy}
-                    title="将当前筛选与位置覆盖保存到此存档"
-                    aria-label="覆盖更新存档"
+                    title={t('将当前筛选与位置覆盖保存到此存档', 'Overwrite this archive with current state')}
+                    aria-label={t('覆盖更新存档', 'Overwrite archive')}
                     onClick={() => {
                       setBusyActionId(archive.id);
                       void onOverwrite(
@@ -611,8 +633,8 @@ export function FilterArchiveRail({
                   <button
                     type="button"
                     disabled={isBusy}
-                    title="重命名此存档"
-                    aria-label="重命名存档"
+                    title={t('重命名此存档', 'Rename archive')}
+                    aria-label={t('重命名存档', 'Rename archive')}
                     onClick={() => {
                       setEditingId(archive.id);
                       setEditingName(archive.name);

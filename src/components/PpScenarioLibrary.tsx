@@ -1,13 +1,15 @@
+import { useMemo } from 'react';
 import { BookmarkPlus, ChevronRight, X } from 'lucide-react';
+import { useI18n } from '../i18n';
 import {
-  PP_SCENARIO_CATEGORY_META,
-  PP_SCENARIO_PRESETS,
   PpCategoryTone,
   PpScenarioCategory,
   PpScenarioInput,
   PpScenarioPatch,
   SavedPpScenario,
   formatPpScenarioShort,
+  getPpScenarioCategoryMeta,
+  getPpScenarioPresets,
   inferScenarioCategory,
   matchesScenarioPatch,
 } from '../utils/pp';
@@ -80,14 +82,17 @@ export function PpScenarioLibrary({
   onSaveCustom,
   variant = 'compact',
 }: PpScenarioLibraryProps) {
+  const { lang, t } = useI18n();
+  const categoryMeta = useMemo(() => getPpScenarioCategoryMeta(lang), [lang]);
+  const presets = useMemo(() => getPpScenarioPresets(lang), [lang]);
   const activeModeCategory = inferScenarioCategory(currentScenario);
   const matchedSaved = savedScenarios.some((s) => matchesScenarioPatch(currentScenario, s.patch));
-  const activeMeta = PP_SCENARIO_CATEGORY_META[scenarioTab];
+  const activeMeta = categoryMeta[scenarioTab];
   const activeTone = TONE_CLASSES[activeMeta.tone];
   const tabPresets =
     scenarioTab === 'custom'
       ? []
-      : PP_SCENARIO_PRESETS.filter((preset) => preset.category === scenarioTab);
+      : presets.filter((preset) => preset.category === scenarioTab);
 
   return (
     <div
@@ -100,19 +105,23 @@ export function PpScenarioLibrary({
       {/* Left Primary Mode Rail */}
       <div
         role="tablist"
-        aria-label="PP 主情景模式分类"
+        aria-label={t('PP 主情景模式分类', 'PP scenario mode categories')}
         aria-orientation="vertical"
         className="flex flex-col gap-1 border-r border-hairline bg-surface-1/85 p-1.5"
       >
-        <span className="overline px-1.5 pt-0.5 pb-1 text-[0.625rem]">主模式分类</span>
+        <span className="overline px-1.5 pt-0.5 pb-1 text-[0.625rem]">
+          {t('主模式分类', 'Mode Category')}
+        </span>
         {CATEGORY_ORDER.map((cat) => {
-          const meta = PP_SCENARIO_CATEGORY_META[cat];
+          const meta = categoryMeta[cat];
           const tone = TONE_CLASSES[meta.tone];
           const selected = scenarioTab === cat;
           const isCurrentActive =
             cat === 'custom' ? matchedSaved : !matchedSaved && activeModeCategory === cat;
           const subtitleText =
-            cat === 'custom' ? `已存 ${savedScenarios.length} 组` : meta.subtitle;
+            cat === 'custom'
+              ? t(`已存 ${savedScenarios.length} 组`, `${savedScenarios.length} saved`)
+              : meta.subtitle;
 
           return (
             <button
@@ -142,7 +151,7 @@ export function PpScenarioLibrary({
                   </span>
                   {isCurrentActive && (
                     <span
-                      title="当前正应用此主模式的参数"
+                      title={t('当前正应用此主模式的参数', 'Currently using this mode')}
                       className={`h-1.5 w-1.5 shrink-0 rounded-full ${tone.dot}`}
                     />
                   )}
@@ -174,11 +183,15 @@ export function PpScenarioLibrary({
               {activeMeta.label}
             </span>
             <span className="truncate text-[0.71875rem] font-medium text-ink-3">
-              {scenarioTab === 'custom' ? '已保存组合列表' : `${activeMeta.subtitle} · 副词条预设`}
+              {scenarioTab === 'custom'
+                ? t('已保存组合列表', 'Saved scenarios')
+                : t(`${activeMeta.subtitle} · 副词条预设`, `${activeMeta.subtitle} · Presets`)}
             </span>
           </div>
           <span className="font-mono shrink-0 text-[0.6875rem] font-semibold text-ink-3 tabular-nums">
-            {scenarioTab === 'custom' ? `${savedScenarios.length} 组` : `${tabPresets.length} 组`}
+            {scenarioTab === 'custom'
+              ? t(`${savedScenarios.length} 组`, `${savedScenarios.length}`)
+              : t(`${tabPresets.length} 组`, `${tabPresets.length}`)}
           </span>
         </div>
 
@@ -216,7 +229,10 @@ export function PpScenarioLibrary({
           <div className="flex flex-1 flex-col justify-between gap-2">
             {savedScenarios.length === 0 ? (
               <p className="rounded-[9px] border border-dashed border-hairline px-2.5 py-3 text-[0.71875rem] leading-relaxed text-ink-3">
-                尚未保存自定义情景 — 可调整下方倍速、准度、黄彩比与 Miss 后输入名称存为自定义组合。
+                {t(
+                  '尚未保存自定义情景 — 可调整下方倍速、准度、黄彩比与 Miss 后输入名称存为自定义组合。',
+                  'No saved custom scenarios — adjust Rate, Accuracy, MA ratio & Miss below, then enter a name to save.',
+                )}
               </p>
             ) : (
               <div
@@ -226,17 +242,20 @@ export function PpScenarioLibrary({
               >
                 {savedScenarios.map((item) => {
                   const active = matchesScenarioPatch(currentScenario, item.patch);
-                  const shortSummary = formatPpScenarioShort({
-                    accuracy: item.patch.ppAccuracy,
-                    rate: item.patch.ppRate,
-                    misses: item.patch.ppMisses,
-                    maRatio: item.patch.ppMaRatio ?? null,
-                    mods: {
-                      classic: item.patch.ppClassic,
-                      ez: item.patch.ppEz,
-                      nf: item.patch.ppNf,
+                  const shortSummary = formatPpScenarioShort(
+                    {
+                      accuracy: item.patch.ppAccuracy,
+                      rate: item.patch.ppRate,
+                      misses: item.patch.ppMisses,
+                      maRatio: item.patch.ppMaRatio ?? null,
+                      mods: {
+                        classic: item.patch.ppClassic,
+                        ez: item.patch.ppEz,
+                        nf: item.patch.ppNf,
+                      },
                     },
-                  });
+                    lang,
+                  );
                   return (
                     <div
                       key={item.id}
@@ -248,7 +267,7 @@ export function PpScenarioLibrary({
                     >
                       <button
                         type="button"
-                        title={`应用情景 (${shortSummary})`}
+                        title={t(`应用情景 (${shortSummary})`, `Apply scenario (${shortSummary})`)}
                         onClick={() => onApplyPatch(item.patch)}
                         className="flex min-w-0 flex-1 flex-col justify-center px-2.5 py-1.5 text-left"
                       >
@@ -261,8 +280,8 @@ export function PpScenarioLibrary({
                       </button>
                       <button
                         type="button"
-                        title="删除该自定义情景"
-                        aria-label={`删除自定义情景 ${item.name}`}
+                        title={t('删除该自定义情景', 'Delete custom scenario')}
+                        aria-label={t(`删除自定义情景 ${item.name}`, `Delete scenario ${item.name}`)}
                         onClick={() => onDeleteSaved(item.id)}
                         className="flex w-6 shrink-0 items-center justify-center rounded-r-[8px] border-l border-hairline/70 text-ink-3 transition-colors hover:bg-bad/15 hover:text-bad"
                       >
@@ -287,8 +306,11 @@ export function PpScenarioLibrary({
                       onSaveCustom();
                     }
                   }}
-                  placeholder="情景名称（留空自动命名，如 DT 96.5%·2:1·3M）"
-                  aria-label="保存计算器情景名称"
+                  placeholder={t(
+                    '情景名称（留空自动命名，如 DT 96.5%·2:1·3M）',
+                    'Scenario name (auto if blank, e.g. DT 96.5%·2:1·3M)',
+                  )}
+                  aria-label={t('保存计算器情景名称', 'Custom scenario name')}
                   className="field min-h-[26px] flex-1 px-2 py-0.5 text-[0.75rem]"
                 />
                 <button
@@ -297,7 +319,7 @@ export function PpScenarioLibrary({
                   className="btn btn-sm min-h-[26px] shrink-0 border-lazer/45 bg-lazer/14 px-2.5 text-[0.71875rem] text-lazer-soft hover:bg-lazer/22"
                 >
                   <BookmarkPlus className="h-3 w-3" />
-                  <span>+ 存为自定义</span>
+                  <span>+ {t('存为自定义', 'Save Custom')}</span>
                 </button>
               </div>
             )}

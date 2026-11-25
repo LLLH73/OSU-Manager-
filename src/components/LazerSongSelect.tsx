@@ -27,15 +27,16 @@ import {
   Volume2,
 } from 'lucide-react';
 import {
-  TARGET_META,
   formatCount,
   formatDuration,
   getLnCategory,
   getStarColor,
   getStarSpectrum,
   getStatusBadge,
+  getTargetMeta,
   openExternalLink,
 } from '../constants';
+import { useI18n } from '../i18n';
 import { DownloadTarget, DownloadTask, NormalizedBeatmap, NormalizedBeatmapset } from '../types';
 import {
   PpScenarioInput,
@@ -133,13 +134,14 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
   onDownload,
   onOpenDetail,
 }: LazerCarouselSlotProps) {
-  const targetMeta = TARGET_META[activeTarget];
+  const { lang, t } = useI18n();
+  const targetMeta = useMemo(() => getTargetMeta(lang), [lang])[activeTarget];
   const primaryBtnLabel =
     activeTarget === 'lazer'
-      ? '下载到 Lazer'
+      ? t('下载到 Lazer', 'Download Lazer')
       : activeTarget === 'stable'
-        ? '下载到 Stable'
-        : '双端同步下载';
+        ? t('下载到 Stable', 'Download Stable')
+        : t('双端同步下载', 'Download Both');
 
   const isInstalled = beatmapset.localStatus.inStable || beatmapset.localStatus.inLazer;
   const inBoth = beatmapset.localStatus.inStable && beatmapset.localStatus.inLazer;
@@ -152,7 +154,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
   );
   const setStatusBadge = getStatusBadge(beatmapset.status);
   const rankedForPp = isRankedForPp(beatmapset.status);
-  const ppBadge = getBeatmapsetPpBadge(beatmapset, ppScenario);
+  const ppBadge = getBeatmapsetPpBadge(beatmapset, ppScenario, lang);
   const previewDiffs = diffs.slice(0, 5);
   const extraDiffCount = diffs.length - previewDiffs.length;
   const leadDiff = diffs[0];
@@ -232,7 +234,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                     ? 'border-amber-300 bg-amber-400 text-[#120d02]'
                     : 'border-hairline-strong bg-surface-2 text-ink-3 hover:border-amber-400/60'
                 }`}
-                title={selected ? '取消选择' : '选中'}
+                title={selected ? t('取消选择', 'Deselect') : t('选中', 'Select')}
               >
                 {selected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
               </button>
@@ -322,7 +324,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
               )}
               {!beatmapset.localStatus.inLazer && beatmapset.localStatus.inLazerPending && (
                 <span className="chip min-h-[18px] border-amber-300/60 bg-amber-950/90 px-1.5 text-[0.65625rem] text-amber-200">
-                  待导入
+                  {t('待导入', 'Pending')}
                 </span>
               )}
             </div>
@@ -338,7 +340,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                   e.stopPropagation();
                   onTogglePlay(beatmapset);
                 }}
-                title={isPlayingSet ? '暂停试听' : '试听'}
+                title={isPlayingSet ? t('暂停试听', 'Pause preview') : t('试听', 'Preview audio')}
                 className={`flex h-7 w-7 items-center justify-center rounded-full border transition-colors ${
                   isPlayingSet
                     ? 'border-osu/80 bg-osu text-white'
@@ -392,7 +394,7 @@ const LazerCarouselSlot = memo(function LazerCarouselSlot({
                 const diffActive = activeDiffId === bm.id;
                 const c = getStarColor(bm.difficultyRating);
                 const keyTag = bm.modeInt === 3 ? `${Math.round(bm.cs)}K` : bm.mode.toUpperCase();
-                const ln = getLnCategory(bm.lnRatio);
+                const ln = getLnCategory(bm.lnRatio, lang);
                 const pp98 = rankedForPp
                   ? calculateBeatmapPp(bm, ppScenario || { accuracy: 98, rate: 1 }).pp
                   : null;
@@ -486,6 +488,8 @@ export function LazerSongSelect({
   onPreviewBeatmap,
   onLoadMore,
 }: LazerSongSelectProps) {
+  const { lang, t } = useI18n();
+  const allTargetMeta = useMemo(() => getTargetMeta(lang), [lang]);
   const [activeSetId, setActiveSetId] = useState<number | null>(() => {
     if (playingSetId && results.some((r) => r.id === playingSetId)) return playingSetId;
     return results[0]?.id ?? null;
@@ -904,13 +908,13 @@ export function LazerSongSelect({
 
   if (!activeSet) return null;
 
-  const targetMeta = TARGET_META[activeTarget];
+  const targetMeta = allTargetMeta[activeTarget];
   const primaryBtnLabel =
     activeTarget === 'lazer'
-      ? '下载到 Lazer'
+      ? t('下载到 Lazer', 'Download Lazer')
       : activeTarget === 'stable'
-        ? '下载到 Stable'
-        : '双端同步下载';
+        ? t('下载到 Stable', 'Download Stable')
+        : t('双端同步下载', 'Download Both');
 
   const activeInstalled = activeSet.localStatus.inStable || activeSet.localStatus.inLazer;
   const activeInBoth = activeSet.localStatus.inStable && activeSet.localStatus.inLazer;
@@ -924,7 +928,7 @@ export function LazerSongSelect({
   );
   const activePlaying = isPlaying && playingSetId === activeSet.id;
   const activeStatusBadge = getStatusBadge(activeSet.status);
-  const activeLnBadge = activeDiff ? getLnCategory(activeDiff.lnRatio) : null;
+  const activeLnBadge = activeDiff ? getLnCategory(activeDiff.lnRatio, lang) : null;
   const activeRanked = isRankedForPp(activeSet.status);
 
   const activeTotalObjects = activeDiff
@@ -971,7 +975,7 @@ export function LazerSongSelect({
 
   return (
     <section
-      aria-label="osu!lazer 选歌轮盘视图"
+      aria-label={t('osu!lazer 选歌轮盘视图', 'osu!lazer song select carousel')}
       className="lazer-stage isolate relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[18px] border border-hairline shadow-lg"
     >
       {/* Double-buffered ambient background (skipped when global desktop background handles it) */}
@@ -1048,7 +1052,7 @@ export function LazerSongSelect({
                 </span>
                 {activeSet.video && (
                   <span
-                    title="包含视频"
+                    title={t('包含视频', 'Has video')}
                     className="flex h-[20px] items-center rounded-[5px] border border-white/15 bg-black/65 px-1.5 text-slate-100"
                   >
                     <Film className="h-3 w-3" />
@@ -1056,7 +1060,7 @@ export function LazerSongSelect({
                 )}
                 {activeSet.spotlight && (
                   <span
-                    title="官方 Spotlight"
+                    title={t('官方 Spotlight', 'Official Spotlight')}
                     className="flex h-[20px] items-center rounded-[5px] border border-amber-300/40 bg-amber-500/25 px-1.5 text-amber-200"
                   >
                     <Sparkles className="h-3 w-3" />
@@ -1069,18 +1073,18 @@ export function LazerSongSelect({
                 {activeSet.localStatus.inLazer && (
                   <span className="chip chip-gold">
                     <CheckCircle2 className="h-3 w-3" />
-                    Lazer 已装
+                    {t('Lazer 已装', 'In Lazer')}
                   </span>
                 )}
                 {activeSet.localStatus.inStable && (
                   <span className="chip chip-gold">
                     <CheckCircle2 className="h-3 w-3" />
-                    Stable 已装
+                    {t('Stable 已装', 'In Stable')}
                   </span>
                 )}
                 {!activeSet.localStatus.inLazer && activeSet.localStatus.inLazerPending && (
                   <span className="chip border-amber-300/60 bg-amber-950/90 text-amber-200">
-                    Lazer 待导入
+                    {t('Lazer 待导入', 'Lazer Pending')}
                   </span>
                 )}
               </div>
@@ -1109,7 +1113,7 @@ export function LazerSongSelect({
                   ) : (
                     <>
                       <Play className="h-3 w-3 fill-current" />
-                      <span>试听预览</span>
+                      <span>{t('试听预览', 'Preview')}</span>
                     </>
                   )}
                 </button>
@@ -1117,7 +1121,7 @@ export function LazerSongSelect({
                 <button
                   type="button"
                   onClick={toggleAutoPreview}
-                  title="切歌时自动播放音频预览"
+                  title={t('切歌时自动播放音频预览', 'Auto-play audio preview when changing maps')}
                   className={`flex min-h-[28px] items-center gap-1 rounded-full border px-2.5 text-[0.71875rem] font-semibold transition-colors ${
                     autoPreview
                       ? 'border-lazer/80 bg-lazer/90 text-white'
@@ -1125,7 +1129,7 @@ export function LazerSongSelect({
                   }`}
                 >
                   <Volume2 className="h-3 w-3" />
-                  <span>自动试听</span>
+                  <span>{t('自动试听', 'Auto Play')}</span>
                 </button>
               </div>
 
@@ -1226,7 +1230,7 @@ export function LazerSongSelect({
                             (activeDiffIndex - 1 + activeDiffs.length) % activeDiffs.length;
                           setActiveDiffId(activeDiffs[prevIdx].id);
                         }}
-                        title="上一个难度 (←)"
+                        title={t('上一个难度 (←)', 'Previous diff (←)')}
                         className="btn btn-sm btn-icon h-[22px] w-[22px]"
                       >
                         <ChevronLeft className="h-3 w-3" />
@@ -1240,7 +1244,7 @@ export function LazerSongSelect({
                           const nextIdx = (activeDiffIndex + 1) % activeDiffs.length;
                           setActiveDiffId(activeDiffs[nextIdx].id);
                         }}
-                        title="下一个难度 (→)"
+                        title={t('下一个难度 (→)', 'Next diff (→)')}
                         className="btn btn-sm btn-icon h-[22px] w-[22px]"
                       >
                         <ChevronRight className="h-3 w-3" />
@@ -1278,7 +1282,7 @@ export function LazerSongSelect({
                     <div className="flex items-center justify-between gap-1.5">
                       <div className="flex items-center gap-1">
                         <span className="font-stat text-[0.6875rem] font-bold text-lazer-soft uppercase">
-                          PP 速览
+                          {t('PP 速览', 'Quick PP')}
                         </span>
                         <div className="inline-flex rounded-[6px] border border-hairline bg-surface-1 p-0.5">
                           {(
@@ -1312,7 +1316,7 @@ export function LazerSongSelect({
                         className="chip chip-pp font-stat min-h-[22px] px-2 text-[0.65625rem]"
                       >
                         <Calculator className="h-2.5 w-2.5" />
-                        <span>PP 计算器</span>
+                        <span>{t('PP 计算器', 'PP Calc')}</span>
                       </button>
                     </div>
 
@@ -1339,7 +1343,7 @@ export function LazerSongSelect({
                   </div>
                 ) : (
                   <div className="flex items-center justify-between gap-2 border-t border-hairline pt-2 text-[0.75rem] font-medium text-ink-3">
-                    <span>未上架谱面不计官方 PP</span>
+                    <span>{t('未上架谱面不计官方 PP', 'Unranked — no official PP')}</span>
                     <button
                       type="button"
                       onClick={() =>
@@ -1348,7 +1352,7 @@ export function LazerSongSelect({
                       className="btn btn-sm min-h-[24px] px-2 text-[0.6875rem]"
                     >
                       <Calculator className="h-3 w-3 text-lazer-soft" />
-                      <span>模拟计算 PP</span>
+                      <span>{t('模拟计算 PP', 'Simulate PP')}</span>
                     </button>
                   </div>
                 )}
@@ -1356,19 +1360,19 @@ export function LazerSongSelect({
                 {/* Note Breakdown Strip */}
                 <div className="font-mono grid grid-cols-5 gap-1 border-t border-hairline pt-2 text-center text-[0.6875rem] tabular-nums">
                   <div>
-                    <div className="text-ink-3">总物件</div>
+                    <div className="text-ink-3">{t('总物件', 'Objects')}</div>
                     <div className="font-semibold text-ink">{activeTotalObjects}</div>
                   </div>
                   <div>
-                    <div className="text-ink-3">单键</div>
+                    <div className="text-ink-3">{t('单键', 'Rice')}</div>
                     <div className="font-semibold text-ink">{activeDiff.countCircles}</div>
                   </div>
                   <div>
-                    <div className="text-ink-3">长条</div>
+                    <div className="text-ink-3">{t('长条', 'LN')}</div>
                     <div className="font-semibold text-ink">{activeDiff.countSliders}</div>
                   </div>
                   <div>
-                    <div className="text-ink-3">时长</div>
+                    <div className="text-ink-3">{t('时长', 'Length')}</div>
                     <div className="font-semibold text-ink">
                       {formatDuration(activeDiff.totalLength)}
                     </div>
@@ -1406,7 +1410,7 @@ export function LazerSongSelect({
                 <button
                   type="button"
                   onClick={() => onDownload(activeSet, 'stable')}
-                  title="单独下载到 Stable"
+                  title={t('单独下载到 Stable', 'Download to Stable only')}
                   className="font-stat btn px-2.5 text-stable-soft hover:border-stable/50 hover:bg-stable/12 hover:text-stable"
                 >
                   S
@@ -1414,7 +1418,7 @@ export function LazerSongSelect({
                 <button
                   type="button"
                   onClick={() => onDownload(activeSet, 'lazer')}
-                  title="单独下载到 Lazer"
+                  title={t('单独下载到 Lazer', 'Download to Lazer only')}
                   className="font-stat btn px-2.5 text-lazer-soft hover:border-lazer/50 hover:bg-lazer/12 hover:text-lazer"
                 >
                   L
@@ -1422,10 +1426,10 @@ export function LazerSongSelect({
                 <button
                   type="button"
                   onClick={() => onDownload(activeSet, 'both')}
-                  title="同时安装到 Stable + Lazer"
+                  title={t('同时安装到 Stable + Lazer', 'Install to Stable + Lazer')}
                   className="btn px-2.5 text-osu-soft hover:border-osu/50 hover:bg-osu/12 hover:text-osu"
                 >
-                  双
+                  {allTargetMeta.both.short}
                 </button>
               </div>
 
@@ -1444,7 +1448,7 @@ export function LazerSongSelect({
                       className="btn btn-sm border-osu/45 bg-osu/12 px-2.5 text-osu-soft hover:bg-osu/20"
                     >
                       <Eye className="h-3.5 w-3.5" />
-                      <span>预览谱面</span>
+                      <span>{t('预览谱面', 'Preview')}</span>
                     </button>
                   )}
                 <button
@@ -1455,18 +1459,18 @@ export function LazerSongSelect({
                   className="btn btn-sm flex-1"
                 >
                   <Info className="h-3.5 w-3.5 text-osu" />
-                  <span>完整详情 · PP 计算</span>
+                  <span>{t('完整详情 · PP 计算', 'Detail · PP Calc')}</span>
                 </button>
                 <a
                   href={activeSet.officialUrl}
                   target="_blank"
                   rel="noreferrer"
                   onClick={(e) => openExternalLink(e, activeSet.officialUrl)}
-                  title="在浏览器中打开官网详情页"
+                  title={t('在浏览器中打开官网详情页', 'Open beatmapset on osu! web')}
                   className="btn btn-sm px-2.5 text-ink-2"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
-                  <span>官网</span>
+                  <span>{t('官网', 'Web')}</span>
                 </a>
               </div>
             </div>
@@ -1487,13 +1491,13 @@ export function LazerSongSelect({
           <div className="mt-auto flex shrink-0 flex-wrap items-center justify-between gap-2 rounded-[10px] border border-hairline bg-surface-0/85 px-3 py-1.5 text-[0.71875rem] text-ink-3 [@media(max-height:740px)]:hidden">
             <span className="inline-flex items-center gap-1.5 font-semibold text-ink-2">
               <Keyboard className="h-3.5 w-3.5 text-lazer-soft" />
-              <span>快捷键导航</span>
+              <span>{t('快捷键导航', 'Shortcuts')}</span>
             </span>
             <span className="font-mono flex flex-wrap items-center gap-2 text-[0.6875rem]">
-              <span>↑↓/WS 切歌</span>
-              <span>←→ 切难度</span>
-              <span>Space 试听</span>
-              <span>Enter 详情</span>
+              <span>{t('↑↓/WS 切歌', '↑↓/WS Map')}</span>
+              <span>{t('←→ 切难度', '←→ Diff')}</span>
+              <span>{t('Space 试听', 'Space Play')}</span>
+              <span>{t('Enter 详情', 'Enter Detail')}</span>
             </span>
           </div>
         </div>
@@ -1541,7 +1545,7 @@ export function LazerSongSelect({
               {loadingMore ? (
                 <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-surface-2/90 px-4 py-1.5 text-[0.78125rem] font-medium text-ink-2">
                   <Loader2 className="h-3.5 w-3.5 animate-spin text-osu" />
-                  <span>正在自动加载更多谱面…</span>
+                  <span>{t('正在自动加载更多谱面…', 'Loading more beatmapsets…')}</span>
                 </div>
               ) : searchError && hasMore ? (
                 <button
@@ -1550,7 +1554,7 @@ export function LazerSongSelect({
                   className="btn min-h-[36px] border-amber-500/45 bg-surface-2/90 px-5 text-[0.8125rem] text-warn"
                 >
                   <ChevronDown className="h-4 w-4" />
-                  <span>加载失败，点击重试加载更多</span>
+                  <span>{t('加载失败，点击重试加载更多', 'Load failed — click to retry')}</span>
                 </button>
               ) : hasMore ? (
                 <button
@@ -1559,12 +1563,12 @@ export function LazerSongSelect({
                   className="btn min-h-[36px] bg-surface-2/90 px-6 text-[0.84375rem]"
                 >
                   <ChevronDown className="h-4 w-4 text-osu" />
-                  <span>加载更多谱面</span>
+                  <span>{t('加载更多谱面', 'Load More')}</span>
                 </button>
               ) : (
                 results.length > 0 && (
                   <span className="text-[0.75rem] font-medium text-ink-3">
-                    已加载全部 {results.length} 套谱面
+                    {t(`已加载全部 ${results.length} 套谱面`, `All ${results.length} beatmapsets loaded`)}
                   </span>
                 )
               )}
@@ -1582,12 +1586,12 @@ export function LazerSongSelect({
                 <button
                   type="button"
                   onClick={handleScrollToActive}
-                  title={`回到当前选中歌曲：${activeSet.title}`}
-                  aria-label="回到当前选中歌曲"
+                  title={t(`回到当前选中歌曲：${activeSet.title}`, `Scroll to selected: ${activeSet.title}`)}
+                  aria-label={t('回到当前选中歌曲', 'Scroll to selected song')}
                   className="glass animate-fade-in pointer-events-auto inline-flex min-h-[34px] items-center gap-1.5 rounded-full border-osu/45 px-3.5 text-[0.78125rem] font-semibold text-ink transition-all duration-150 hover:border-osu hover:text-osu"
                 >
                   <LocateFixed className="h-3.5 w-3.5 text-osu" />
-                  <span>回到选中</span>
+                  <span>{t('回到选中', 'Selected')}</span>
                   <span className="font-mono text-[0.71875rem] text-osu-soft">
                     {activeOffscreenDir === 'up' ? '↑' : '↓'}
                   </span>
@@ -1597,12 +1601,12 @@ export function LazerSongSelect({
                 <button
                   type="button"
                   onClick={handleScrollToTop}
-                  title="回到列表顶部"
-                  aria-label="回到顶部"
+                  title={t('回到列表顶部', 'Back to top')}
+                  aria-label={t('回到顶部', 'Back to top')}
                   className="glass animate-fade-in pointer-events-auto inline-flex min-h-[34px] items-center gap-1.5 rounded-full px-3.5 text-[0.78125rem] font-semibold text-ink transition-all duration-150 hover:border-osu/60 hover:text-osu"
                 >
                   <ArrowUp className="h-3.5 w-3.5 text-ink-2" />
-                  <span>回到顶部</span>
+                  <span>{t('回到顶部', 'Top')}</span>
                 </button>
               )}
             </div>

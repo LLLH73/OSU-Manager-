@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DATA_DIR } from './config.js';
+import { st } from './i18n.js';
 import {
   FilterArchive,
   FilterArchiveBrowsePosition,
@@ -10,6 +11,10 @@ import {
 } from './types.js';
 
 const MAX_ARCHIVES = 100;
+
+function getDefaultArchiveName(): string {
+  return st('未命名存档', 'Untitled Archive');
+}
 
 function getArchivesFilePath(): string {
   return path.join(DATA_DIR, 'filter-archives.json');
@@ -184,7 +189,7 @@ function readArchivesRaw(): FilterArchive[] {
       const name =
         typeof obj.name === 'string' && obj.name.trim()
           ? obj.name.trim().slice(0, 80)
-          : '未命名存档';
+          : getDefaultArchiveName();
       list.push({
         id: obj.id.trim(),
         name,
@@ -244,7 +249,7 @@ export function createFilterArchive(input: {
   const cleanName =
     typeof input.name === 'string' && input.name.trim()
       ? input.name.trim().slice(0, 80)
-      : '未命名存档';
+      : getDefaultArchiveName();
   const entry: FilterArchive = {
     id: `fa-${now.toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     name: cleanName,

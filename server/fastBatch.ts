@@ -3,6 +3,7 @@ import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getConfig, TMP_DIR } from './config.js';
+import { getServerLang, st } from './i18n.js';
 import {
   fastInstallToStable,
   fastStageToLazer,
@@ -24,6 +25,7 @@ import {
   resolveRoutes,
 } from './network.js';
 import { searchBeatmaps } from './search.js';
+import { getLocalizedMirrorInfo } from './sources.js';
 import {
   FastBatchItem,
   FastBatchJobState,
@@ -167,7 +169,7 @@ function emptySnapshot(): FastBatchSnapshot {
     lazerPendingCreated: [],
     startedAt: null,
     finishedAt: null,
-    message: '尚未启动快速批量下载任务',
+    message: st('尚未启动快速批量下载任务', 'No fast batch download task started yet'),
     items: [],
   };
 }
@@ -373,7 +375,7 @@ async function maybeFinalizeJob(job: FastBatchJob): Promise<void> {
       const it = job.itemMap.get(qId);
       if (it && it.state === 'queued') {
         it.state = 'cancelled';
-        it.error = '已停止';
+        it.error = st('已停止', 'Stopped');
       }
     }
     job.queue.length = 0;
@@ -381,7 +383,10 @@ async function maybeFinalizeJob(job: FastBatchJob): Promise<void> {
     await flushLazerBatch(job);
     job.state = 'stopped';
     job.finishedAt = new Date().toISOString();
-    job.message = `已停止：完成 ${job.completedCount}/${job.options.targetCount} 首（跳过已装 ${job.skippedInstalledCount} 首）`;
+    job.message = st(
+      `已停止：完成 ${job.completedCount}/${job.options.targetCount} 首（跳过已装 ${job.skippedInstalledCount} 首）`,
+      `Stopped: completed ${job.completedCount}/${job.options.targetCount} maps (skipped ${job.skippedInstalledCount} installed)`,
+    );
     scheduleEmit(true);
     try {
       libraryEvents.emit('update', await rescanLibrary(false));
@@ -405,11 +410,20 @@ async function maybeFinalizeJob(job: FastBatchJob): Promise<void> {
   job.finishedAt = new Date().toISOString();
 
   if (reachedTarget) {
-    job.message = `已完成目标 ${job.completedCount}/${job.options.targetCount} 首（跳过已装 ${job.skippedInstalledCount}，失败 ${job.failedCount}）`;
+    job.message = st(
+      `已完成目标 ${job.completedCount}/${job.options.targetCount} 首（跳过已装 ${job.skippedInstalledCount}，失败 ${job.failedCount}）`,
+      `Reached target ${job.completedCount}/${job.options.targetCount} maps (skipped ${job.skippedInstalledCount} installed, ${job.failedCount} failed)`,
+    );
   } else if (job.completedCount > 0) {
-    job.message = `已无更多匹配新谱面，共下载 ${job.completedCount} 首（跳过已装 ${job.skippedInstalledCount}）`;
+    job.message = st(
+      `已无更多匹配新谱面，共下载 ${job.completedCount} 首（跳过已装 ${job.skippedInstalledCount}）`,
+      `No more matching new beatmaps; downloaded ${job.completedCount} (skipped ${job.skippedInstalledCount} installed)`,
+    );
   } else {
-    job.message = `当前筛选条件下没有可下载的新谱面（已跳过本地已装 ${job.skippedInstalledCount} 首）`;
+    job.message = st(
+      `当前筛选条件下没有可下载的新谱面（已跳过本地已装 ${job.skippedInstalledCount} 首）`,
+      `No downloadable new beatmaps match the current filters (skipped ${job.skippedInstalledCount} installed)`,
+    );
   }
 
   logInfo('fast-batch', `Job finished (${job.state})`, {
@@ -444,7 +458,7 @@ async function downloadItemFromMirror(
 
   for (const route of routes) {
     if (controller.signal.aborted) {
-      throw new Error('已暂停或取消');
+      throw new Error(st('已暂停或取消', 'Paused or cancelled'));
     }
     const startedAt = Date.now();
     try {
@@ -474,7 +488,7 @@ async function downloadItemFromMirror(
       if (ct.includes('text/html') || ct.includes('application/json')) {
         await response.body.cancel().catch(() => {});
         noteMirrorFailure(mirror.id);
-        throw new Error(`镜像返回非谱面内容 (${ct})`);
+        throw new Error(st(`镜像返回非谱面内容 (${ct})`, `Mirror returned non-beatmap content (${ct})`));
       }
 
       const totalHeader = response.headers.get('content-length');
@@ -517,7 +531,7 @@ async function downloadItemFromMirror(
               value[3] !== 0x04
             ) {
               noteMirrorFailure(mirror.id);
-              throw new Error('首字节非 ZIP/.osz 格式');
+              throw new Error(st('首字节非 ZIP/.osz 格式', 'Stream header is not a valid ZIP/.osz archive'));
             }
           }
 
@@ -558,7 +572,7 @@ async function downloadItemFromMirror(
       }
 
       if (controller.signal.aborted) {
-        throw new Error('已暂停或取消');
+        throw new Error(st('已暂停或取消', 'Paused or cancelled'));
       }
 
       item.downloadedBytes = downloaded;
@@ -574,7 +588,9 @@ async function downloadItemFromMirror(
     }
   }
 
-  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr || '下载失败'));
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error(String(lastErr || st('下载失败', 'Download failed')));
 }
 
 async function processFastBatchItem(job: FastBatchJob, beatmapsetId: number): Promise<void> {
@@ -595,13 +611,14 @@ async function processFastBatchItem(job: FastBatchJob, beatmapsetId: number): Pr
 
     const mirrors = pickFastBatchMirrors(job.options.preferredMirror);
     let downloadedOk = false;
-    let lastError = '所有镜像均下载失败';
+    let lastError = st('所有镜像均下载失败', 'All mirrors failed to download');
 
     for (const mirror of mirrors) {
       if (controller.signal.aborted || job.pauseRequested || job.stopRequested) {
-        throw new Error('已暂停或停止');
+        throw new Error(st('已暂停或停止', 'Paused or stopped'));
       }
       mirrorInFlight.set(mirror.id, (mirrorInFlight.get(mirror.id) ?? 0) + 1);
+      const mirrorName = getLocalizedMirrorInfo(mirror, getServerLang()).shortName;
       try {
         await downloadItemFromMirror(job, item, mirror, partPath, controller);
         item.state = 'verifying';
@@ -610,15 +627,15 @@ async function processFastBatchItem(job: FastBatchJob, beatmapsetId: number): Pr
         const check = await verifyOszFileFast(partPath);
         if (!check.valid) {
           noteMirrorFailure(mirror.id);
-          throw new Error(check.reason || '.osz 校验失败');
+          throw new Error(check.reason || st('.osz 校验失败', '.osz verification failed'));
         }
         downloadedOk = true;
         break;
       } catch (err) {
-        lastError = `${mirror.shortName}: ${err instanceof Error ? err.message : String(err)}`;
+        lastError = `${mirrorName}: ${err instanceof Error ? err.message : String(err)}`;
         await fs.promises.unlink(partPath).catch(() => {});
         if (controller.signal.aborted || job.pauseRequested || job.stopRequested) {
-          throw new Error('已暂停或停止');
+          throw new Error(st('已暂停或停止', 'Paused or stopped'));
         }
       } finally {
         mirrorInFlight.set(mirror.id, Math.max(0, (mirrorInFlight.get(mirror.id) ?? 1) - 1));
@@ -699,7 +716,7 @@ async function processFastBatchItem(job: FastBatchJob, beatmapsetId: number): Pr
     } else if (job.stopRequested || controller.signal.aborted) {
       item.state = 'cancelled';
       item.speedBps = 0;
-      item.error = '已停止';
+      item.error = st('已停止', 'Stopped');
     } else {
       item.state = 'failed';
       item.speedBps = 0;
@@ -768,7 +785,10 @@ async function produceMoreCandidates(job: FastBatchJob): Promise<void> {
       job.consecutiveEmptyPages < 12 &&
       job.upstreamOffset < 10_000
     ) {
-      job.message = `正在扫描匹配谱面（第 ${job.scannedPages + 1} 页，已下载 ${job.completedCount}/${job.options.targetCount}）...`;
+      job.message = st(
+        `正在扫描匹配谱面（第 ${job.scannedPages + 1} 页，已下载 ${job.completedCount}/${job.options.targetCount}）...`,
+        `Scanning matching beatmaps (page ${job.scannedPages + 1}, downloaded ${job.completedCount}/${job.options.targetCount})...`,
+      );
       scheduleEmit(false);
 
       const res = await searchBeatmaps({
@@ -818,7 +838,10 @@ async function produceMoreCandidates(job: FastBatchJob): Promise<void> {
 
       drainCandidateBufferIntoQueue(job);
       pumpWorkers(job);
-      job.message = `正在高速下载（${job.inFlightIds.size} 并发进行中 · ${job.completedCount}/${job.options.targetCount}）...`;
+      job.message = st(
+        `正在高速下载（${job.inFlightIds.size} 并发进行中 · ${job.completedCount}/${job.options.targetCount}）...`,
+        `Downloading at high speed (${job.inFlightIds.size} active · ${job.completedCount}/${job.options.targetCount})...`,
+      );
       scheduleEmit(false);
     }
   } catch (err) {
@@ -829,7 +852,7 @@ async function produceMoreCandidates(job: FastBatchJob): Promise<void> {
     });
     job.exhausted = true;
     job.hasMore = false;
-    job.message = `搜索拉取中断：${errMsg}`;
+    job.message = st(`搜索拉取中断：${errMsg}`, `Search pagination interrupted: ${errMsg}`);
     scheduleEmit(true);
   } finally {
     job.producing = false;
@@ -841,7 +864,12 @@ export async function startFastBatch(
   rawOptions: Partial<FastBatchStartOptions>,
 ): Promise<FastBatchSnapshot> {
   if (currentJob && (currentJob.state === 'running' || currentJob.state === 'paused')) {
-    throw new Error('当前已有正在进行或已暂停的快速批量下载任务，请先停止或继续该任务');
+    throw new Error(
+      st(
+        '当前已有正在进行或已暂停的快速批量下载任务，请先停止或继续该任务',
+        'A fast batch download task is already running or paused. Stop or resume it first.',
+      ),
+    );
   }
 
   await getLibraryStatus(false);
@@ -878,7 +906,10 @@ export async function startFastBatch(
     flushingLazer: false,
     startedAt: new Date().toISOString(),
     finishedAt: null,
-    message: `正在搜索首批匹配谱面（目标 ${options.targetCount} 首 · ${options.concurrency} 并发）...`,
+    message: st(
+      `正在搜索首批匹配谱面（目标 ${options.targetCount} 首 · ${options.concurrency} 并发）...`,
+      `Searching initial matching beatmaps (target ${options.targetCount} · ${options.concurrency} concurrent)...`,
+    ),
   };
 
   currentJob = job;
@@ -903,7 +934,10 @@ export async function pauseFastBatch(): Promise<FastBatchSnapshot> {
   }
   job.pauseRequested = true;
   job.state = 'paused';
-  job.message = `已暂停（已完成 ${job.completedCount}/${job.options.targetCount} 首）`;
+  job.message = st(
+    `已暂停（已完成 ${job.completedCount}/${job.options.targetCount} 首）`,
+    `Paused (${job.completedCount}/${job.options.targetCount} completed)`,
+  );
   for (const ctrl of job.controllers.values()) {
     ctrl.abort();
   }
@@ -919,7 +953,10 @@ export function resumeFastBatch(): FastBatchSnapshot {
   }
   job.pauseRequested = false;
   job.state = 'running';
-  job.message = `正在继续高速下载（${job.completedCount}/${job.options.targetCount}）...`;
+  job.message = st(
+    `正在继续高速下载（${job.completedCount}/${job.options.targetCount}）...`,
+    `Resuming high-speed download (${job.completedCount}/${job.options.targetCount})...`,
+  );
   scheduleEmit(true);
   drainCandidateBufferIntoQueue(job);
   pumpWorkers(job);
@@ -934,7 +971,7 @@ export async function stopFastBatch(): Promise<FastBatchSnapshot> {
   }
   job.stopRequested = true;
   job.pauseRequested = false;
-  job.message = '正在停止并清理未完成传输...';
+  job.message = st('正在停止并清理未完成传输...', 'Stopping and cleaning up unfinished transfers...');
   for (const ctrl of job.controllers.values()) {
     ctrl.abort();
   }
@@ -948,7 +985,9 @@ export async function stopFastBatch(): Promise<FastBatchSnapshot> {
 
 export function clearFastBatch(): FastBatchSnapshot {
   if (currentJob && (currentJob.state === 'running' || currentJob.state === 'paused')) {
-    throw new Error('请先停止正在进行的任务后再清空记录');
+    throw new Error(
+      st('请先停止正在进行的任务后再清空记录', 'Please stop the active task before clearing records'),
+    );
   }
   currentJob = null;
   scheduleEmit(true);

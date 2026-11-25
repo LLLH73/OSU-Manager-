@@ -19,6 +19,7 @@ import {
   updatePlaylist as apiUpdatePlaylist,
 } from '../../api';
 import type { BookRhythmData, BooksLibraryResponse, BookSummary, MusicPlaylist } from '../../types';
+import { getCurrentLang, tx, useI18n } from '../../i18n';
 
 export type MusicLoopMode = 'all' | 'one' | 'shuffle';
 export type MusicVisualizerMode = 'bars' | 'scope';
@@ -214,6 +215,7 @@ export function MusicPlayerProvider({
   onNotify,
   onBeforeStartPlayback,
 }: MusicPlayerProviderProps) {
+  const { lang } = useI18n();
   const [libraryBooks, setLibraryBooks] = useState<BookSummary[]>([]);
   const [libraryStats, setLibraryStats] = useState<BooksLibraryResponse['stats'] | null>(null);
   const [loadingLibrary, setLoadingLibrary] = useState(false);
@@ -332,7 +334,11 @@ export function MusicPlayerProvider({
         );
       });
     } catch (err) {
-      setLibraryError(err instanceof Error ? err.message : '读取本地曲库失败');
+      setLibraryError(
+        err instanceof Error
+          ? err.message
+          : tx('读取本地曲库失败', 'Failed to read local library', getCurrentLang()),
+      );
     } finally {
       setLoadingLibrary(false);
     }
@@ -531,7 +537,9 @@ export function MusicPlayerProvider({
   const togglePlay = useCallback(() => {
     const q = queueRef.current;
     if (q.length === 0) {
-      onNotifyRef.current?.('当前没有可播放的本地曲目');
+      onNotifyRef.current?.(
+        tx('当前没有可播放的本地曲目', 'No playable local tracks available', getCurrentLang()),
+      );
       return;
     }
     if (currentIndexRef.current < 0 || currentIndexRef.current >= q.length) {
@@ -599,7 +607,9 @@ export function MusicPlayerProvider({
 
   const setQueueAndPlay = useCallback((books: BookSummary[], startIndex = 0) => {
     if (books.length === 0) {
-      onNotifyRef.current?.('列表中没有可播放曲目');
+      onNotifyRef.current?.(
+        tx('列表中没有可播放曲目', 'No playable tracks in list', getCurrentLang()),
+      );
       return;
     }
     consecutiveErrorsRef.current = 0;
@@ -628,7 +638,13 @@ export function MusicPlayerProvider({
       }
       return next;
     });
-    onNotifyRef.current?.(`已添加到下一首播放：${book.titleUnicode || book.title}`);
+    onNotifyRef.current?.(
+      tx(
+        `已添加到下一首播放：${book.titleUnicode || book.title}`,
+        `Up next: ${book.titleUnicode || book.title}`,
+        getCurrentLang(),
+      ),
+    );
   }, []);
 
   const removeFromQueue = useCallback((index: number) => {
@@ -768,10 +784,16 @@ export function MusicPlayerProvider({
       try {
         const created = await apiCreatePlaylist(input);
         setPlaylists((prev) => [created, ...prev]);
-        onNotifyRef.current?.(`已创建歌单「${created.name}」`);
+        onNotifyRef.current?.(
+          tx(`已创建歌单「${created.name}」`, `Created playlist "${created.name}"`, getCurrentLang()),
+        );
         return created;
       } catch (err) {
-        onNotifyRef.current?.(err instanceof Error ? err.message : '创建歌单失败');
+        onNotifyRef.current?.(
+          err instanceof Error
+            ? err.message
+            : tx('创建歌单失败', 'Failed to create playlist', getCurrentLang()),
+        );
         return null;
       }
     },
@@ -785,7 +807,11 @@ export function MusicPlayerProvider({
       const updated = await apiUpdatePlaylist(id, { name: clean });
       setPlaylists((prev) => prev.map((p) => (p.id === id ? updated : p)));
     } catch (err) {
-      onNotifyRef.current?.(err instanceof Error ? err.message : '重命名歌单失败');
+      onNotifyRef.current?.(
+        err instanceof Error
+          ? err.message
+          : tx('重命名歌单失败', 'Failed to rename playlist', getCurrentLang()),
+      );
     }
   }, []);
 
@@ -809,7 +835,11 @@ export function MusicPlayerProvider({
       const updated = await apiUpdatePlaylist(playlistId, { bookKeys });
       setPlaylists((prev) => prev.map((p) => (p.id === playlistId ? updated : p)));
     } catch (err) {
-      onNotifyRef.current?.(err instanceof Error ? err.message : '更新歌单曲目失败');
+      onNotifyRef.current?.(
+        err instanceof Error
+          ? err.message
+          : tx('更新歌单曲目失败', 'Failed to update playlist tracks', getCurrentLang()),
+      );
     }
   }, []);
 
@@ -817,13 +847,18 @@ export function MusicPlayerProvider({
     async (playlistId: string, bookKey: string) => {
       const target = playlists.find((p) => p.id === playlistId);
       if (!target) return;
+      const curLang = getCurrentLang();
       if (target.bookKeys.includes(bookKey)) {
-        onNotifyRef.current?.(`该曲目已在歌单「${target.name}」中`);
+        onNotifyRef.current?.(
+          tx(`该曲目已在歌单「${target.name}」中`, `Track is already in "${target.name}"`, curLang),
+        );
         return;
       }
       const nextKeys = [...target.bookKeys, bookKey];
       await setPlaylistBooks(playlistId, nextKeys);
-      onNotifyRef.current?.(`已加入歌单「${target.name}」`);
+      onNotifyRef.current?.(
+        tx(`已加入歌单「${target.name}」`, `Added to "${target.name}"`, curLang),
+      );
     },
     [playlists, setPlaylistBooks],
   );
@@ -860,12 +895,15 @@ export function MusicPlayerProvider({
   );
 
   const removePlaylist = useCallback(async (id: string) => {
+    const curLang = getCurrentLang();
     try {
       await apiDeletePlaylist(id);
       setPlaylists((prev) => prev.filter((p) => p.id !== id));
-      onNotifyRef.current?.('歌单已删除');
+      onNotifyRef.current?.(tx('歌单已删除', 'Playlist deleted', curLang));
     } catch (err) {
-      onNotifyRef.current?.(err instanceof Error ? err.message : '删除歌单失败');
+      onNotifyRef.current?.(
+        err instanceof Error ? err.message : tx('删除歌单失败', 'Failed to delete playlist', curLang),
+      );
     }
   }, []);
 
@@ -873,12 +911,24 @@ export function MusicPlayerProvider({
   const startSleepTimerMinutes = useCallback((minutes: number) => {
     const endsAt = Date.now() + Math.max(1, minutes) * 60_000;
     setSleepTimer({ mode: 'minutes', endsAt, remainingSec: Math.max(60, Math.round(minutes * 60)) });
-    onNotifyRef.current?.(`已开启定时关闭：${minutes} 分钟后暂停播放`);
+    onNotifyRef.current?.(
+      tx(
+        `已开启定时关闭：${minutes} 分钟后暂停播放`,
+        `Sleep timer set: pause in ${minutes} min`,
+        getCurrentLang(),
+      ),
+    );
   }, []);
 
   const startSleepTimerTrackEnd = useCallback(() => {
     setSleepTimer({ mode: 'track_end', endsAt: null, remainingSec: 0 });
-    onNotifyRef.current?.('已设置：当前曲目播放完毕后暂停');
+    onNotifyRef.current?.(
+      tx(
+        '已设置：当前曲目播放完毕后暂停',
+        'Sleep timer set: pause after current track',
+        getCurrentLang(),
+      ),
+    );
   }, []);
 
   const cancelSleepTimer = useCallback(() => {
@@ -892,7 +942,9 @@ export function MusicPlayerProvider({
       if (leftMs <= 0) {
         setSleepTimer(null);
         setIsPlaying(false);
-        onNotifyRef.current?.('定时关闭已触发，已暂停音乐播放');
+        onNotifyRef.current?.(
+          tx('定时关闭已触发，已暂停音乐播放', 'Sleep timer ended — playback paused', getCurrentLang()),
+        );
       } else {
         setSleepTimer((prev) =>
           prev && prev.mode === 'minutes'
@@ -916,9 +968,9 @@ export function MusicPlayerProvider({
 
     if (typeof MediaMetadata !== 'undefined') {
       ms.metadata = new MediaMetadata({
-        title: currentTrack.titleUnicode || currentTrack.title,
-        artist: currentTrack.artistUnicode || currentTrack.artist,
-        album: `OSU!Manager! · ${currentTrack.creator}`,
+        title: currentTrack.titleUnicode || currentTrack.title || tx('未知曲目', 'Unknown Track', lang),
+        artist: currentTrack.artistUnicode || currentTrack.artist || tx('未知曲师', 'Unknown Artist', lang),
+        album: `OSU!Manager! · ${currentTrack.creator || tx('未知谱师', 'Unknown Mapper', lang)}`,
         artwork: [
           {
             src: `${window.location.origin}${currentTrack.coverUrl}`,
@@ -929,7 +981,7 @@ export function MusicPlayerProvider({
       });
     }
     ms.playbackState = isPlaying ? 'playing' : 'paused';
-  }, [currentTrack, isPlaying]);
+  }, [currentTrack, isPlaying, lang]);
 
   useEffect(() => {
     if (typeof navigator === 'undefined' || !('mediaSession' in navigator)) return;
@@ -1160,7 +1212,9 @@ export function MusicPlayerProvider({
             if (st?.mode === 'track_end') {
               setSleepTimer(null);
               setIsPlaying(false);
-              onNotifyRef.current?.('定时关闭已触发，本曲已播放完毕');
+              onNotifyRef.current?.(
+                tx('定时关闭已触发，本曲已播放完毕', 'Sleep timer ended after track finished', getCurrentLang()),
+              );
               return;
             }
             if (loopModeRef.current === 'one') {
@@ -1177,18 +1231,31 @@ export function MusicPlayerProvider({
           }}
           onError={() => {
             setBuffering(false);
+            const curLang = getCurrentLang();
             const cur = queueRef.current[currentIndexRef.current];
-            const label = cur ? cur.titleUnicode || cur.title : '当前曲目';
-            setAudioError(`音源不可用: ${label}`);
+            const label = cur ? cur.titleUnicode || cur.title : tx('当前曲目', 'Current track', curLang);
+            setAudioError(tx(`音源不可用: ${label}`, `Audio unavailable: ${label}`, curLang));
             if (!isPlayingRef.current) return;
             consecutiveErrorsRef.current += 1;
             const maxSkip = Math.min(5, Math.max(1, queueRef.current.length));
             if (consecutiveErrorsRef.current < maxSkip && queueRef.current.length > 1) {
-              onNotifyRef.current?.(`音源加载失败，自动跳至下一首（${label}）`);
+              onNotifyRef.current?.(
+                tx(
+                  `音源加载失败，自动跳至下一首（${label}）`,
+                  `Audio failed, skipping to next (${label})`,
+                  curLang,
+                ),
+              );
               advanceTrack(1, true);
             } else {
               setIsPlaying(false);
-              onNotifyRef.current?.(`无法播放连续曲目音源，已暂停（${label}）`);
+              onNotifyRef.current?.(
+                tx(
+                  `无法播放连续曲目音源，已暂停（${label}）`,
+                  `Unable to play consecutive tracks, paused (${label})`,
+                  curLang,
+                ),
+              );
             }
           }}
         />

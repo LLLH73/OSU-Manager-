@@ -1,4 +1,5 @@
 import { getConfig } from './config.js';
+import { st } from './i18n.js';
 import { getLocalSetsSnapshot } from './library.js';
 import { fetchSmart } from './network.js';
 import {
@@ -821,7 +822,13 @@ export async function searchBeatmaps(filters: SearchFilters): Promise<SearchResu
     return await searchWithOsuDirect(filters);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return await searchWithSayobot(filters, `主搜索引擎 osu.direct 暂不可用 (${msg})，已自动切换至小夜国内镜像`);
+    return await searchWithSayobot(
+      filters,
+      st(
+        `主搜索引擎 osu.direct 暂不可用 (${msg})，已自动切换至小夜国内镜像`,
+        `Primary search engine osu.direct is unavailable (${msg}); automatically switched to Sayobot mirror`,
+      ),
+    );
   }
 }
 

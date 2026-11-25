@@ -1,9 +1,10 @@
 import {
-  OSU_GENRES,
-  OSU_LANGUAGES,
-  SORT_FIELDS,
-  STATUS_OPTIONS,
+  getOsuGenres,
+  getOsuLanguages,
+  getSortFields,
+  getStatusOptions,
 } from '../constants';
+import { getCurrentLang, tx, type UiLanguage } from '../i18n';
 import { SearchFilters } from '../types';
 import {
   extractPpScenarioFromFilters,
@@ -78,16 +79,30 @@ export function sanitizeFiltersForArchive(filters: SearchFilters): SearchFilters
   return next;
 }
 
-function formatModeBadge(filters: SearchFilters): string {
+function formatModeBadge(filters: SearchFilters, lang: UiLanguage): string {
+  const isEn = lang === 'en';
   if (filters.mode === '0') return 'Standard';
   if (filters.mode === '1') return 'Taiko';
   if (filters.mode === '2') return 'Catch';
-  if (filters.mode === 'any') return '全模式';
-  const k = filters.keys && filters.keys !== 'any' ? (filters.keys === 'other' ? '其他键' : `${filters.keys}K`) : '全键数';
+  if (filters.mode === 'any') return isEn ? 'All Modes' : '全模式';
+  const k =
+    filters.keys && filters.keys !== 'any'
+      ? filters.keys === 'other'
+        ? isEn
+          ? 'Other Keys'
+          : '其他键'
+        : `${filters.keys}K`
+      : isEn
+        ? 'All Keys'
+        : '全键数';
   return `Mania ${k}`;
 }
 
-export function buildAutoArchiveName(filters: SearchFilters): string {
+export function buildAutoArchiveName(
+  filters: SearchFilters,
+  lang: UiLanguage = getCurrentLang(),
+): string {
+  const isEn = lang === 'en';
   const parts: string[] = [];
   const q = filters.q?.trim();
   if (q) {
@@ -95,10 +110,17 @@ export function buildAutoArchiveName(filters: SearchFilters): string {
   }
 
   if (filters.mode === '3' || !filters.mode) {
-    const k = filters.keys && filters.keys !== 'any' ? (filters.keys === 'other' ? '其他键' : `${filters.keys}K`) : 'Mania';
+    const k =
+      filters.keys && filters.keys !== 'any'
+        ? filters.keys === 'other'
+          ? isEn
+            ? 'Other Keys'
+            : '其他键'
+          : `${filters.keys}K`
+        : 'Mania';
     parts.push(k);
   } else {
-    parts.push(formatModeBadge(filters));
+    parts.push(formatModeBadge(filters, lang));
   }
 
   if (filters.minStars != null || filters.maxStars != null) {
@@ -109,7 +131,7 @@ export function buildAutoArchiveName(filters: SearchFilters): string {
   if (filters.minPp != null || filters.maxPp != null) {
     parts.push(`${filters.minPp ?? 0}–${filters.maxPp ?? '∞'}pp`);
   } else if (!isDefaultPpScenario(ppScenario)) {
-    parts.push(formatPpScenarioShort(ppScenario));
+    parts.push(formatPpScenarioShort(ppScenario, lang));
   }
 
   if (filters.minLn == null && filters.maxLn === 15) {
@@ -123,28 +145,34 @@ export function buildAutoArchiveName(filters: SearchFilters): string {
   }
 
   if (filters.status && filters.status !== 'leaderboard') {
-    const statusLabel =
-      STATUS_OPTIONS.find((s) => s.value === filters.status)?.label.split(' ')[0] ?? filters.status;
+    const rawLabel =
+      getStatusOptions(lang).find((s) => s.value === filters.status)?.label ?? filters.status;
+    const statusLabel = isEn ? rawLabel : rawLabel.split(' ')[0];
     parts.push(statusLabel);
   }
 
   const joined = parts.join(' · ').trim();
-  if (!joined) return '4K 默认筛选';
+  if (!joined) return tx('4K 默认筛选', '4K Default', lang);
   return joined.length > 40 ? `${joined.slice(0, 39)}…` : joined;
 }
 
-export function summarizeFilterArchive(filters: SearchFilters): {
+export function summarizeFilterArchive(
+  filters: SearchFilters,
+  lang: UiLanguage = getCurrentLang(),
+): {
   query: string;
   tags: ArchiveSummaryTag[];
 } {
+  const isEn = lang === 'en';
   const query = (filters.q || '').trim();
   const tags: ArchiveSummaryTag[] = [];
 
-  tags.push({ label: formatModeBadge(filters), tone: 'default' });
+  tags.push({ label: formatModeBadge(filters, lang), tone: 'default' });
 
   const statusVal = filters.status || 'leaderboard';
-  const statusLabel =
-    STATUS_OPTIONS.find((s) => s.value === statusVal)?.label.split(' ')[0] ?? statusVal;
+  const rawStatusLabel =
+    getStatusOptions(lang).find((s) => s.value === statusVal)?.label ?? statusVal;
+  const statusLabel = isEn ? rawStatusLabel : rawStatusLabel.split(' ')[0];
   tags.push({ label: statusLabel, tone: statusVal === 'any' ? 'warn' : 'default' });
 
   if (filters.minStars != null || filters.maxStars != null) {
@@ -158,12 +186,12 @@ export function summarizeFilterArchive(filters: SearchFilters): {
   const ppCustomized = !isDefaultPpScenario(ppScenario) || Boolean(filters.ppIncludeUnranked);
   if (filters.minPp != null || filters.maxPp != null) {
     tags.push({
-      label: `~${filters.minPp ?? 0}–${filters.maxPp ?? '∞'}pp · ${formatPpScenarioShort(ppScenario)}`,
+      label: `~${filters.minPp ?? 0}–${filters.maxPp ?? '∞'}pp · ${formatPpScenarioShort(ppScenario, lang)}`,
       tone: 'lazer',
     });
   } else if (ppCustomized) {
     tags.push({
-      label: `情景 ${formatPpScenarioShort(ppScenario)}`,
+      label: isEn ? `PP ${formatPpScenarioShort(ppScenario, lang)}` : `情景 ${formatPpScenarioShort(ppScenario, lang)}`,
       tone: 'lazer',
     });
   }
@@ -181,24 +209,32 @@ export function summarizeFilterArchive(filters: SearchFilters): {
   const sortVal = filters.sort || 'ranked_date:desc';
   if (sortVal !== 'ranked_date:desc') {
     const [field, dir] = sortVal.split(':');
-    const sortName = SORT_FIELDS.find((s) => s.value === field)?.label ?? field;
+    const sortName = getSortFields(lang).find((s) => s.value === field)?.label ?? field;
     tags.push({ label: `${sortName} ${dir === 'asc' ? '↑' : '↓'}`, tone: 'default' });
   }
 
   if (filters.installedFilter && filters.installedFilter !== 'all') {
-    const map: Record<string, string> = {
-      hide_lazer: '隐藏 Lazer 已有',
-      hide_stable: '隐藏 Stable 已有',
-      hide_any: '仅看双端未装',
-      only_missing_lazer: '仅缺 Lazer',
-      only_missing_stable: '仅缺 Stable',
-    };
+    const map: Record<string, string> = isEn
+      ? {
+          hide_lazer: 'Hide In Lazer',
+          hide_stable: 'Hide In Stable',
+          hide_any: 'Not Installed',
+          only_missing_lazer: 'Missing Lazer',
+          only_missing_stable: 'Missing Stable',
+        }
+      : {
+          hide_lazer: '隐藏 Lazer 已有',
+          hide_stable: '隐藏 Stable 已有',
+          hide_any: '仅看双端未装',
+          only_missing_lazer: '仅缺 Lazer',
+          only_missing_stable: '仅缺 Stable',
+        };
     tags.push({ label: map[filters.installedFilter] ?? filters.installedFilter, tone: 'warn' });
   }
 
   if (filters.source && filters.source !== 'auto') {
     tags.push({
-      label: filters.source === 'osudirect' ? 'osu.direct' : '小夜镜像',
+      label: filters.source === 'osudirect' ? 'osu.direct' : isEn ? 'Sayobot' : '小夜镜像',
       tone: 'default',
     });
   }
@@ -207,7 +243,11 @@ export function summarizeFilterArchive(filters: SearchFilters): {
     tags.push({ label: `BPM ${filters.minBpm ?? 0}–${filters.maxBpm ?? '∞'}` });
   }
   if (filters.minLength != null || filters.maxLength != null) {
-    tags.push({ label: `时长 ${filters.minLength ?? 0}–${filters.maxLength ?? '∞'}s` });
+    tags.push({
+      label: isEn
+        ? `Len ${filters.minLength ?? 0}–${filters.maxLength ?? '∞'}s`
+        : `时长 ${filters.minLength ?? 0}–${filters.maxLength ?? '∞'}s`,
+    });
   }
   if (filters.minOd != null || filters.maxOd != null) {
     tags.push({ label: `OD ${filters.minOd ?? 0}–${filters.maxOd ?? 10}` });
@@ -219,23 +259,25 @@ export function summarizeFilterArchive(filters: SearchFilters): {
     tags.push({ label: `AR ${filters.minAr ?? 0}–${filters.maxAr ?? 10}` });
   }
   if (filters.genre && filters.genre > 0) {
-    const g = OSU_GENRES.find((item) => item.id === filters.genre)?.label.split(' ')[0];
-    if (g) tags.push({ label: `曲风:${g}` });
+    const gRaw = getOsuGenres(lang).find((item) => item.id === filters.genre)?.label;
+    const g = gRaw ? (isEn ? gRaw : gRaw.split(' ')[0]) : '';
+    if (g) tags.push({ label: `${isEn ? 'Genre' : '曲风'}:${g}` });
   }
   if (filters.language && filters.language > 0) {
-    const l = OSU_LANGUAGES.find((item) => item.id === filters.language)?.label.split(' ')[0];
-    if (l) tags.push({ label: `语言:${l}` });
+    const lRaw = getOsuLanguages(lang).find((item) => item.id === filters.language)?.label;
+    const l = lRaw ? (isEn ? lRaw : lRaw.split(' ')[0]) : '';
+    if (l) tags.push({ label: `${isEn ? 'Lang' : '语言'}:${l}` });
   }
   if (filters.creator?.trim()) {
-    tags.push({ label: `谱师:${filters.creator.trim()}` });
+    tags.push({ label: `${isEn ? 'Mapper' : '谱师'}:${filters.creator.trim()}` });
   }
-  if (filters.video) tags.push({ label: '含视频' });
-  if (filters.storyboard) tags.push({ label: '故事板' });
-  if (filters.featured) tags.push({ label: '精选艺术家' });
+  if (filters.video) tags.push({ label: isEn ? 'Video' : '含视频' });
+  if (filters.storyboard) tags.push({ label: isEn ? 'Storyboard' : '故事板' });
+  if (filters.featured) tags.push({ label: isEn ? 'Featured' : '精选艺术家' });
   if (filters.spotlight) tags.push({ label: 'Spotlight' });
-  if (filters.includeConverts) tags.push({ label: '含转谱' });
+  if (filters.includeConverts) tags.push({ label: isEn ? 'Converts' : '含转谱' });
   if (filters.nsfw) tags.push({ label: 'NSFW' });
-  if (filters.ppIncludeUnranked) tags.push({ label: '含未上架PP', tone: 'lazer' });
+  if (filters.ppIncludeUnranked) tags.push({ label: isEn ? 'Incl. Unranked PP' : '含未上架PP', tone: 'lazer' });
 
   return { query, tags };
 }

@@ -28,6 +28,7 @@ import {
   ThemeId,
 } from '../../types';
 import { isDarkTheme } from '../../constants';
+import { getCurrentLang, tx, useI18n } from '../../i18n';
 import { SelectField } from '../SelectField';
 import { BookArchiveScene, BookOpenPhase } from './BookArchiveScene';
 import { BookFilterPanel } from './BookFilterPanel';
@@ -39,6 +40,7 @@ import {
   applyBookFilters,
   countActiveAdvancedFilters,
   getBookFilterTransitionLabel,
+  getBookSortOptions,
 } from './bookFilters';
 import {
   BookMosaicHandle,
@@ -93,6 +95,7 @@ export function BookArchiveMode({
   onLoadIntoGame,
   onNotify,
 }: BookArchiveModeProps) {
+  const { lang, isEn, t } = useI18n();
   const isDark = isDarkTheme(theme);
   const prefersReduced =
     typeof window !== 'undefined' &&
@@ -138,7 +141,11 @@ export function BookArchiveMode({
     visible: true,
     mode: 'enter',
     progress: 14,
-    statusText: '正在初始化三维档案架与本地曲库索引...',
+    statusText: tx(
+      '正在初始化三维档案架与本地曲库索引...',
+      'Initializing 3D archive shelf & local library index...',
+      lang,
+    ),
     detailText: 'MOUNTING WEBGL VIEWPORT // THREE.JS',
   });
 
@@ -216,6 +223,7 @@ export function BookArchiveMode({
 
   const loadBooks = useCallback(async (forceRefresh = false) => {
     const seq = forceRefresh ? ++veilSeqRef.current : veilSeqRef.current;
+    const curLang = getCurrentLang();
 
     if (forceRefresh) {
       setRefreshing(true);
@@ -223,7 +231,11 @@ export function BookArchiveMode({
         visible: true,
         mode: 'refresh',
         progress: 20,
-        statusText: '正在重新扫描 osu!stable 与 osu!lazer 本地数据库...',
+        statusText: tx(
+          '正在重新扫描 osu!stable 与 osu!lazer 本地数据库...',
+          'Rescanning osu!stable & osu!lazer local databases...',
+          curLang,
+        ),
         detailText: 'SYNCING REALM & OSU!.DB // SCORES',
       });
     } else {
@@ -242,7 +254,11 @@ export function BookArchiveMode({
           setVeil((prev) => ({
             ...prev,
             progress: 72,
-            statusText: `已重新索引 ${res.stats.totalBooks} 本曲目，正在刷新书脊...`,
+            statusText: tx(
+              `已重新索引 ${res.stats.totalBooks} 本曲目，正在刷新书脊...`,
+              `Re-indexed ${res.stats.totalBooks} books, refreshing spines...`,
+              curLang,
+            ),
             detailText: `${res.stats.totalPlays.toLocaleString()} PLAYS INDEXED`,
           }));
         }
@@ -259,13 +275,21 @@ export function BookArchiveMode({
         setVeil((prev) => ({
           ...prev,
           progress: Math.max(prev.progress, 66),
-          statusText: `已加载 ${res.stats.totalBooks} 本本地曲目，正在生成模糊书脊...`,
+          statusText: tx(
+            `已加载 ${res.stats.totalBooks} 本本地曲目，正在生成模糊书脊...`,
+            `Loaded ${res.stats.totalBooks} local books, building shelf spines...`,
+            curLang,
+          ),
           detailText: `${res.stats.totalPlays.toLocaleString()} PLAY RECORDS`,
         }));
       }
     } catch (err) {
       if (!mountedRef.current) return;
-      setError(err instanceof Error ? err.message : '读取本地曲库失败');
+      setError(
+        err instanceof Error
+          ? err.message
+          : tx('读取本地曲库失败', 'Failed to load local library', curLang),
+      );
       setVeil((prev) => ({ ...prev, visible: false }));
     } finally {
       if (mountedRef.current) {
@@ -413,8 +437,16 @@ export function BookArchiveMode({
       progress: 18,
       statusText:
         displayMode === 'mosaic'
-          ? '正在校准毛玻璃光学校准底色与滤镜质感...'
-          : '正在校准书脊釉面、环境光照与雾效色温...',
+          ? tx(
+              '正在校准毛玻璃光学校准底色与滤镜质感...',
+              'Calibrating frosted optical palette & glass filter...',
+              getCurrentLang(),
+            )
+          : tx(
+              '正在校准书脊釉面、环境光照与雾效色温...',
+              'Calibrating spine glaze, ambient lighting & horizon mist...',
+              getCurrentLang(),
+            ),
       detailText: `OPTICAL CALIBRATION // ${isDark ? 'DARK SLATE' : 'PORCELAIN LIGHT'}`,
     });
 
@@ -471,7 +503,11 @@ export function BookArchiveMode({
           setVeil((prev) => ({
             ...prev,
             progress: Math.max(prev.progress, 82),
-            statusText: '正在预处理近景书脊封面与着色器矩阵...',
+            statusText: tx(
+              '正在预处理近景书脊封面与着色器矩阵...',
+              'Preparing foreground spine covers & shader matrix...',
+              getCurrentLang(),
+            ),
             detailText: `BUFFERING ${Math.min(filteredBooks.length, 30)} FRONT SPINES`,
           }));
           await sceneRef.current.waitForInitialReady(650);
@@ -496,6 +532,7 @@ export function BookArchiveMode({
       lastWaveTriggerRef.current = waveTrigger;
     }
 
+    const curLang = getCurrentLang();
     if (displayMode === 'mosaic' || webglFallback) {
       const preservedIdx = focusedBookKeyRef.current
         ? filteredBooks.findIndex((b) => b.bookKey === focusedBookKeyRef.current)
@@ -508,8 +545,8 @@ export function BookArchiveMode({
         const seq = ++filterSeqRef.current;
         setFilterBanner({
           active: true,
-          label: getBookFilterTransitionLabel(filters),
-          countText: `${filteredBooks.length} 本`,
+          label: getBookFilterTransitionLabel(filters, curLang),
+          countText: tx(`${filteredBooks.length} 本`, `${filteredBooks.length} books`, curLang),
         });
         window.setTimeout(() => {
           if (mountedRef.current && seq === filterSeqRef.current) {
@@ -527,8 +564,8 @@ export function BookArchiveMode({
       const seq = ++filterSeqRef.current;
       setFilterBanner({
         active: true,
-        label: getBookFilterTransitionLabel(filters),
-        countText: `${filteredBooks.length} 本`,
+        label: getBookFilterTransitionLabel(filters, curLang),
+        countText: tx(`${filteredBooks.length} 本`, `${filteredBooks.length} books`, curLang),
       });
       void (async () => {
         await sceneRef.current?.transitionToBooks(filteredBooks, focusedBookKeyRef.current);
@@ -810,19 +847,51 @@ export function BookArchiveMode({
           {data && (
             <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[0.6875rem] text-[var(--rb-muted)]">
               <span>
-                本地曲目 <strong className="text-[var(--rb-ink)]">{data.stats.totalBooks}</strong> 本
+                {isEn ? (
+                  <>
+                    <strong className="text-[var(--rb-ink)]">{data.stats.totalBooks}</strong> local books
+                  </>
+                ) : (
+                  <>
+                    本地曲目 <strong className="text-[var(--rb-ink)]">{data.stats.totalBooks}</strong> 本
+                  </>
+                )}
               </span>
               {isFiltered && (
                 <span>
-                  筛选命中 <strong className="text-[var(--rb-accent)]">{filteredBooks.length}</strong> 本
+                  {isEn ? (
+                    <>
+                      <strong className="text-[var(--rb-accent)]">{filteredBooks.length}</strong> matched
+                    </>
+                  ) : (
+                    <>
+                      筛选命中 <strong className="text-[var(--rb-accent)]">{filteredBooks.length}</strong> 本
+                    </>
+                  )}
                 </span>
               )}
               <span>
-                总游玩 <strong className="text-[var(--rb-ink)]">{data.stats.totalPlays.toLocaleString()}</strong> 次
+                {isEn ? (
+                  <>
+                    <strong className="text-[var(--rb-ink)]">{data.stats.totalPlays.toLocaleString()}</strong> plays
+                  </>
+                ) : (
+                  <>
+                    总游玩 <strong className="text-[var(--rb-ink)]">{data.stats.totalPlays.toLocaleString()}</strong> 次
+                  </>
+                )}
               </span>
               {data.stats.highestPp !== null && (
                 <span>
-                  最高 <strong className="text-[var(--rb-accent)]">{data.stats.highestPp.toFixed(1)}pp</strong>
+                  {isEn ? (
+                    <>
+                      Best <strong className="text-[var(--rb-accent)]">{data.stats.highestPp.toFixed(1)}pp</strong>
+                    </>
+                  ) : (
+                    <>
+                      最高 <strong className="text-[var(--rb-accent)]">{data.stats.highestPp.toFixed(1)}pp</strong>
+                    </>
+                  )}
                 </span>
               )}
             </div>
@@ -835,12 +904,12 @@ export function BookArchiveMode({
           <div
             className="flex h-8 items-center border border-[var(--rb-line)] bg-[var(--rb-panel)]/92 p-0.5 backdrop-blur-md"
             role="group"
-            aria-label="档案展示模式切换"
+            aria-label={t('档案展示模式切换', 'Archive display mode')}
           >
             <button
               type="button"
               onClick={() => handleSwitchDisplayMode('shelf')}
-              title="默认 3D 书脊档案架视图"
+              title={t('默认 3D 书脊档案架视图', 'Default 3D spine archive shelf view')}
               className={`inline-flex h-full items-center gap-1 px-2 text-[0.71875rem] font-semibold transition-colors ${
                 displayMode === 'shelf'
                   ? 'bg-[var(--rb-ink)] text-[var(--rb-paper)]'
@@ -848,12 +917,12 @@ export function BookArchiveMode({
               }`}
             >
               <Layers className="h-3.5 w-3.5" />
-              <span>3D 书脊</span>
+              <span>{t('3D 书脊', '3D Shelf')}</span>
             </button>
             <button
               type="button"
               onClick={() => handleSwitchDisplayMode('mosaic')}
-              title="无字毛玻璃无缝平铺封面模式"
+              title={t('无字毛玻璃无缝平铺封面模式', 'Textless frosted seamless cover mosaic')}
               className={`inline-flex h-full items-center gap-1 px-2 text-[0.71875rem] font-semibold transition-colors ${
                 displayMode === 'mosaic'
                   ? 'bg-[var(--rb-ink)] text-[var(--rb-paper)]'
@@ -861,7 +930,7 @@ export function BookArchiveMode({
               }`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
-              <span>平铺毛玻璃</span>
+              <span>{t('平铺毛玻璃', 'Mosaic')}</span>
             </button>
           </div>
 
@@ -869,7 +938,7 @@ export function BookArchiveMode({
             <button
               type="button"
               onClick={() => onOpenMusicPlayer(displayBook ?? undefined, filteredBooks)}
-              title="进入 OSU! 构成主义音乐播放器（播放本地曲目）"
+              title={t('进入 OSU! 构成主义音乐播放器（播放本地曲目）', 'Open OSU! Audio Station (play local tracks)')}
               className="rhine-btn-outline flex h-8 items-center gap-1.5 bg-[var(--rb-panel)]/92 px-2.5 text-[0.71875rem] font-semibold backdrop-blur-md"
             >
               <OsuMusicMark
@@ -877,7 +946,7 @@ export function BookArchiveMode({
                 active
                 playing={musicPlaying}
               />
-              <span>音乐台</span>
+              <span>{t('音乐台', 'Music')}</span>
               {musicPlaying && <span className="h-1.5 w-1.5 rounded-full bg-[#d62828]" />}
             </button>
           )}
@@ -890,14 +959,14 @@ export function BookArchiveMode({
               type="text"
               value={filters.q}
               onChange={(e) => updateFilters({ q: e.target.value }, false)}
-              placeholder="搜本地曲目 / 谱师 / 标签 (/)"
+              placeholder={t('搜本地曲目 / 谱师 / 标签 (/)', 'Search maps / mapper / tags (/)')}
               className="h-full w-40 bg-transparent pr-7 pl-2 text-[0.75rem] text-[var(--rb-ink)] placeholder:text-[var(--rb-muted)] focus:outline-none sm:w-44"
             />
             {filters.q && (
               <button
                 type="button"
                 onClick={() => updateFilters({ q: '' }, false)}
-                aria-label="清空搜索"
+                aria-label={t('清空搜索', 'Clear search')}
                 className="absolute right-1.5 flex h-5 w-5 items-center justify-center text-[var(--rb-muted)] hover:text-[var(--rb-ink)]"
               >
                 <X className="h-3 w-3" />
@@ -909,10 +978,10 @@ export function BookArchiveMode({
           <div className="flex h-8 items-center border border-[var(--rb-line)] bg-[var(--rb-panel)]/92 p-0.5 backdrop-blur-md">
             {(
               [
-                { id: 'all', label: '全部' },
+                { id: 'all', label: t('全部', 'All') },
                 { id: 'stable', label: 'Stable' },
                 { id: 'lazer', label: 'Lazer' },
-                { id: 'played', label: '已游玩' },
+                { id: 'played', label: t('已游玩', 'Played') },
               ] as Array<{ id: BookSourceFilter; label: string }>
             ).map((opt) => {
               const active = filters.source === opt.id;
@@ -935,7 +1004,7 @@ export function BookArchiveMode({
 
           {/* Sort Select + Asc/Desc Toggle */}
           <div className="flex h-8 items-center gap-1">
-            <div className="w-28">
+            <div className={isEn ? 'w-32' : 'w-28'}>
               <SelectField
                 value={filters.sortBy}
                 onChange={(v) => {
@@ -948,17 +1017,14 @@ export function BookArchiveMode({
                     true,
                   );
                 }}
-                title="Book 排列顺序"
+                title={t('Book 排列顺序', 'Sort books by')}
                 className="h-8 !rounded-none !border-[var(--rb-line)] !bg-[var(--rb-panel)] text-[0.75rem]"
               >
-                <option value="recent">最近游玩</option>
-                <option value="pp">最高 PP</option>
-                <option value="plays">游玩次数</option>
-                <option value="stars">最高星数</option>
-                <option value="bpm">曲目 BPM</option>
-                <option value="length">曲目时长</option>
-                <option value="title">曲名排序</option>
-                <option value="added">最近加入</option>
+                {getBookSortOptions(lang).map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
               </SelectField>
             </div>
             <button
@@ -966,7 +1032,11 @@ export function BookArchiveMode({
               onClick={() =>
                 updateFilters({ sortDir: filters.sortDir === 'asc' ? 'desc' : 'asc' }, true)
               }
-              title={filters.sortDir === 'asc' ? '当前升序，点击切换降序' : '当前降序，点击切换升序'}
+              title={
+                filters.sortDir === 'asc'
+                  ? t('当前升序，点击切换降序', 'Ascending — click for descending')
+                  : t('当前降序，点击切换升序', 'Descending — click for ascending')
+              }
               className="rhine-btn-outline flex h-8 w-8 items-center justify-center bg-[var(--rb-panel)]/92 backdrop-blur-md"
             >
               {filters.sortDir === 'asc' ? (
@@ -982,7 +1052,10 @@ export function BookArchiveMode({
             ref={filterBtnRef}
             type="button"
             onClick={() => setAdvancedOpen((v) => !v)}
-            title="展开/收起仿下载页高级筛选面板（星数 / PP / BPM / 时长 / 模式键数 / 评级 / LN%）"
+            title={t(
+              '展开/收起仿下载页高级筛选面板（星数 / PP / BPM / 时长 / 模式键数 / 评级 / LN%）',
+              'Toggle advanced filters (Stars / PP / BPM / Length / Mode / Grade / LN%)',
+            )}
             className={`flex h-8 items-center gap-1.5 px-2.5 text-[0.71875rem] font-semibold backdrop-blur-md ${
               advancedOpen || advancedFilterCount > 0
                 ? 'rhine-solid-btn !border-[var(--rb-accent)]'
@@ -990,7 +1063,7 @@ export function BookArchiveMode({
             }`}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span>高级筛选</span>
+            <span>{t('高级筛选', 'Filters')}</span>
             {advancedFilterCount > 0 && (
               <span className="inline-flex h-4 min-w-[16px] items-center justify-center bg-[var(--rb-accent)] px-1 font-mono text-[0.625rem] font-bold text-[#121410]">
                 {advancedFilterCount}
@@ -1003,11 +1076,11 @@ export function BookArchiveMode({
             type="button"
             disabled={refreshing}
             onClick={() => void loadBooks(true)}
-            title="重新扫描 Stable / Lazer 本地曲库与成绩"
+            title={t('重新扫描 Stable / Lazer 本地曲库与成绩', 'Rescan Stable / Lazer local library & scores')}
             className="rhine-btn-outline flex h-8 items-center gap-1.5 bg-[var(--rb-panel)]/92 px-2.5 text-[0.71875rem] font-semibold backdrop-blur-md"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            <span className="hidden xl:inline">刷新</span>
+            <span className="hidden xl:inline">{t('刷新', 'Refresh')}</span>
           </button>
         </div>
 
@@ -1038,21 +1111,21 @@ export function BookArchiveMode({
               onClick={() => void loadBooks(true)}
               className="rhine-solid-btn px-4 py-2 text-[0.8125rem] font-semibold"
             >
-              重试读取曲库
+              {t('重试读取曲库', 'Retry Loading Library')}
             </button>
           </div>
         ) : filteredBooks.length === 0 ? (
           <div className="pointer-events-auto flex h-full flex-col items-center justify-center gap-2.5 p-6 text-center">
             <BookOpen className="h-8 w-8 text-[var(--rb-muted)] opacity-60" />
             <p className="text-[0.9375rem] font-semibold text-[var(--rb-ink)]">
-              没有匹配当前筛选条件的本地 Book
+              {t('没有匹配当前筛选条件的本地 Book', 'No local books match the current filters')}
             </p>
             <button
               type="button"
               onClick={resetAllFilters}
               className="rhine-btn-outline mt-1 px-4 py-1.5 text-[0.78125rem] font-semibold"
             >
-              重置全部筛选条件
+              {t('重置全部筛选条件', 'Reset All Filters')}
             </button>
           </div>
         ) : displayMode === 'mosaic' ? (
@@ -1116,7 +1189,7 @@ export function BookArchiveMode({
             <button
               type="button"
               onClick={toggleCallout}
-              title="展开右侧书目预览卡片"
+              title={t('展开右侧书目预览卡片', 'Expand book preview card')}
               className="pointer-events-auto group absolute top-[45%] right-0 hidden -translate-y-1/2 items-center gap-2 border border-r-0 border-[var(--rb-line)]/90 bg-[var(--rb-paper)]/88 py-3 pr-3 pl-2.5 shadow-[0_14px_34px_-16px_rgba(0,0,0,0.34)] backdrop-blur-md transition-all hover:border-[var(--rb-accent)] md:flex"
             >
               <span className="h-7 w-[2px] bg-[var(--rb-accent)]" />
@@ -1126,7 +1199,7 @@ export function BookArchiveMode({
                   NO.{formatBookNo(displayIndex)}
                 </div>
                 <div className="text-[0.5625rem] tracking-[0.1em] text-[var(--rb-muted)]">
-                  展开预览
+                  {t('展开预览', 'EXPAND')}
                 </div>
               </div>
             </button>
@@ -1150,10 +1223,10 @@ export function BookArchiveMode({
                     e.stopPropagation();
                     toggleCallout();
                   }}
-                  title="收起书目预览卡片"
+                  title={t('收起书目预览卡片', 'Collapse book preview card')}
                   className="pointer-events-auto inline-flex items-center gap-1 border border-[var(--rb-line)] px-1.5 py-0.5 font-mono text-[0.625rem] font-semibold tracking-[0.08em] text-[var(--rb-muted)] transition-colors hover:border-[var(--rb-accent)] hover:text-[var(--rb-ink)]"
                 >
-                  <span>收起</span>
+                  <span>{t('收起', 'Hide')}</span>
                   <ChevronRight className="h-3 w-3" />
                 </button>
               </div>
@@ -1180,10 +1253,16 @@ export function BookArchiveMode({
                 </span>
                 <span className="shrink-0 font-mono text-[0.71875rem] font-semibold tracking-[0.06em] text-[var(--rb-ink)]">
                   {displayBook.playCount > 0
-                    ? `${displayBook.playCount} 次游玩${
-                        displayBook.bestPp !== null ? ` · ${displayBook.bestPp.toFixed(1)} PP` : ''
-                      }`
-                    : `${displayBook.difficultyCount} 难度`}
+                    ? isEn
+                      ? `${displayBook.playCount} ${displayBook.playCount === 1 ? 'play' : 'plays'}${
+                          displayBook.bestPp !== null ? ` · ${displayBook.bestPp.toFixed(1)} PP` : ''
+                        }`
+                      : `${displayBook.playCount} 次游玩${
+                          displayBook.bestPp !== null ? ` · ${displayBook.bestPp.toFixed(1)} PP` : ''
+                        }`
+                    : isEn
+                      ? `${displayBook.difficultyCount} ${displayBook.difficultyCount === 1 ? 'diff' : 'diffs'}`
+                      : `${displayBook.difficultyCount} 难度`}
                 </span>
               </div>
 
@@ -1208,7 +1287,7 @@ export function BookArchiveMode({
                       active
                       playing={musicPlaying}
                     />
-                    <span>在音乐台中播放</span>
+                    <span>{t('在音乐台中播放', 'Play in Music')}</span>
                   </button>
                 )}
               </div>
@@ -1251,14 +1330,14 @@ export function BookArchiveMode({
                   type="button"
                   disabled={mosaicTotalPages <= 1}
                   onClick={() => mosaicRef.current?.stepPage(-1)}
-                  aria-label="上一页封面"
+                  aria-label={t('上一页封面', 'Previous cover page')}
                   className="inline-flex h-7 items-center gap-1 border border-[var(--rb-line)] px-2 font-mono text-[0.6875rem] font-semibold text-[var(--rb-ink)] transition-colors hover:border-[var(--rb-accent)] hover:text-[var(--rb-accent)] disabled:opacity-35"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
-                  <span>上一页</span>
+                  <span>{t('上一页', 'Prev')}</span>
                 </button>
 
-                <div className="rhine-file-ticks flex items-center gap-2" role="group" aria-label="平铺页码刻度导航">
+                <div className="rhine-file-ticks flex items-center gap-2" role="group" aria-label={t('平铺页码刻度导航', 'Mosaic page index')}>
                   {mosaicTickTargets.map((targetPage, slot) => (
                     <button
                       key={slot}
@@ -1267,7 +1346,7 @@ export function BookArchiveMode({
                       onClick={() => {
                         if (targetPage >= 0) mosaicRef.current?.jumpToPage(targetPage);
                       }}
-                      title={targetPage >= 0 ? `第 ${targetPage + 1} 页` : undefined}
+                      title={targetPage >= 0 ? t(`第 ${targetPage + 1} 页`, `Page ${targetPage + 1}`) : undefined}
                       className={activeMosaicTick === slot ? 'is-selected' : ''}
                     />
                   ))}
@@ -1277,16 +1356,18 @@ export function BookArchiveMode({
                   type="button"
                   disabled={mosaicTotalPages <= 1}
                   onClick={() => mosaicRef.current?.stepPage(1)}
-                  aria-label="下一页封面"
+                  aria-label={t('下一页封面', 'Next cover page')}
                   className="inline-flex h-7 items-center gap-1 border border-[var(--rb-line)] px-2 font-mono text-[0.6875rem] font-semibold text-[var(--rb-ink)] transition-colors hover:border-[var(--rb-accent)] hover:text-[var(--rb-accent)] disabled:opacity-35"
                 >
-                  <span>下一页</span>
+                  <span>{t('下一页', 'Next')}</span>
                   <ChevronRight className="h-3.5 w-3.5" />
                 </button>
               </div>
 
               <div className="truncate font-mono text-[0.625rem] tracking-[0.06em] text-[var(--rb-muted)]">
-                第 {String(mosaicPage + 1).padStart(2, '0')} / {String(mosaicTotalPages).padStart(2, '0')} 页 · 滚轮 / ← → 虹膜翻页 · 点击封面打开详情
+                {isEn
+                  ? `PAGE ${String(mosaicPage + 1).padStart(2, '0')} / ${String(mosaicTotalPages).padStart(2, '0')} · Wheel / ← → Iris Turn · Click Cover to Open`
+                  : `第 ${String(mosaicPage + 1).padStart(2, '0')} / ${String(mosaicTotalPages).padStart(2, '0')} 页 · 滚轮 / ← → 虹膜翻页 · 点击封面打开详情`}
               </div>
             </div>
           ) : (
@@ -1295,13 +1376,13 @@ export function BookArchiveMode({
                 <button
                   type="button"
                   onClick={() => sceneRef.current?.stepFocus(-1, 0)}
-                  aria-label="上一本 Book"
+                  aria-label={t('上一本 Book', 'Previous book')}
                   className="flex h-7 w-7 items-center justify-center text-[var(--rb-ink)] transition-colors hover:bg-[var(--rb-accent)]/20"
                 >
                   <ArrowUp className="h-4 w-4" />
                 </button>
 
-                <div className="rhine-file-ticks flex items-center gap-2" role="group" aria-label="档案刻度导航">
+                <div className="rhine-file-ticks flex items-center gap-2" role="group" aria-label={t('档案刻度导航', 'Archive index navigation')}>
                   {shelfTickTargets.map((targetIdx, slot) => (
                     <button
                       key={slot}
@@ -1323,7 +1404,7 @@ export function BookArchiveMode({
                 <button
                   type="button"
                   onClick={() => sceneRef.current?.stepFocus(1, 0)}
-                  aria-label="下一本 Book"
+                  aria-label={t('下一本 Book', 'Next book')}
                   className="flex h-7 w-7 items-center justify-center text-[var(--rb-ink)] transition-colors hover:bg-[var(--rb-accent)]/20"
                 >
                   <ArrowDown className="h-4 w-4" />
@@ -1331,7 +1412,10 @@ export function BookArchiveMode({
               </div>
 
               <div className="truncate font-mono text-[0.625rem] tracking-[0.06em] text-[var(--rb-muted)]">
-                悬停半抽出 · 点击翻开 · 滚轮/左键浏览 · 中键移动视角 · ESC 放回
+                {t(
+                  '悬停半抽出 · 点击翻开 · 滚轮/左键浏览 · 中键移动视角 · ESC 放回',
+                  'Hover to peek · Click to open · Scroll/Drag to browse · Middle-drag to pan · ESC close',
+                )}
               </div>
             </div>
           ))}
@@ -1366,7 +1450,7 @@ export function BookArchiveMode({
                   <button
                     type="button"
                     onClick={() => mosaicRef.current?.stepPage(-1)}
-                    aria-label="上一页"
+                    aria-label={t('上一页', 'Previous page')}
                     className="rhine-btn-outline flex h-8 w-8 items-center justify-center"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -1374,7 +1458,7 @@ export function BookArchiveMode({
                   <button
                     type="button"
                     onClick={() => mosaicRef.current?.stepPage(1)}
-                    aria-label="下一页"
+                    aria-label={t('下一页', 'Next page')}
                     className="rhine-btn-outline flex h-8 w-8 items-center justify-center"
                   >
                     <ChevronRight className="h-4 w-4" />
@@ -1390,11 +1474,11 @@ export function BookArchiveMode({
                   <button
                     type="button"
                     onClick={() => sceneRef.current?.resetCameraView()}
-                    title="复位三维观察视角（或双击鼠标中键）"
+                    title={t('复位三维观察视角（或双击鼠标中键）', 'Reset 3D camera view (or middle double-click)')}
                     className="rhine-btn-outline inline-flex h-8 items-center gap-1.5 bg-[var(--rb-panel)]/90 px-2.5 font-mono text-[0.6875rem] font-semibold backdrop-blur-md"
                   >
                     <RotateCcw className="h-3 w-3" />
-                    <span>重置视角</span>
+                    <span>{t('重置视角', 'Reset View')}</span>
                   </button>
                 )}
 
@@ -1405,7 +1489,7 @@ export function BookArchiveMode({
                     <button
                       type="button"
                       onClick={() => sceneRef.current?.stepFocus(0, -1)}
-                      aria-label="上一列"
+                      aria-label={t('上一列', 'Previous lane')}
                       className="flex h-8 w-8 items-center justify-center text-[var(--rb-ink)] transition-colors hover:bg-[var(--rb-accent)]/20"
                     >
                       <ChevronLeft className="h-4 w-4" />
@@ -1414,12 +1498,14 @@ export function BookArchiveMode({
                       <div className="text-[0.5625rem] tracking-[0.12em] text-[var(--rb-muted)]">
                         LANE {String(currentLane).padStart(2, '0')} / {String(laneCount).padStart(2, '0')}
                       </div>
-                      <div className="text-[0.75rem] font-semibold text-[var(--rb-ink)]">档案序列</div>
+                      <div className="text-[0.75rem] font-semibold text-[var(--rb-ink)]">
+                        {t('档案序列', 'Shelf Lane')}
+                      </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => sceneRef.current?.stepFocus(0, 1)}
-                      aria-label="下一列"
+                      aria-label={t('下一列', 'Next lane')}
                       className="flex h-8 w-8 items-center justify-center text-[var(--rb-ink)] transition-colors hover:bg-[var(--rb-accent)]/20"
                     >
                       <ChevronRight className="h-4 w-4" />
@@ -1433,7 +1519,7 @@ export function BookArchiveMode({
                   onClick={() => handleOpenBook(displayIndex)}
                   className="rhine-solid-btn inline-flex h-8 items-center gap-2 px-3 text-[0.71875rem] font-semibold md:hidden"
                 >
-                  <span>打开</span>
+                  <span>{t('打开', 'Open')}</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </button>
               )}

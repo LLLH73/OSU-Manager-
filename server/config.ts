@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { AppConfig, IpFamilyMode, SongViewMode, ThemeId } from './types.js';
+import { AppConfig, IpFamilyMode, SongViewMode, ThemeId, UiLanguage } from './types.js';
 
 export const DATA_DIR = process.env.OSU_DL_DATA_DIR
   ? path.resolve(process.env.OSU_DL_DATA_DIR)
@@ -52,6 +52,10 @@ const VALID_IP_FAMILIES: ReadonlySet<string> = new Set([
 
 function normalizeIpFamily(val: unknown): IpFamilyMode {
   return typeof val === 'string' && VALID_IP_FAMILIES.has(val) ? (val as IpFamilyMode) : 'auto';
+}
+
+function normalizeLanguage(val: unknown): UiLanguage {
+  return val === 'en' ? 'en' : 'zh';
 }
 
 function normalizeAccentColor(val: unknown): string {
@@ -119,6 +123,7 @@ export function getDefaultConfig(): AppConfig {
     accentColor: '',
     fontScale: 1.2,
     ipFamily: 'auto',
+    language: 'zh',
     onboardingCompleted: false,
   };
 }
@@ -183,6 +188,7 @@ export function loadConfig(): AppConfig {
       accentColor: normalizeAccentColor(parsed.accentColor),
       fontScale: clampFontScale(parsed.fontScale, defaults.fontScale),
       ipFamily: normalizeIpFamily(parsed.ipFamily),
+      language: normalizeLanguage(parsed.language),
       onboardingCompleted:
         typeof parsed.onboardingCompleted === 'boolean'
           ? parsed.onboardingCompleted
@@ -228,6 +234,7 @@ export function saveConfig(patch: Partial<AppConfig>): AppConfig {
     accentColor: normalizeAccentColor(patch.accentColor ?? current.accentColor),
     fontScale: clampFontScale(patch.fontScale, current.fontScale),
     ipFamily: normalizeIpFamily(patch.ipFamily ?? current.ipFamily),
+    language: normalizeLanguage(patch.language ?? current.language),
     onboardingCompleted: Boolean(patch.onboardingCompleted ?? current.onboardingCompleted),
   };
   ensureDirs(next);

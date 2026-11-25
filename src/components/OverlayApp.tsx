@@ -29,12 +29,15 @@ import {
 import {
   DEFAULT_FILTERS,
   DEFAULT_FONT_SCALE,
-  THEME_OPTIONS,
   clampFontScale,
   formatBytes,
   getStarColor,
+  getTargetMeta,
+  getThemeOptions,
+  getVariantOptions,
   isValidTheme,
 } from '../constants';
+import { tx, useI18n, type UiLanguage } from '../i18n';
 import {
   AppConfig,
   DownloadTarget,
@@ -48,14 +51,16 @@ import {
 
 type SmartTarget = 'auto' | DownloadTarget;
 
-const STAR_PRESETS: Array<{ id: string; label: string; min?: number; max?: number }> = [
-  { id: 'all', label: '全星' },
-  { id: 'lt3', label: '<3★', max: 3 },
-  { id: '3-4', label: '3-4★', min: 3, max: 4 },
-  { id: '4-5', label: '4-5★', min: 4, max: 5 },
-  { id: '5-6', label: '5-6★', min: 5, max: 6 },
-  { id: '6p', label: '6★+', min: 6 },
-];
+function getStarPresets(lang: UiLanguage): Array<{ id: string; label: string; min?: number; max?: number }> {
+  return [
+    { id: 'all', label: tx('全星', 'All ★', lang) },
+    { id: 'lt3', label: '<3★', max: 3 },
+    { id: '3-4', label: '3-4★', min: 3, max: 4 },
+    { id: '4-5', label: '4-5★', min: 4, max: 5 },
+    { id: '5-6', label: '5-6★', min: 5, max: 6 },
+    { id: '6p', label: '6★+', min: 6 },
+  ];
+}
 
 function readInitialTheme(): ThemeId {
   try {
@@ -76,6 +81,7 @@ function readHintDismissed(): boolean {
 }
 
 export function OverlayApp() {
+  const { lang, setLang, t } = useI18n();
   const [theme, setTheme] = useState<ThemeId>(readInitialTheme);
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [library, setLibrary] = useState<LocalLibraryStatus | null>(null);
@@ -130,7 +136,7 @@ export function OverlayApp() {
       const qVal = (overrideQ ?? query).trim();
       const stVal = overrideStatus ?? statusFilter;
       const starId = overrideStar ?? starBucket;
-      const starMeta = STAR_PRESETS.find((s) => s.id === starId);
+      const starMeta = getStarPresets(lang).find((s) => s.id === starId);
 
       const filters: SearchFilters = {
         ...DEFAULT_FILTERS,
@@ -148,12 +154,12 @@ export function OverlayApp() {
         const res = await searchBeatmapsets(filters);
         setResults(res.beatmapsets);
       } catch (err) {
-        setSearchError(err instanceof Error ? err.message : '搜索失败');
+        setSearchError(err instanceof Error ? err.message : t('搜索失败', 'Search failed'));
       } finally {
         setSearching(false);
       }
     },
-    [query, statusFilter, starBucket],
+    [query, statusFilter, starBucket, lang, t],
   );
 
   useEffect(() => {
@@ -165,6 +171,7 @@ export function OverlayApp() {
           fetchDownloads(),
         ]);
         setConfig(cfg);
+        setLang(cfg.language === 'en' ? 'en' : 'zh');
         setVariant(cfg.defaultVariant);
         const fs = clampFontScale(cfg.fontScale, DEFAULT_FONT_SCALE);
         document.documentElement.style.setProperty('--ui-font-scale', String(fs));
@@ -276,7 +283,7 @@ export function OverlayApp() {
     const next = !pinned;
     setPinned(next);
     await window.electronAPI?.setOverlayAlwaysOnTop?.(next);
-    notify(next ? '浮窗已置顶' : '已取消置顶');
+    notify(next ? t('浮窗已置顶', 'Overlay pinned') : t('已取消置顶', 'Overlay unpinned'));
   };
 
   const handleOpacityChange = (val: number) => {
@@ -318,7 +325,14 @@ export function OverlayApp() {
       (effectiveTarget === 'lazer' && library?.lazerRunning) ||
       (effectiveTarget === 'stable' && library?.stableRunning) ||
       (effectiveTarget === 'both' && (library?.lazerRunning || library?.stableRunning));
-    notify(runningHint ? `正在下载，完成后将自动加载到游戏: ${set.title}` : `已加入下载队列: ${set.title}`);
+    notify(
+      runningHint
+        ? t(
+            `正在下载，完成后将自动加载到游戏: ${set.title}`,
+            `Downloading — will auto-load into game: ${set.title}`,
+          )
+        : t(`已加入下载队列: ${set.title}`, `Queued download: ${set.title}`),
+    );
   };
 
   const handleLoadAgain = async (setId: number) => {
@@ -332,7 +346,7 @@ export function OverlayApp() {
       const res = await loadBeatmapIntoGame(setId, clientArg);
       notify(res.message);
     } catch (err) {
-      notify(err instanceof Error ? err.message : '游戏内加载失败');
+      notify(err instanceof Error ? err.message : t('游戏内加载失败', 'Failed to load into game'));
     }
   };
 
@@ -344,15 +358,19 @@ export function OverlayApp() {
     }
   };
 
+  const starPresets = getStarPresets(lang);
+  const themeOptions = getThemeOptions(lang);
+  const targetMeta = getTargetMeta(lang);
+  const variantOptions = getVariantOptions(lang);
   const anyGameRunning = Boolean(library?.lazerRunning || library?.stableRunning);
   const gameStatusText =
     library?.lazerRunning && library?.stableRunning
-      ? 'Lazer + Stable 运行中'
+      ? t('Lazer + Stable 运行中', 'Lazer + Stable Running')
       : library?.lazerRunning
-        ? 'Lazer 运行中 · 自动加载'
+        ? t('Lazer 运行中 · 自动加载', 'Lazer Running · Auto-load')
         : library?.stableRunning
-          ? 'Stable 运行中 · 自动加载'
-          : '等待游戏启动';
+          ? t('Stable 运行中 · 自动加载', 'Stable Running · Auto-load')
+          : t('等待游戏启动', 'Waiting for game');
 
   const recentTasks = downloads.slice(0, 3);
   const activeTaskCount = downloads.filter(
@@ -381,7 +399,7 @@ export function OverlayApp() {
             <button
               type="button"
               onClick={() => void window.electronAPI?.closeOverlay?.()}
-              title="隐藏浮窗"
+              title={t('隐藏浮窗', 'Hide overlay')}
               className="mac-traffic-dot bg-[#ff5f57]"
             >
               <X className="h-2 w-2" strokeWidth={3} />
@@ -389,7 +407,7 @@ export function OverlayApp() {
             <button
               type="button"
               onClick={() => void toggleCompact()}
-              title={compact ? '展开浮窗面板' : '折叠为极简搜索条'}
+              title={compact ? t('展开浮窗面板', 'Expand overlay') : t('折叠为极简搜索条', 'Collapse to mini search')}
               className="mac-traffic-dot bg-[#febc2e]"
             >
               <Minus className="h-2 w-2" strokeWidth={3} />
@@ -397,7 +415,7 @@ export function OverlayApp() {
             <button
               type="button"
               onClick={() => void window.electronAPI?.showMainWindow?.()}
-              title="回到完整主窗口"
+              title={t('回到完整主窗口', 'Show main window')}
               className="mac-traffic-dot bg-[#28c840]"
             >
               <Maximize2 className="h-2 w-2" strokeWidth={2.5} />
@@ -420,7 +438,7 @@ export function OverlayApp() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="搜歌 / ID / 链接，回车展开下载..."
+                placeholder={t('搜歌 / ID / 链接，回车展开下载...', 'Search song / ID / URL, Enter to expand...')}
                 className="h-7 min-w-0 flex-1 bg-transparent text-[0.78125rem] text-ink outline-none placeholder:text-ink-3"
               />
               {activeTaskCount > 0 && (
@@ -433,7 +451,7 @@ export function OverlayApp() {
           ) : (
             <div className="flex min-w-0 items-center gap-2">
               <span className="font-display truncate text-[0.8125rem] font-bold text-ink">
-                osu! 浮窗助手
+                {t('osu! 浮窗助手', 'osu! Overlay')}
               </span>
               <span
                 className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[0.6875rem] font-semibold ${
@@ -452,18 +470,18 @@ export function OverlayApp() {
           <div className="app-no-drag flex shrink-0 items-center gap-1">
             {!compact && (
               <div className="flex items-center gap-1 rounded-full border border-hairline bg-tint px-1.5 py-1">
-                {THEME_OPTIONS.filter((t) =>
-                  ['dark', 'stone', 'light', 'paper', 'latte'].includes(t.id),
-                ).map((t) => (
+                {themeOptions.filter((th) =>
+                  ['dark', 'stone', 'light', 'paper', 'latte'].includes(th.id),
+                ).map((th) => (
                   <button
-                    key={t.id}
+                    key={th.id}
                     type="button"
-                    onClick={() => changeTheme(t.id)}
-                    title={`切换主题：${t.label}`}
+                    onClick={() => changeTheme(th.id)}
+                    title={t(`切换主题：${th.label}`, `Theme: ${th.label}`)}
                     className="h-2.5 w-2.5 rounded-full border border-black/25 transition-transform hover:scale-110"
                     style={{
-                      backgroundColor: t.swatchBg,
-                      boxShadow: theme === t.id ? `0 0 0 1.5px ${t.swatchRing}` : undefined,
+                      backgroundColor: th.swatchBg,
+                      boxShadow: theme === th.id ? `0 0 0 1.5px ${th.swatchRing}` : undefined,
                     }}
                   />
                 ))}
@@ -473,7 +491,7 @@ export function OverlayApp() {
             <button
               type="button"
               onClick={() => setShowOpacitySlider((v) => !v)}
-              title="调节浮窗透明度"
+              title={t('调节浮窗透明度', 'Overlay opacity')}
               className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${
                 showOpacitySlider ? 'bg-tint-hover text-ink' : 'text-ink-3 hover:bg-tint hover:text-ink'
               }`}
@@ -484,7 +502,7 @@ export function OverlayApp() {
             <button
               type="button"
               onClick={() => void togglePinned()}
-              title={pinned ? '取消始终置顶' : '保持始终置顶'}
+              title={pinned ? t('取消始终置顶', 'Unpin overlay') : t('保持始终置顶', 'Pin on top')}
               className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${
                 pinned ? 'text-osu-soft hover:bg-tint' : 'text-ink-3 hover:bg-tint hover:text-ink'
               }`}
@@ -497,7 +515,7 @@ export function OverlayApp() {
         {/* Opacity Popover */}
         {showOpacitySlider && !compact && (
           <div className="mac-glass-bar flex shrink-0 items-center justify-between gap-3 border-b border-hairline px-3.5 py-2 text-[0.75rem]">
-            <span className="font-medium text-ink-2">浮窗透明度</span>
+            <span className="font-medium text-ink-2">{t('浮窗透明度', 'Opacity')}</span>
             <input
               type="range"
               min={0.55}
@@ -531,7 +549,10 @@ export function OverlayApp() {
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    placeholder="搜索歌名、谱师、Beatmapset ID 或官网链接…"
+                    placeholder={t(
+                      '搜索歌名、谱师、Beatmapset ID 或官网链接…',
+                      'Search title, mapper, ID, or osu! URL…',
+                    )}
                     className="field min-h-[32px] pl-8 pr-7 text-[0.78125rem]"
                   />
                   {query && (
@@ -552,7 +573,7 @@ export function OverlayApp() {
                   disabled={searching}
                   className="btn btn-primary min-h-[32px] px-3 text-[0.78125rem]"
                 >
-                  {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : '搜索'}
+                  {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : t('搜索', 'Search')}
                 </button>
               </form>
 
@@ -585,12 +606,12 @@ export function OverlayApp() {
                         : 'text-ink-3 hover:text-ink'
                     }`}
                   >
-                    全部状态
+                    {t('全部状态', 'Any')}
                   </button>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-0.5">
-                  {STAR_PRESETS.map((sp) => (
+                  {starPresets.map((sp) => (
                     <button
                       key={sp.id}
                       type="button"
@@ -615,10 +636,10 @@ export function OverlayApp() {
                 <div className="segmented flex-1">
                   {(
                     [
-                      { id: 'auto', label: '自动匹配' },
-                      { id: 'lazer', label: 'Lazer' },
-                      { id: 'stable', label: 'Stable' },
-                      { id: 'both', label: '双端' },
+                      { id: 'auto', label: t('自动匹配', 'Auto') },
+                      { id: 'lazer', label: targetMeta.lazer.label },
+                      { id: 'stable', label: targetMeta.stable.label },
+                      { id: 'both', label: targetMeta.both.label },
                     ] as const
                   ).map((opt) => (
                     <button
@@ -641,16 +662,21 @@ export function OverlayApp() {
                   onClick={() =>
                     setVariant((v) => (v === 'novideo' ? 'full' : v === 'full' ? 'mini' : 'novideo'))
                   }
-                  title="点击切换下载包体类型"
+                  title={t('点击切换下载包体类型', 'Click to cycle package variant')}
                   className="btn btn-sm min-h-[30px] px-2 text-[0.71875rem]"
                 >
-                  {variant === 'novideo' ? '无视频' : variant === 'full' ? '含视频' : 'Mini'}
+                  {variantOptions.find((v) => v.value === variant)?.label ?? variant}
                 </button>
               </div>
 
               {!hintDismissed && (
                 <div className="flex items-center justify-between gap-2 rounded-[8px] border border-hairline bg-tint px-2.5 py-1 text-[0.6875rem] font-medium text-ink-2">
-                  <span>游戏全屏下如看不见浮窗，请在游戏内设为「无边框窗口」模式</span>
+                  <span>
+                    {t(
+                      '游戏全屏下如看不见浮窗，请在游戏内设为「无边框窗口」模式',
+                      'Not visible in fullscreen? Switch osu! to Borderless Windowed mode',
+                    )}
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -680,11 +706,14 @@ export function OverlayApp() {
               {searching && results.length === 0 ? (
                 <div className="flex items-center justify-center py-12 text-ink-3">
                   <Loader2 className="mr-2 h-4 w-4 animate-spin text-osu" />
-                  <span className="text-[0.8125rem] font-medium">搜索中…</span>
+                  <span className="text-[0.8125rem] font-medium">{t('搜索中…', 'Searching…')}</span>
                 </div>
               ) : results.length === 0 ? (
                 <div className="py-12 text-center text-[0.8125rem] font-medium text-ink-3">
-                  没有找到匹配的谱面，试试放宽关键词或切换「全部状态」
+                  {t(
+                    '没有找到匹配的谱面，试试放宽关键词或切换「全部状态」',
+                    'No matching beatmaps. Try broader keywords or switch to "Any".',
+                  )}
                 </div>
               ) : (
                 results.map((set) => {
@@ -718,7 +747,7 @@ export function OverlayApp() {
                         <button
                           type="button"
                           onClick={() => handleTogglePreviewAudio(set.id)}
-                          title={playingId === set.id ? '暂停试听' : '试听音频'}
+                          title={playingId === set.id ? t('暂停试听', 'Pause preview') : t('试听音频', 'Play preview')}
                           className={`absolute inset-0 flex items-center justify-center transition-opacity ${
                             playingId === set.id
                               ? 'bg-osu/75 text-white opacity-100'
@@ -783,15 +812,15 @@ export function OverlayApp() {
                               type="button"
                               onClick={() => void handleLoadAgain(set.id)}
                               className="btn btn-sm btn-lazer min-h-[28px] px-2 text-[0.71875rem]"
-                              title="向运行中的游戏发送加载请求"
+                              title={t('向运行中的游戏发送加载请求', 'Send load request to running game')}
                             >
                               <Gamepad2 className="h-3 w-3" />
-                              <span>再次导入</span>
+                              <span>{t('再次导入', 'Load Again')}</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => void handleDownloadAndLoad(set)}
-                              title="重新下载"
+                              title={t('重新下载', 'Redownload')}
                               className="btn btn-sm btn-icon min-h-[28px] w-7"
                             >
                               <RefreshCw className="h-3 w-3" />
@@ -808,7 +837,7 @@ export function OverlayApp() {
                             ) : (
                               <Download className="h-3 w-3" />
                             )}
-                            <span>{anyGameRunning ? '下载并加载' : '下载'}</span>
+                            <span>{anyGameRunning ? t('下载并加载', 'Get & Load') : t('下载', 'Download')}</span>
                           </button>
                         )}
 
@@ -819,7 +848,7 @@ export function OverlayApp() {
                             className="btn btn-sm min-h-[24px] px-2 text-[0.6875rem] text-ink-2 hover:text-ink"
                           >
                             <Eye className="h-3 w-3 text-osu" />
-                            <span>预览</span>
+                            <span>{t('预览', 'Preview')}</span>
                           </button>
                         )}
                       </div>
@@ -841,52 +870,52 @@ export function OverlayApp() {
             {recentTasks.length > 0 && (
               <footer className="mac-glass-bar shrink-0 space-y-1.5 border-t border-hairline px-3 py-2">
                 <div className="flex items-center justify-between text-[0.6875rem] text-ink-3">
-                  <span className="overline">最近下载与加载状态</span>
+                  <span className="overline">{t('最近下载与加载状态', 'Recent Downloads & Loads')}</span>
                   <button
                     type="button"
                     onClick={() => void window.electronAPI?.showMainWindow?.()}
                     className="hover:text-ink"
                   >
-                    在主窗口查看全部 →
+                    {t('在主窗口查看全部 →', 'View all in main window →')}
                   </button>
                 </div>
-                {recentTasks.map((t) => {
-                  const done = t.status === 'completed' || t.status === 'queued_lazer';
+                {recentTasks.map((tItem) => {
+                  const done = tItem.status === 'completed' || tItem.status === 'queued_lazer';
                   return (
                     <div
-                      key={t.id}
+                      key={tItem.id}
                       className="flex items-center justify-between gap-2 rounded-[8px] border border-hairline bg-tint px-2 py-1 text-[0.71875rem]"
                     >
                       <div className="flex min-w-0 flex-1 items-center gap-1.5">
                         {done ? (
                           <CheckCircle2 className="h-3 w-3 shrink-0 text-ok" />
-                        ) : t.status === 'failed' ? (
+                        ) : tItem.status === 'failed' ? (
                           <X className="h-3 w-3 shrink-0 text-bad" />
                         ) : (
                           <Loader2 className="h-3 w-3 shrink-0 animate-spin text-osu" />
                         )}
-                        <span className="truncate font-semibold text-ink">{t.title}</span>
+                        <span className="truncate font-semibold text-ink">{tItem.title}</span>
                       </div>
 
                       <div className="flex shrink-0 items-center gap-1.5">
-                        {t.autoLoadedInGame ? (
+                        {tItem.autoLoadedInGame ? (
                           <span className="rounded bg-emerald-500/18 px-1.5 py-px text-[0.65625rem] font-semibold text-ok">
-                            已游戏加载
+                            {t('已游戏加载', 'Loaded')}
                           </span>
                         ) : done ? (
-                          <span className="text-[0.65625rem] font-semibold text-ok">已完成</span>
+                          <span className="text-[0.65625rem] font-semibold text-ok">{t('已完成', 'Done')}</span>
                         ) : (
                           <span className="font-mono text-[0.6875rem] text-ink-2 tabular-nums">
-                            {t.speedBps > 0 ? `${formatBytes(t.speedBps)}/s` : `${t.progress}%`}
+                            {tItem.speedBps > 0 ? `${formatBytes(tItem.speedBps)}/s` : `${tItem.progress}%`}
                           </span>
                         )}
                         {done && (
                           <button
                             type="button"
-                            onClick={() => handleOpenPreview(t.beatmapsetId)}
+                            onClick={() => handleOpenPreview(tItem.beatmapsetId)}
                             className="rounded border border-hairline bg-surface-2 px-1.5 py-px text-[0.65625rem] font-semibold text-ink hover:border-osu/50"
                           >
-                            预览
+                            {t('预览', 'Preview')}
                           </button>
                         )}
                       </div>

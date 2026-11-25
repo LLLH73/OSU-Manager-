@@ -1,3 +1,4 @@
+import { getCurrentLang, tx, type UiLanguage } from '../../i18n';
 import { BookSummary } from '../../types';
 
 export type BookSourceFilter = 'all' | 'stable' | 'lazer' | 'both' | 'played' | 'unplayed';
@@ -76,31 +77,54 @@ export function countActiveAdvancedFilters(f: BookFilters): number {
   ].filter(Boolean).length;
 }
 
-export function getBookFilterTransitionLabel(f: BookFilters): string {
+export interface BookSortOption {
+  value: BookSortField;
+  label: string;
+}
+
+export function getBookSortOptions(lang: UiLanguage = getCurrentLang()): BookSortOption[] {
+  return [
+    { value: 'recent', label: tx('最近游玩', 'Last Played', lang) },
+    { value: 'pp', label: tx('最高 PP', 'Best PP', lang) },
+    { value: 'plays', label: tx('游玩次数', 'Play Count', lang) },
+    { value: 'stars', label: tx('最高星数', 'Max Stars', lang) },
+    { value: 'bpm', label: tx('曲目 BPM', 'BPM', lang) },
+    { value: 'length', label: tx('曲目时长', 'Length', lang) },
+    { value: 'title', label: tx('曲名排序', 'Title', lang) },
+    { value: 'added', label: tx('最近加入', 'Date Added', lang) },
+  ];
+}
+
+export const BOOK_SORT_OPTIONS: BookSortOption[] = getBookSortOptions('zh');
+
+export function getBookFilterTransitionLabel(
+  f: BookFilters,
+  lang: UiLanguage = getCurrentLang(),
+): string {
   const srcLabel: Record<BookSourceFilter, string> = {
-    all: '全部曲库',
+    all: tx('全部曲库', 'ALL BOOKS', lang),
     stable: 'OSU!STABLE',
     lazer: 'OSU!LAZER',
-    both: '双端共有',
-    played: '已游玩',
-    unplayed: '未游玩',
+    both: tx('双端共有', 'STABLE+LAZER', lang),
+    played: tx('已游玩', 'PLAYED', lang),
+    unplayed: tx('未游玩', 'UNPLAYED', lang),
   };
   const modeLabel: Record<BookModeFilter, string> = {
-    all: '全模式',
+    all: tx('全模式', 'ALL MODES', lang),
     '3': f.keys !== 'any' ? `MANIA ${f.keys === 'other' ? 'OTHER' : `${f.keys}K`}` : 'MANIA',
     '0': 'STD',
     '1': 'TAIKO',
     '2': 'CATCH',
   };
   const sortLabel: Record<BookSortField, string> = {
-    recent: '最近游玩',
-    pp: '最高 PP',
-    plays: '游玩次数',
-    stars: '星数',
+    recent: tx('最近游玩', 'Recent', lang),
+    pp: tx('最高 PP', 'Best PP', lang),
+    plays: tx('游玩次数', 'Plays', lang),
+    stars: tx('星数', 'Stars', lang),
     bpm: 'BPM',
-    length: '时长',
-    title: '曲名',
-    added: '加入时间',
+    length: tx('时长', 'Length', lang),
+    title: tx('曲名', 'Title', lang),
+    added: tx('加入时间', 'Added', lang),
   };
   const parts = [srcLabel[f.source], modeLabel[f.mode]];
   if (f.status !== 'all') parts.push(f.status.toUpperCase());

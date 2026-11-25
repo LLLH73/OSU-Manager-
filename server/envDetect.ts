@@ -3,6 +3,7 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { getConfig } from './config.js';
+import { st } from './i18n.js';
 import { detectLocalGlobalIpv6 } from './network.js';
 import type {
   AppConfig,
@@ -11,19 +12,21 @@ import type {
   DownloadTarget,
 } from './types.js';
 
-const COMMON_PROXY_PORTS: DetectedProxyPort[] = [
-  { port: 6174, label: '默认代理 6174' },
-  { port: 7890, label: 'Clash / Mihomo' },
-  { port: 7897, label: 'Clash Verge' },
-  { port: 10808, label: 'v2rayN (SOCKS/混合)' },
-  { port: 10809, label: 'v2rayN (HTTP)' },
-  { port: 2080, label: 'Sing-box / Nekoray' },
-  { port: 20171, label: 'v2rayA' },
-  { port: 1080, label: '通用 SOCKS 1080' },
-  { port: 1081, label: '通用 HTTP 1081' },
-  { port: 12334, label: 'Hiddify' },
-  { port: 8888, label: '本地代理 8888' },
-];
+function getCommonProxyPorts(): DetectedProxyPort[] {
+  return [
+    { port: 6174, label: st('默认代理 6174', 'Default Proxy 6174') },
+    { port: 7890, label: 'Clash / Mihomo' },
+    { port: 7897, label: 'Clash Verge' },
+    { port: 10808, label: st('v2rayN (SOCKS/混合)', 'v2rayN (SOCKS/Mixed)') },
+    { port: 10809, label: 'v2rayN (HTTP)' },
+    { port: 2080, label: 'Sing-box / Nekoray' },
+    { port: 20171, label: 'v2rayA' },
+    { port: 1080, label: st('通用 SOCKS 1080', 'Common SOCKS 1080') },
+    { port: 1081, label: st('通用 HTTP 1081', 'Common HTTP 1081') },
+    { port: 12334, label: 'Hiddify' },
+    { port: 8888, label: st('本地代理 8888', 'Local Proxy 8888') },
+  ];
+}
 
 function dedupePaths(candidates: Array<string | null | undefined>): string[] {
   const out: string[] = [];
@@ -204,9 +207,9 @@ export async function detectLocalEnvironment(
   const suggestedTarget: DownloadTarget =
     hasStable && hasLazer ? 'both' : hasStable ? 'stable' : 'lazer';
 
-  const portDefs: DetectedProxyPort[] = [...COMMON_PROXY_PORTS];
+  const portDefs: DetectedProxyPort[] = getCommonProxyPorts();
   if (!portDefs.some((p) => p.port === proxyPort)) {
-    portDefs.unshift({ port: proxyPort, label: `当前端口 ${proxyPort}` });
+    portDefs.unshift({ port: proxyPort, label: st(`当前端口 ${proxyPort}`, `Current Port ${proxyPort}`) });
   }
 
   const probeResults = await Promise.all(

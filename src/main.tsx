@@ -19,6 +19,7 @@ import '@fontsource/jetbrains-mono/500.css';
 import '@fontsource/jetbrains-mono/600.css';
 import App from './App';
 import { OverlayApp } from './components/OverlayApp';
+import { I18nProvider } from './i18n';
 import './index.css';
 
 const isOverlayMode =
@@ -31,6 +32,6 @@ if (isOverlayMode) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    {isOverlayMode ? <OverlayApp /> : <App />}
+    <I18nProvider>{isOverlayMode ? <OverlayApp /> : <App />}</I18nProvider>
   </StrictMode>,
 );

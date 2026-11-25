@@ -26,6 +26,7 @@ import {
   fetchSkinsList,
 } from '../api';
 import { formatDuration } from '../constants';
+import { useI18n } from '../i18n';
 import {
   AppConfig,
   ParsedManiaChart,
@@ -80,6 +81,7 @@ export function ManiaPreviewModal({
   onUpdatePreviewPrefs,
   onClose,
 }: ManiaPreviewModalProps) {
+  const { t } = useI18n();
   const [setMeta, setSetMeta] = useState<PreviewBeatmapsetResponse | null>(null);
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [chart, setChart] = useState<ParsedManiaChart | null>(null);
@@ -190,7 +192,7 @@ export function ManiaPreviewModal({
         setSelectedIndex(initIdx);
       } catch (err) {
         if (!disposed) {
-          setErrorMsg(err instanceof Error ? err.message : '加载本地谱面预览失败');
+          setErrorMsg(err instanceof Error ? err.message : t('加载本地谱面预览失败', 'Failed to load local chart preview'));
         }
       } finally {
         if (!disposed) setLoadingSet(false);
@@ -220,7 +222,7 @@ export function ManiaPreviewModal({
         setErrorMsg(null);
       } catch (err) {
         if (!disposed) {
-          setErrorMsg(err instanceof Error ? err.message : '解析 Mania 谱面失败');
+          setErrorMsg(err instanceof Error ? err.message : t('解析 Mania 谱面失败', 'Failed to parse Mania chart'));
         }
       } finally {
         if (!disposed) setLoadingChart(false);
@@ -628,7 +630,7 @@ export function ManiaPreviewModal({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Mania 谱面预览"
+        aria-label={t('Mania 谱面预览', 'Mania Chart Preview')}
         onClick={(e) => e.stopPropagation()}
         className="modal-surface flex h-[92vh] w-[96vw] max-w-[1440px] select-none flex-col overflow-hidden"
       >
@@ -651,17 +653,22 @@ export function ManiaPreviewModal({
                 {chart && !chart.hasFullAudio && (
                   <span
                     className="chip shrink-0 border-hairline bg-surface-2 text-[0.6875rem] text-ink-3"
-                    title="本地未找到完整音频文件，已切换为静音时间轴演示（可完整播放全曲与拖动进度）"
+                    title={t(
+                      '本地未找到完整音频文件，已切换为静音时间轴演示（可完整播放全曲与拖动进度）',
+                      'Full audio file not found locally — running in silent timeline mode (full playback & scrubbing still available)',
+                    )}
                   >
-                    静音时间轴 · 16:9
+                    {t('静音时间轴 · 16:9', 'Silent Timeline · 16:9')}
                   </span>
                 )}
               </div>
               <p className="truncate text-[0.75rem] font-medium text-ink-3">
-                {setMeta ? `${setMeta.artist} · 谱师 ${setMeta.creator}` : '正在读取本地谱面...'}
+                {setMeta
+                  ? t(`${setMeta.artist} · 谱师 ${setMeta.creator}`, `${setMeta.artist} · Mapper ${setMeta.creator}`)
+                  : t('正在读取本地谱面...', 'Loading local beatmap...')}
                 {chart && (
                   <span className="ml-2 font-mono text-ink-2">
-                    OD {chart.od} · HP {chart.hp} · {chart.stats.totalNotes} 物件 (LN {chart.stats.lnRatio}%)
+                    OD {chart.od} · HP {chart.hp} · {chart.stats.totalNotes} {t('物件', 'notes')} (LN {chart.stats.lnRatio}%)
                   </span>
                 )}
               </p>
@@ -690,10 +697,10 @@ export function ManiaPreviewModal({
                 type="button"
                 onClick={() => onLoadIntoGame(beatmapsetId)}
                 className="btn btn-sm btn-lazer min-h-[30px] px-3"
-                title="将此谱面直接发送到运行中的游戏客户端加载"
+                title={t('将此谱面直接发送到运行中的游戏客户端加载', 'Send this beatmapset directly to the running game client')}
               >
                 <Gamepad2 className="h-3.5 w-3.5" />
-                <span>在游戏中加载</span>
+                <span>{t('在游戏中加载', 'Load in Game')}</span>
               </button>
             )}
 
@@ -701,7 +708,7 @@ export function ManiaPreviewModal({
               type="button"
               onClick={onClose}
               className="btn btn-icon h-[30px] w-[30px]"
-              title="关闭预览 (Esc)"
+              title={t('关闭预览 (Esc)', 'Close preview (Esc)')}
             >
               <X className="h-4 w-4" />
             </button>
@@ -716,7 +723,7 @@ export function ManiaPreviewModal({
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <span className="overline flex items-center gap-1.5">
-                  <Sparkles className="h-3 w-3 text-osu" /> 演示皮肤
+                  <Sparkles className="h-3 w-3 text-osu" /> {t('演示皮肤', 'Skin')}
                 </span>
                 {skin?.source === 'local' && (
                   <span className="chip min-h-[19px] px-1.5 text-[0.65625rem]">
@@ -736,7 +743,7 @@ export function ManiaPreviewModal({
                 }}
               >
                 {activeSkins.length > 0 && (
-                  <optgroup label="当前 Stable 游戏使用中">
+                  <optgroup label={t('当前 Stable 游戏使用中', 'Active Stable Skin')}>
                     {activeSkins.map((s) => (
                       <option key={s.id} value={s.id}>
                         ★ {s.name}
@@ -744,7 +751,7 @@ export function ManiaPreviewModal({
                     ))}
                   </optgroup>
                 )}
-                <optgroup label="内置高对比演示皮肤">
+                <optgroup label={t('内置高对比演示皮肤', 'Built-in High-Contrast Skins')}>
                   {builtinSkins.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
@@ -752,7 +759,7 @@ export function ManiaPreviewModal({
                   ))}
                 </optgroup>
                 {localSkins.length > 0 && (
-                  <optgroup label={`本地 Stable 皮肤库 (${localSkins.length})`}>
+                  <optgroup label={t(`本地 Stable 皮肤库 (${localSkins.length})`, `Local Stable Skins (${localSkins.length})`)}>
                     {localSkins.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.hasManiaConfig ? '● ' : '○ '}
@@ -767,7 +774,7 @@ export function ManiaPreviewModal({
             {/* Scroll Speed */}
             <div className="panel-flat space-y-2 p-2.5">
               <div className="flex flex-wrap items-center justify-between gap-1 text-[0.78125rem]">
-                <span className="font-semibold text-ink-2">下落流速 (Scroll Speed)</span>
+                <span className="font-semibold text-ink-2">{t('下落流速 (Scroll Speed)', 'Scroll Speed')}</span>
                 <span className="font-mono font-bold text-osu-soft tabular-nums">
                   {scrollSpeed} <span className="text-[0.6875rem] text-ink-3">({scrollTimeMs}ms)</span>
                 </span>
@@ -809,7 +816,7 @@ export function ManiaPreviewModal({
 
             {/* Playback Rate */}
             <div className="space-y-1.5">
-              <span className="overline">播放倍速</span>
+              <span className="overline">{t('播放倍速', 'Playback Rate')}</span>
               <div className="segmented segmented-compact">
                 {RATE_OPTIONS.map((r) => (
                   <button
@@ -830,13 +837,13 @@ export function ManiaPreviewModal({
 
             {/* Scroll Direction */}
             <div className="space-y-1.5">
-              <span className="overline">谱面方向</span>
+              <span className="overline">{t('谱面方向', 'Scroll Direction')}</span>
               <div className="segmented segmented-auto">
                 {(
                   [
-                    { id: 'skin', label: '跟随皮肤' },
-                    { id: 'down', label: '下落', icon: ArrowDown },
-                    { id: 'up', label: '上升', icon: ArrowUp },
+                    { id: 'skin', label: t('跟随皮肤', 'Skin Default') },
+                    { id: 'down', label: t('下落', 'Down'), icon: ArrowDown },
+                    { id: 'up', label: t('上升', 'Up'), icon: ArrowUp },
                   ] as const
                 ).map((opt) => (
                   <button
@@ -858,10 +865,10 @@ export function ManiaPreviewModal({
             {/* Toggles */}
             <div className="panel-flat space-y-2 p-2.5 text-[0.78125rem] font-medium">
               <div className="overline flex items-center gap-1.5">
-                <Sliders className="h-3 w-3" /> 谱面与视觉开关
+                <Sliders className="h-3 w-3" /> {t('谱面与视觉开关', 'Chart & Visuals')}
               </div>
               <label className="flex cursor-pointer items-center justify-between text-ink-2 hover:text-ink">
-                <span>遵循 SV 变速绿线 / BPM</span>
+                <span>{t('遵循 SV 变速绿线 / BPM', 'Respect SV / BPM Changes')}</span>
                 <input
                   type="checkbox"
                   checked={respectSv}
@@ -870,7 +877,7 @@ export function ManiaPreviewModal({
                 />
               </label>
               <label className="flex cursor-pointer items-center justify-between text-ink-2 hover:text-ink">
-                <span>显示小节线 (Barlines)</span>
+                <span>{t('显示小节线 (Barlines)', 'Show Barlines')}</span>
                 <input
                   type="checkbox"
                   checked={showBarlines}
@@ -879,7 +886,7 @@ export function ManiaPreviewModal({
                 />
               </label>
               <label className="flex cursor-pointer items-center justify-between text-ink-2 hover:text-ink">
-                <span>Autoplay 按键光效</span>
+                <span>{t('Autoplay 按键光效', 'Autoplay Key Lighting')}</span>
                 <input
                   type="checkbox"
                   checked={showKeyLight}
@@ -893,7 +900,7 @@ export function ManiaPreviewModal({
             <div className="panel-flat space-y-2.5 p-2.5 text-[0.75rem] font-medium">
               <div className="space-y-1">
                 <div className="flex justify-between text-ink-2">
-                  <span>背景暗化 (BG Dim)</span>
+                  <span>{t('背景暗化 (BG Dim)', 'BG Dim')}</span>
                   <span className="font-mono text-ink">{Math.round(bgDim * 100)}%</span>
                 </div>
                 <input
@@ -910,7 +917,7 @@ export function ManiaPreviewModal({
 
               <div className="space-y-1">
                 <div className="flex justify-between text-ink-2">
-                  <span>轨道缩放 (Scale)</span>
+                  <span>{t('轨道缩放 (Scale)', 'Stage Scale')}</span>
                   <span className="font-mono text-ink">{Math.round(stageScale * 100)}%</span>
                 </div>
                 <input
@@ -933,9 +940,9 @@ export function ManiaPreviewModal({
                     className="inline-flex items-center gap-1 hover:text-ink"
                   >
                     {muted ? <VolumeX className="h-3.5 w-3.5 text-bad" /> : <Volume2 className="h-3.5 w-3.5 text-osu" />}
-                    <span>音量</span>
+                    <span>{t('音量', 'Volume')}</span>
                   </button>
-                  <span className="font-mono text-ink">{muted ? '静音' : `${Math.round(volume * 100)}%`}</span>
+                  <span className="font-mono text-ink">{muted ? t('静音', 'Muted') : `${Math.round(volume * 100)}%`}</span>
                 </div>
                 <input
                   type="range"
@@ -956,17 +963,17 @@ export function ManiaPreviewModal({
             {chart && (
               <div className="panel-flat grid grid-cols-3 gap-1.5 p-2 text-center text-[0.6875rem]">
                 <div className="min-w-0">
-                  <div className="truncate text-ink-3">单键 / 长条</div>
+                  <div className="truncate text-ink-3">{t('单键 / 长条', 'Rice / LN')}</div>
                   <div className="font-mono truncate font-semibold text-ink">
                     {chart.stats.riceCount}/{chart.stats.lnCount}
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate text-ink-3">峰值 NPS</div>
+                  <div className="truncate text-ink-3">{t('峰值 NPS', 'Peak NPS')}</div>
                   <div className="font-mono truncate font-semibold text-osu-soft">{chart.stats.maxNps}</div>
                 </div>
                 <div className="min-w-0">
-                  <div className="truncate text-ink-3">均速 NPS</div>
+                  <div className="truncate text-ink-3">{t('均速 NPS', 'Avg NPS')}</div>
                   <div className="font-mono truncate font-semibold text-ink">{chart.stats.avgNps}</div>
                 </div>
               </div>
@@ -986,14 +993,19 @@ export function ManiaPreviewModal({
             {loadingSet || loadingChart ? (
               <div className="flex flex-col items-center gap-2 text-ink-2">
                 <Loader2 className="h-7 w-7 animate-spin text-osu" />
-                <span className="text-[0.8125rem] font-medium">正在解析 .osu 谱面与皮肤资源…</span>
+                <span className="text-[0.8125rem] font-medium">
+                  {t('正在解析 .osu 谱面与皮肤资源…', 'Parsing .osu chart & skin assets…')}
+                </span>
               </div>
             ) : errorMsg ? (
               <div className="flex max-w-md flex-col items-center gap-2 px-6 text-center">
                 <ImageOff className="h-8 w-8 text-ink-4" />
                 <p className="font-display text-[0.9375rem] font-semibold text-ink">{errorMsg}</p>
                 <p className="text-[0.78125rem] font-medium text-ink-3">
-                  完成下载后（或本地 Stable Songs / Lazer 待导入队列中存在该谱面）即可离线实时预览全部 Mania 难度。
+                  {t(
+                    '完成下载后（或本地 Stable Songs / Lazer 待导入队列中存在该谱面）即可离线实时预览全部 Mania 难度。',
+                    'Once downloaded (or present in Stable Songs / Lazer import queue), all Mania diffs can be previewed offline.',
+                  )}
                 </p>
               </div>
             ) : (
@@ -1004,7 +1016,10 @@ export function ManiaPreviewModal({
                 <canvas
                   ref={playfieldCanvasRef}
                   onClick={togglePlay}
-                  title="点击画面暂停/继续 · 滚轮快进/快退 · 空格键播放/暂停"
+                  title={t(
+                    '点击画面暂停/继续 · 滚轮快进/快退 · 空格键播放/暂停',
+                    'Click to play/pause · Wheel to seek · Space to toggle',
+                  )}
                   className="block h-full w-full cursor-pointer"
                 />
                 {!playing && displayTimeMs === 0 && (
@@ -1014,7 +1029,7 @@ export function ManiaPreviewModal({
                     className="btn btn-primary pointer-events-auto absolute gap-2 rounded-full px-5 py-2.5 text-[0.875rem]"
                   >
                     <Play className="h-4 w-4 fill-current" />
-                    <span>点击开始演示预览</span>
+                    <span>{t('点击开始演示预览', 'Click to Preview')}</span>
                   </button>
                 )}
               </div>
@@ -1036,7 +1051,7 @@ export function ManiaPreviewModal({
           {/* RIGHT: Scrollable Timeline Minimap */}
           <aside className="flex h-[220px] w-full shrink-0 flex-col border-t border-hairline bg-surface-0/90 lg:h-auto lg:w-[clamp(212px,13.25rem,248px)] lg:border-t-0 lg:border-l">
             <div className="flex items-center justify-between border-b border-hairline px-2.5 py-2">
-              <span className="overline">全曲缩略图</span>
+              <span className="overline">{t('全曲缩略图', 'Minimap')}</span>
               <div className="flex items-center gap-1">
                 {([1, 2, 4] as const).map((z) => (
                   <button
@@ -1058,14 +1073,14 @@ export function ManiaPreviewModal({
                     setAutoFollow((v) => !v);
                     setUserDetached(false);
                   }}
-                  title="切换缩略图自动跟随当前进度"
+                  title={t('切换缩略图自动跟随当前进度', 'Toggle auto-follow playback')}
                   className={`rounded-[5px] border px-1.5 py-0.5 text-[0.6875rem] font-semibold transition-colors ${
                     autoFollow && !userDetached
                       ? 'border-emerald-500/40 bg-emerald-500/15 text-ok'
                       : 'border-hairline text-ink-3 hover:text-ink'
                   }`}
                 >
-                  跟随
+                  {t('跟随', 'Follow')}
                 </button>
               </div>
             </div>
@@ -1105,7 +1120,7 @@ export function ManiaPreviewModal({
                     onPointerCancel={() => {
                       scrubbingMinimapRef.current = false;
                     }}
-                    title="上下滑动浏览全曲音符分布，点击或拖动可立即跳转进度"
+                    title={t('上下滑动浏览全曲音符分布，点击或拖动可立即跳转进度', 'Scroll to inspect chart; click or drag to seek')}
                     className="sticky top-0 block h-[var(--mm-h)] w-full cursor-crosshair select-none"
                     style={{ '--mm-h': `${minimapViewportH}px` } as React.CSSProperties}
                   />
@@ -1122,7 +1137,7 @@ export function ManiaPreviewModal({
                   className="glass absolute bottom-2.5 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border-osu/50 px-2.5 py-1 text-[0.71875rem] font-semibold text-ink hover:border-osu"
                 >
                   <LocateFixed className="h-3 w-3 text-osu" />
-                  <span>回到当前</span>
+                  <span>{t('回到当前', 'Back to Now')}</span>
                 </button>
               )}
             </div>
@@ -1138,7 +1153,7 @@ export function ManiaPreviewModal({
                 type="button"
                 disabled={!chart}
                 onClick={() => seekTo(0)}
-                title="回到开头 (R)"
+                title={t('回到开头 (R)', 'Restart (R)')}
                 className="btn btn-sm btn-icon h-8 w-8"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
@@ -1147,7 +1162,7 @@ export function ManiaPreviewModal({
                 type="button"
                 disabled={!chart}
                 onClick={() => seekTo(currentTimeRef.current - 5000)}
-                title="后退 5 秒 (←)"
+                title={t('后退 5 秒 (←)', 'Back 5s (←)')}
                 className="btn btn-sm btn-icon h-8 w-8"
               >
                 <SkipBack className="h-3.5 w-3.5" />
@@ -1156,18 +1171,18 @@ export function ManiaPreviewModal({
                 type="button"
                 disabled={!chart}
                 onClick={togglePlay}
-                title={playing ? '暂停 (Space)' : '继续播放 (Space)'}
+                title={playing ? t('暂停 (Space)', 'Pause (Space)') : t('继续播放 (Space)', 'Play (Space)')}
                 className="btn btn-primary min-h-[32px] px-3.5"
               >
                 {playing ? (
                   <>
                     <Pause className="h-3.5 w-3.5" />
-                    <span>暂停</span>
+                    <span>{t('暂停', 'Pause')}</span>
                   </>
                 ) : (
                   <>
                     <Play className="h-3.5 w-3.5 fill-current" />
-                    <span>{displayTimeMs > 0 ? '继续' : '播放'}</span>
+                    <span>{displayTimeMs > 0 ? t('继续', 'Resume') : t('播放', 'Play')}</span>
                   </>
                 )}
               </button>
@@ -1175,7 +1190,7 @@ export function ManiaPreviewModal({
                 type="button"
                 disabled={!chart}
                 onClick={() => seekTo(currentTimeRef.current + 5000)}
-                title="快进 5 秒 (→)"
+                title={t('快进 5 秒 (→)', 'Forward 5s (→)')}
                 className="btn btn-sm btn-icon h-8 w-8"
               >
                 <SkipForward className="h-3.5 w-3.5" />
@@ -1186,7 +1201,7 @@ export function ManiaPreviewModal({
             <div
               ref={progressBarRef}
               role="slider"
-              aria-label="谱面播放进度条"
+              aria-label={t('谱面播放进度条', 'Chart playback progress')}
               aria-valuemin={0}
               aria-valuemax={chart ? Math.round(chart.totalLengthMs) : 100}
               aria-valuenow={Math.round(displayTimeMs)}
@@ -1278,12 +1293,15 @@ export function ManiaPreviewModal({
 
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[0.6875rem] font-medium text-ink-3">
             <span>
-              快捷键：Space 播放/暂停 · ←/→ ±3s · ↑/↓ 流速 · R 重头 · 拖动进度条或右侧缩略图实时跳转
+              {t(
+                '快捷键：Space 播放/暂停 · ←/→ ±3s · ↑/↓ 流速 · R 重头 · 拖动进度条或右侧缩略图实时跳转',
+                'Shortcuts: Space Play/Pause · ←/→ ±3s · ↑/↓ Speed · R Restart · Drag bar or minimap to seek',
+              )}
             </span>
             {setMeta && (
               <span className="inline-flex items-center gap-1 font-mono text-ink-2">
                 <ChevronRight className="h-3 w-3 text-osu" />
-                数据源: {setMeta.sourceType}
+                {t('数据源:', 'Source:')} {setMeta.sourceType}
               </span>
             )}
           </div>

@@ -25,6 +25,7 @@ import {
   BookSummary,
 } from '../../types';
 import { openStableSongFolder } from '../../api';
+import { tx, useI18n, type UiLanguage } from '../../i18n';
 import { SelectField } from '../SelectField';
 
 type SpreadTab = 'difficulties' | 'scores' | 'archive';
@@ -64,11 +65,11 @@ const GRADE_STYLE: Record<BookGrade, string> = {
 
 const GRADE_ORDER: BookGrade[] = ['XH', 'X', 'SH', 'S', 'A', 'B', 'C', 'D', 'F'];
 
-function formatDateTime(iso: string | null): string {
+function formatDateTime(iso: string | null, lang: UiLanguage): string {
   if (!iso) return '—';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString('zh-CN', {
+  return d.toLocaleString(lang === 'en' ? 'en-US' : 'zh-CN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -77,11 +78,11 @@ function formatDateTime(iso: string | null): string {
   });
 }
 
-function formatShortDate(iso: string | null): string {
-  if (!iso) return '未记录';
+function formatShortDate(iso: string | null, lang: UiLanguage): string {
+  if (!iso) return tx('未记录', 'Not recorded', lang);
   const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '未记录';
-  return d.toLocaleDateString('zh-CN', {
+  if (Number.isNaN(d.getTime())) return tx('未记录', 'Not recorded', lang);
+  return d.toLocaleDateString(lang === 'en' ? 'en-US' : 'zh-CN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
@@ -110,6 +111,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
   onFilterByTag,
   onNotify,
 }: BookSpreadOverlayProps) {
+  const { lang, isEn, t } = useI18n();
   const [activeTab, setActiveTab] = useState<SpreadTab>('difficulties');
   const [diffFilter, setDiffFilter] = useState<string>('all');
   const [sourceFilter, setSourceFilter] = useState<ScoreSourceFilter>('all');
@@ -175,7 +177,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
     updateIndicator();
     window.addEventListener('resize', updateIndicator);
     return () => window.removeEventListener('resize', updateIndicator);
-  }, [activeTab, visible, book?.bookKey]);
+  }, [activeTab, visible, book?.bookKey, lang]);
 
   const toggleAudio = () => {
     const el = audioRef.current;
@@ -242,9 +244,11 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
     if (!book.stableFolder) return;
     try {
       await openStableSongFolder(book.stableFolder);
-      onNotify?.(`已打开本地曲目文件夹：${book.stableFolder}`);
+      onNotify?.(
+        t(`已打开本地曲目文件夹：${book.stableFolder}`, `Opened local folder: ${book.stableFolder}`),
+      );
     } catch (err) {
-      onNotify?.(err instanceof Error ? err.message : '打开文件夹失败');
+      onNotify?.(err instanceof Error ? err.message : t('打开文件夹失败', 'Failed to open folder'));
     }
   };
 
@@ -258,7 +262,10 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label={`${book.titleUnicode} 曲目档案详情`}
+        aria-label={t(
+          `${book.titleUnicode} 曲目档案详情`,
+          `${book.titleUnicode || book.title} archive details`,
+        )}
         className={`rhine-book-spread relative flex h-[min(92%,760px)] w-full max-w-[1240px] flex-col overflow-hidden ${
           closing ? 'is-closing' : 'is-open'
         }`}
@@ -292,7 +299,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
               className="rhine-btn-ghost inline-flex items-center gap-2 text-[0.78125rem] font-semibold tracking-[0.06em]"
             >
               <ArrowLeft className="h-4 w-4" />
-              <span>合上并放回档案库</span>
+              <span>{t('合上并放回档案库', 'Close & Return Book')}</span>
               <kbd className="border border-[var(--rb-line)] px-1.5 py-0.5 text-[0.625rem] tracking-[0.08em] text-[var(--rb-muted)]">
                 ESC
               </kbd>
@@ -312,20 +319,20 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
               type="button"
               onClick={() => onStepBook(-1)}
               disabled={totalBooks <= 1}
-              title="上一本 Book"
+              title={t('上一本 Book', 'Previous Book')}
               className="rhine-btn-outline inline-flex h-8 items-center gap-1 px-2.5 text-[0.75rem] disabled:opacity-35"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">上一本</span>
+              <span className="hidden sm:inline">{t('上一本', 'Prev')}</span>
             </button>
             <button
               type="button"
               onClick={() => onStepBook(1)}
               disabled={totalBooks <= 1}
-              title="下一本 Book"
+              title={t('下一本 Book', 'Next Book')}
               className="rhine-btn-outline inline-flex h-8 items-center gap-1 px-2.5 text-[0.75rem] disabled:opacity-35"
             >
-              <span className="hidden sm:inline">下一本</span>
+              <span className="hidden sm:inline">{t('下一本', 'Next')}</span>
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
@@ -377,7 +384,9 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
               <div className="absolute right-2.5 bottom-2 left-2.5 flex items-end justify-between gap-2 text-white">
                 <div className="flex flex-wrap items-center gap-1.5 font-mono text-[0.6875rem]">
                   <span className="bg-black/65 px-2 py-0.5 backdrop-blur-xs">
-                    {book.difficultyCount} 难度
+                    {isEn
+                      ? `${book.difficultyCount} ${book.difficultyCount === 1 ? 'Diff' : 'Diffs'}`
+                      : `${book.difficultyCount} 难度`}
                   </span>
                   <span className="bg-black/65 px-2 py-0.5 backdrop-blur-xs">
                     {book.bpm} BPM
@@ -411,14 +420,14 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
               )}
               <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.84375rem] text-[var(--rb-muted)]">
                 <span>
-                  曲师 <strong className="font-semibold text-[var(--rb-ink)]">{book.artistUnicode || book.artist}</strong>
+                  {t('曲师', 'Artist')} <strong className="font-semibold text-[var(--rb-ink)]">{book.artistUnicode || book.artist}</strong>
                 </span>
                 <span>
-                  谱师 <strong className="font-semibold text-[var(--rb-ink)]">{book.creator}</strong>
+                  {t('谱师', 'Mapper')} <strong className="font-semibold text-[var(--rb-ink)]">{book.creator}</strong>
                 </span>
                 {book.source && (
                   <span>
-                    来源 <strong className="font-semibold text-[var(--rb-ink)]">{book.source}</strong>
+                    {t('来源', 'Source')} <strong className="font-semibold text-[var(--rb-ink)]">{book.source}</strong>
                   </span>
                 )}
               </div>
@@ -429,13 +438,15 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
             <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4">
               <div className="border-l-2 border-[var(--rb-accent)] pl-3">
                 <dt className="font-mono text-[0.65625rem] tracking-[0.1em] text-[var(--rb-muted)] uppercase">
-                  PLAY COUNT / 游玩次数
+                  {t('PLAY COUNT / 游玩次数', 'PLAY COUNT')}
                 </dt>
                 <dd className="mt-1 flex items-baseline gap-2">
                   <span className="font-stat text-[1.4rem] leading-none font-bold text-[var(--rb-ink)] tabular-nums">
                     {book.playCount}
                   </span>
-                  <span className="text-[0.75rem] text-[var(--rb-muted)]">次记录</span>
+                  <span className="text-[0.75rem] text-[var(--rb-muted)]">
+                    {t('次记录', book.playCount === 1 ? 'play' : 'plays')}
+                  </span>
                 </dd>
                 <dd className="mt-0.5 font-mono text-[0.6875rem] text-[var(--rb-muted)]">
                   Stable {book.stablePlayCount} · Lazer {book.lazerPlayCount}
@@ -444,7 +455,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
 
               <div className="border-l-2 border-[var(--rb-ink)] pl-3">
                 <dt className="font-mono text-[0.65625rem] tracking-[0.1em] text-[var(--rb-muted)] uppercase">
-                  PERFORMANCE / 拿到 PP
+                  {t('PERFORMANCE / 拿到 PP', 'PERFORMANCE (PP)')}
                 </dt>
                 <dd className="mt-1 flex items-baseline gap-1.5">
                   <span className="font-stat text-[1.4rem] leading-none font-bold text-[var(--rb-ink)] tabular-nums">
@@ -458,18 +469,18 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                 </dd>
                 <dd className="mt-0.5 text-[0.6875rem] text-[var(--rb-muted)]">
                   {book.bestPp === null
-                    ? '暂无历史成绩'
+                    ? t('暂无历史成绩', 'No score history')
                     : book.bestPpSource === 'recorded'
-                      ? 'Lazer 实录 PP'
+                      ? t('Lazer 实录 PP', 'Lazer Recorded PP')
                       : book.bestPpIsRanked
-                        ? 'Ranked 公式折算 PP'
-                        : 'Unranked 练习估算 PP'}
+                        ? t('Ranked 公式折算 PP', 'Ranked Calculated PP')
+                        : t('Unranked 练习估算 PP', 'Unranked Estimated PP')}
                 </dd>
               </div>
 
               <div>
                 <dt className="font-mono text-[0.65625rem] tracking-[0.1em] text-[var(--rb-muted)] uppercase">
-                  BEST ACCURACY / 最高准度
+                  {t('BEST ACCURACY / 最高准度', 'BEST ACCURACY')}
                 </dt>
                 <dd className="mt-1 flex items-center gap-2">
                   {book.bestGrade && (
@@ -485,18 +496,18 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                 </dd>
                 {book.bestScore !== null && (
                   <dd className="mt-0.5 font-mono text-[0.6875rem] text-[var(--rb-muted)] tabular-nums">
-                    最高分 {book.bestScore.toLocaleString()}
+                    {t('最高分', 'High Score')} {book.bestScore.toLocaleString()}
                   </dd>
                 )}
               </div>
 
               <div>
                 <dt className="font-mono text-[0.65625rem] tracking-[0.1em] text-[var(--rb-muted)] uppercase">
-                  LAST PLAYED / 最近游玩
+                  {t('LAST PLAYED / 最近游玩', 'LAST PLAYED')}
                 </dt>
                 <dd className="mt-1 flex items-center gap-1.5 text-[0.875rem] font-semibold text-[var(--rb-ink)]">
                   <Clock className="h-3.5 w-3.5 text-[var(--rb-muted)]" />
-                  <span>{formatShortDate(book.lastPlayedAt)}</span>
+                  <span>{formatShortDate(book.lastPlayedAt, lang)}</span>
                 </dd>
                 <dd className="mt-0.5 font-mono text-[0.6875rem] text-[var(--rb-muted)]">
                   ★ {book.minStars.toFixed(2)} – {book.maxStars.toFixed(2)}
@@ -514,7 +525,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                   className="rhine-solid-btn inline-flex h-8 shrink-0 items-center gap-2 px-3 text-[0.75rem] font-semibold"
                 >
                   {audioPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
-                  <span>{audioPlaying ? '暂停音频' : '试听本地音源'}</span>
+                  <span>{audioPlaying ? t('暂停音频', 'Pause Audio') : t('试听本地音源', 'Preview Audio')}</span>
                 </button>
                 <div className="min-w-0 flex-1">
                   <input
@@ -532,7 +543,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                     className="h-1 w-full cursor-pointer accent-[var(--rb-accent)]"
                   />
                   <div className="mt-0.5 flex items-center justify-between font-mono text-[0.625rem] text-[var(--rb-muted)] tabular-nums">
-                    <span>{audioError ? '未找到可用音频' : formatDuration(audioTime)}</span>
+                    <span>{audioError ? t('未找到可用音频', 'Audio unavailable') : formatDuration(audioTime)}</span>
                     <span>{audioDuration > 0 ? formatDuration(audioDuration) : '--:--'}</span>
                   </div>
                 </div>
@@ -544,7 +555,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                     max={1}
                     step={0.05}
                     value={audioVolume}
-                    aria-label="试听音量"
+                    aria-label={t('试听音量', 'Preview volume')}
                     onChange={(e) => setAudioVolume(Number(e.target.value))}
                     className="h-1 w-14 cursor-pointer accent-[var(--rb-accent)]"
                   />
@@ -559,7 +570,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                     className="rhine-solid-btn inline-flex h-8 items-center gap-1.5 px-3 text-[0.75rem] font-semibold"
                   >
                     <OsuMusicMark className="h-3.5 w-3.5" active />
-                    <span>在音乐台中播放</span>
+                    <span>{t('在音乐台中播放', 'Play in Music')}</span>
                   </button>
                 )}
 
@@ -576,7 +587,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                     className="rhine-btn-outline inline-flex h-8 items-center gap-1.5 px-3 text-[0.75rem] font-semibold"
                   >
                     <Eye className="h-3.5 w-3.5 text-[var(--rb-accent)]" />
-                    <span>Mania 谱面预览</span>
+                    <span>{t('Mania 谱面预览', 'Preview Beatmap')}</span>
                   </button>
                 )}
 
@@ -587,7 +598,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                     className="rhine-btn-outline inline-flex h-8 items-center gap-1.5 px-3 text-[0.75rem] font-semibold"
                   >
                     <Gamepad2 className="h-3.5 w-3.5 text-[var(--rb-accent)]" />
-                    <span>加载到游戏</span>
+                    <span>{t('加载到游戏', 'Load into Game')}</span>
                   </button>
                 )}
 
@@ -598,7 +609,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                     className="rhine-btn-outline inline-flex h-8 items-center gap-1.5 px-3 text-[0.75rem] font-semibold"
                   >
                     <FolderOpen className="h-3.5 w-3.5 text-[var(--rb-muted)]" />
-                    <span>打开本地目录</span>
+                    <span>{t('打开本地目录', 'Open Folder')}</span>
                   </button>
                 )}
               </div>
@@ -611,14 +622,22 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
             <div
               ref={tabsRef}
               role="tablist"
-              aria-label="档案详页分页"
+              aria-label={t('档案详页分页', 'Archive folio tabs')}
               className="relative flex shrink-0 items-center gap-6 border-b border-[var(--rb-line)]"
             >
               {(
                 [
-                  { id: 'difficulties', code: '01', label: `难度一览 (${difficulties.length})` },
-                  { id: 'scores', code: '02', label: `历史成绩 (${scores.length})` },
-                  { id: 'archive', code: '03', label: '曲目详档' },
+                  {
+                    id: 'difficulties',
+                    code: '01',
+                    label: t(`难度一览 (${difficulties.length})`, `DIFFICULTIES (${difficulties.length})`),
+                  },
+                  {
+                    id: 'scores',
+                    code: '02',
+                    label: t(`历史成绩 (${scores.length})`, `SCORES (${scores.length})`),
+                  },
+                  { id: 'archive', code: '03', label: t('曲目详档', 'DETAILS') },
                 ] as Array<{ id: SpreadTab; code: string; label: string }>
               ).map((tab) => {
                 const active = activeTab === tab.id;
@@ -655,18 +674,18 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
               {loadingDetail && !bookDetail ? (
                 <div className="flex h-full items-center justify-center gap-2 text-[0.84375rem] text-[var(--rb-muted)]">
                   <Loader2 className="h-4 w-4 animate-spin text-[var(--rb-accent)]" />
-                  <span>正在读取难度与本地历史成绩…</span>
+                  <span>{t('正在读取难度与本地历史成绩…', 'Loading difficulties & score history…')}</span>
                 </div>
               ) : activeTab === 'difficulties' ? (
                 <div className="space-y-2 pb-2">
                   {difficulties.length === 0 ? (
                     <div className="py-12 text-center text-[0.84375rem] text-[var(--rb-muted)]">
-                      该书目暂无解析到可用难度。
+                      {t('该书目暂无解析到可用难度。', 'No parsed difficulties found for this book.')}
                     </div>
                   ) : (
                     difficulties.map((diff: BookDifficultyRecord) => {
                       const starColor = getStarColor(diff.starRating);
-                      const lnInfo = getLnCategory(diff.lnRatio);
+                      const lnInfo = getLnCategory(diff.lnRatio, lang);
                       return (
                         <div
                           key={diff.key}
@@ -749,15 +768,17 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                               </div>
                               <div className="font-mono text-[0.6875rem] text-[var(--rb-muted)] tabular-nums">
                                 {diff.playCount > 0
-                                  ? `${diff.playCount}次 · ${diff.bestAccuracy?.toFixed(2)}%`
-                                  : '未游玩 · 98%参考'}
+                                  ? isEn
+                                    ? `${diff.playCount} ${diff.playCount === 1 ? 'play' : 'plays'} · ${diff.bestAccuracy?.toFixed(2)}%`
+                                    : `${diff.playCount}次 · ${diff.bestAccuracy?.toFixed(2)}%`
+                                  : t('未游玩 · 98%参考', 'Unplayed · 98% est.')}
                               </div>
                             </div>
 
                             {book.beatmapsetId && diff.modeInt === 3 && onPreviewBeatmap && (
                               <button
                                 type="button"
-                                title="打开 Mania 轨道预览"
+                                title={t('打开 Mania 轨道预览', 'Open Mania track preview')}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onPreviewBeatmap(
@@ -784,10 +805,10 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                     <SelectField
                       value={diffFilter}
                       onChange={setDiffFilter}
-                      title="按难度筛选历史成绩"
+                      title={t('按难度筛选历史成绩', 'Filter scores by difficulty')}
                       className="text-[0.75rem]"
                     >
-                      <option value="all">全部难度 ({scores.length})</option>
+                      <option value="all">{t(`全部难度 (${scores.length})`, `All Diffs (${scores.length})`)}</option>
                       {difficulties.map((d) => (
                         <option key={d.key} value={d.version}>
                           {d.version} ({d.playCount})
@@ -798,24 +819,24 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                     <SelectField
                       value={sourceFilter}
                       onChange={(v) => setSourceFilter(v as ScoreSourceFilter)}
-                      title="按客户端来源筛选"
+                      title={t('按客户端来源筛选', 'Filter by client source')}
                       className="text-[0.75rem]"
                     >
-                      <option value="all">全部客户端</option>
-                      <option value="stable">仅 osu!stable ({book.stablePlayCount})</option>
-                      <option value="lazer">仅 osu!lazer ({book.lazerPlayCount})</option>
+                      <option value="all">{t('全部客户端', 'All Clients')}</option>
+                      <option value="stable">{t(`仅 osu!stable (${book.stablePlayCount})`, `osu!stable (${book.stablePlayCount})`)}</option>
+                      <option value="lazer">{t(`仅 osu!lazer (${book.lazerPlayCount})`, `osu!lazer (${book.lazerPlayCount})`)}</option>
                     </SelectField>
 
                     <SelectField
                       value={scoreSort}
                       onChange={(v) => setScoreSort(v as ScoreSortMode)}
-                      title="历史成绩排序"
+                      title={t('历史成绩排序', 'Sort score history')}
                       className="text-[0.75rem]"
                     >
-                      <option value="recent">按游玩时间</option>
-                      <option value="pp">按 PP 最高</option>
-                      <option value="accuracy">按准度最高</option>
-                      <option value="score">按分数最高</option>
+                      <option value="recent">{t('按游玩时间', 'Most Recent')}</option>
+                      <option value="pp">{t('按 PP 最高', 'Highest PP')}</option>
+                      <option value="accuracy">{t('按准度最高', 'Highest Accuracy')}</option>
+                      <option value="score">{t('按分数最高', 'Highest Score')}</option>
                     </SelectField>
                   </div>
 
@@ -823,10 +844,13 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                     <div className="flex flex-col items-center justify-center border border-dashed border-[var(--rb-line)] py-12 text-center">
                       <Trophy className="mb-2 h-6 w-6 text-[var(--rb-muted)] opacity-60" />
                       <p className="text-[0.84375rem] font-semibold text-[var(--rb-ink)]">
-                        暂无符合筛选条件的历史成绩
+                        {t('暂无符合筛选条件的历史成绩', 'No matching score history')}
                       </p>
                       <p className="mt-0.5 text-[0.75rem] text-[var(--rb-muted)]">
-                        在 osu!stable 或 osu!lazer 游玩该谱面后将自动记录在这里
+                        {t(
+                          '在 osu!stable 或 osu!lazer 游玩该谱面后将自动记录在这里',
+                          'Scores played in osu!stable or osu!lazer will appear here automatically.',
+                        )}
                       </p>
                     </div>
                   ) : (
@@ -873,7 +897,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                                   )}
                                 </div>
                                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 font-mono text-[0.6875rem] text-[var(--rb-muted)]">
-                                  <span>{formatDateTime(sc.playedAt)}</span>
+                                  <span>{formatDateTime(sc.playedAt, lang)}</span>
                                   <span>{sc.player}</span>
                                   <span>{sc.maxCombo}x</span>
                                 </div>
@@ -889,7 +913,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                                   pp
                                 </span>
                                 <span className="text-[0.625rem] text-[var(--rb-muted)]">
-                                  ({sc.ppSource === 'recorded' ? '实录' : sc.isRankedPp ? '估算' : '模拟'})
+                                  ({sc.ppSource === 'recorded' ? t('实录', 'Recorded') : sc.isRankedPp ? t('估算', 'Est.') : t('模拟', 'Sim.')})
                                 </span>
                               </div>
                               <div className="font-mono text-[0.71875rem] text-[var(--rb-ink)] tabular-nums">
@@ -936,12 +960,13 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                   <div className="border border-[var(--rb-line)] bg-[var(--rb-panel)] p-3.5">
                     <div className="mb-2.5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <span className="shrink-0 font-mono text-[0.6875rem] tracking-[0.1em] text-[var(--rb-muted)] uppercase">
-                        GRADE DISTRIBUTION / 评级分布
+                        {t('GRADE DISTRIBUTION / 评级分布', 'GRADE DISTRIBUTION')}
                       </span>
                       {bookDetail?.avgAccuracy !== null && bookDetail?.avgAccuracy !== undefined && (
                         <span className="font-mono text-[0.71875rem] text-[var(--rb-ink)]">
-                          均准度 {bookDetail.avgAccuracy.toFixed(2)}% · 累计击打{' '}
-                          {bookDetail.totalNotesPlayed.toLocaleString()} Note
+                          {isEn
+                            ? `Avg Acc ${bookDetail.avgAccuracy.toFixed(2)}% · ${bookDetail.totalNotesPlayed.toLocaleString()} notes hit`
+                            : `均准度 ${bookDetail.avgAccuracy.toFixed(2)}% · 累计击打 ${bookDetail.totalNotesPlayed.toLocaleString()} Note`}
                         </span>
                       )}
                     </div>
@@ -971,7 +996,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                   {difficulties.length > 0 && (
                     <div className="border border-[var(--rb-line)] bg-[var(--rb-panel)] p-3.5">
                       <div className="mb-2.5 font-mono text-[0.6875rem] tracking-[0.1em] text-[var(--rb-muted)] uppercase">
-                        DIFFICULTY PLAY SHARE / 各难度游玩次数占比
+                        {t('DIFFICULTY PLAY SHARE / 各难度游玩次数占比', 'DIFFICULTY PLAY SHARE')}
                       </div>
                       <div className="space-y-2">
                         {difficulties.map((d) => {
@@ -984,7 +1009,9 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                                   {d.version}
                                 </span>
                                 <span className="font-mono text-[0.6875rem] text-[var(--rb-muted)] tabular-nums">
-                                  {d.playCount} 次
+                                  {isEn
+                                    ? `${d.playCount} ${d.playCount === 1 ? 'play' : 'plays'}`
+                                    : `${d.playCount} 次`}
                                   {d.bestPp !== null ? ` · ${d.bestPp.toFixed(1)}pp` : ''}
                                 </span>
                               </div>
@@ -1005,18 +1032,18 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                   <div className="border border-[var(--rb-line)] bg-[var(--rb-panel)] p-3.5 text-[0.78125rem]">
                     <div className="mb-2 flex items-center gap-1.5 font-mono text-[0.6875rem] tracking-[0.1em] text-[var(--rb-muted)] uppercase">
                       <Disc3 className="h-3.5 w-3.5" />
-                      <span>REPOSITORY METADATA / 曲库档案元信息</span>
+                      <span>{t('REPOSITORY METADATA / 曲库档案元信息', 'REPOSITORY METADATA')}</span>
                     </div>
                     <div className="grid grid-cols-1 gap-1.5 text-[var(--rb-muted)] sm:grid-cols-2">
                       <div>
-                        档案标识：<code className="font-mono text-[var(--rb-ink)]">{book.bookKey}</code>
+                        {t('档案标识：', 'Book Key: ')}<code className="font-mono text-[var(--rb-ink)]">{book.bookKey}</code>
                       </div>
                       <div>
-                        加入时间：<span className="text-[var(--rb-ink)]">{formatShortDate(book.dateAdded)}</span>
+                        {t('加入时间：', 'Date Added: ')}<span className="text-[var(--rb-ink)]">{formatShortDate(book.dateAdded, lang)}</span>
                       </div>
                       {book.stableFolder && (
                         <div className="truncate sm:col-span-2" title={book.stableFolder}>
-                          Stable 目录：<span className="font-mono text-[var(--rb-ink)]">{book.stableFolder}</span>
+                          {t('Stable 目录：', 'Stable Folder: ')}<span className="font-mono text-[var(--rb-ink)]">{book.stableFolder}</span>
                         </div>
                       )}
                     </div>
@@ -1025,7 +1052,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
                       <div className="mt-3 border-t border-[var(--rb-line)] pt-2.5">
                         <div className="mb-1.5 flex items-center gap-1 font-mono text-[0.65625rem] text-[var(--rb-muted)]">
                           <Sparkles className="h-3 w-3 text-[var(--rb-accent)]" />
-                          <span>TAGS (点击按标签筛选档案库)</span>
+                          <span>{t('TAGS (点击按标签筛选档案库)', 'TAGS (click to filter archive)')}</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {book.tags.slice(0, 24).map((tag) => (

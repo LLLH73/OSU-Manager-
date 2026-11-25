@@ -30,6 +30,7 @@ import {
   listFilterArchives,
   updateFilterArchive,
 } from './filterArchives.js';
+import { st } from './i18n.js';
 import {
   clearLazerPendingFiles,
   launchGameClient,
@@ -124,6 +125,18 @@ function parseOptBool(val: unknown): boolean | undefined {
   return undefined;
 }
 
+function invalidBeatmapsetIdMsg(): string {
+  return st('无效的 beatmapsetId', 'Invalid beatmapsetId');
+}
+
+function archiveNotFoundMsg(): string {
+  return st('Filter 存档不存在', 'Filter archive not found');
+}
+
+function playlistNotFoundMsg(): string {
+  return st('歌单不存在', 'Playlist not found');
+}
+
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({ ok: true, time: new Date().toISOString() });
 });
@@ -159,12 +172,16 @@ app.post('/api/config/detect-env', async (req: Request, res: Response) => {
 });
 
 app.put('/api/config', async (req: Request, res: Response) => {
+  const prevLang = getConfig().language;
   const body = (req.body || {}) as Partial<AppConfig>;
   const updated = saveConfig(body);
   logInfo('config', 'Updated config', { keys: Object.keys(body) });
   resetProxyCache();
   invalidateBooksCache();
   await rescanLibrary(false);
+  if (prevLang !== updated.language) {
+    networkEvents.emit('update', await getNetworkStatus(false));
+  }
   res.json(updated);
 });
 
@@ -187,15 +204,20 @@ app.post('/api/config/background', (req: Request, res: Response) => {
     const resolved = path.resolve(body.filePath.trim());
     const ext = path.extname(resolved).toLowerCase();
     if (!CUSTOM_BG_EXTS.includes(ext as (typeof CUSTOM_BG_EXTS)[number])) {
-      res.status(400).json({ error: '仅支持 PNG / JPG / WEBP / GIF / AVIF 图片格式' });
+      res.status(400).json({
+        error: st(
+          '仅支持 PNG / JPG / WEBP / GIF / AVIF 图片格式',
+          'Only PNG / JPG / WEBP / GIF / AVIF image formats are supported',
+        ),
+      });
       return;
     }
     if (!fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) {
-      res.status(400).json({ error: '选择的图片文件不存在' });
+      res.status(400).json({ error: st('选择的图片文件不存在', 'Selected image file does not exist') });
       return;
     }
     if (fs.statSync(resolved).size > maxBytes) {
-      res.status(400).json({ error: '背景图片不能超过 20 MB' });
+      res.status(400).json({ error: st('背景图片不能超过 20 MB', 'Background image must not exceed 20 MB') });
       return;
     }
     removeCustomBgFiles();
@@ -211,14 +233,19 @@ app.post('/api/config/background', (req: Request, res: Response) => {
       .trim()
       .match(/^data:image\/(png|jpeg|jpg|webp|gif|avif);base64,([A-Za-z0-9+/=\s]+)$/i);
     if (!match) {
-      res.status(400).json({ error: '无效的图片 DataURL 格式' });
+      res.status(400).json({ error: st('无效的图片 DataURL 格式', 'Invalid image DataURL format') });
       return;
     }
     const rawSubtype = match[1].toLowerCase();
     const ext = rawSubtype === 'jpeg' ? '.jpg' : `.${rawSubtype}`;
     const buf = Buffer.from(match[2].replace(/\s+/g, ''), 'base64');
     if (buf.length === 0 || buf.length > maxBytes) {
-      res.status(400).json({ error: '背景图片为空或超过 20 MB 限制' });
+      res.status(400).json({
+        error: st(
+          '背景图片为空或超过 20 MB 限制',
+          'Background image is empty or exceeds the 20 MB limit',
+        ),
+      });
       return;
     }
     removeCustomBgFiles();
@@ -236,7 +263,12 @@ app.post('/api/config/background', (req: Request, res: Response) => {
     return;
   }
 
-  res.status(400).json({ error: '请提供有效的本地图片路径、图片数据或 HTTP(S) 图片链接' });
+  res.status(400).json({
+    error: st(
+      '请提供有效的本地图片路径、图片数据或 HTTP(S) 图片链接',
+      'Please provide a valid local image path, image data, or HTTP(S) image URL',
+    ),
+  });
 });
 
 app.delete('/api/config/background', (_req: Request, res: Response) => {
@@ -311,7 +343,7 @@ app.get('/api/search', async (req: Request, res: Response) => {
     const result = await searchBeatmaps(filters);
     res.json(result);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : '搜索请求失败';
+    const msg = err instanceof Error ? err.message : st('搜索请求失败', 'Search request failed');
     logError('search', 'Search failed', { q: req.query.q, error: msg });
     res.status(502).json({
       error: msg,
@@ -356,12 +388,17 @@ app.get('/api/media/preview/:id', async (req: Request, res: Response) => {
 app.get('/api/preview/beatmapset/:setId', (req: Request, res: Response) => {
   const setId = Number(req.params.setId);
   if (!Number.isFinite(setId) || setId <= 0) {
-    res.status(400).json({ error: '无效的 beatmapsetId' });
+    res.status(400).json({ error: invalidBeatmapsetIdMsg() });
     return;
   }
   const info = getPreviewBeatmapset(setId);
   if (!info) {
-    res.status(404).json({ error: '未找到本地 Mania 谱面文件（请先下载或确认曲库目录）' });
+    res.status(404).json({
+      error: st(
+        '未找到本地 Mania 谱面文件（请先下载或确认曲库目录）',
+        'Local Mania beatmap files not found (please download first or verify your library directory)',
+      ),
+    });
     return;
   }
   res.json(info);
@@ -371,12 +408,14 @@ app.get('/api/preview/beatmapset/:setId/chart/:index', (req: Request, res: Respo
   const setId = Number(req.params.setId);
   const index = Number(req.params.index);
   if (!Number.isFinite(setId) || setId <= 0 || !Number.isFinite(index) || index < 0) {
-    res.status(400).json({ error: '参数无效' });
+    res.status(400).json({ error: st('参数无效', 'Invalid parameters') });
     return;
   }
   const chart = getParsedManiaChart(setId, Math.floor(index));
   if (!chart) {
-    res.status(404).json({ error: '未找到对应 Mania 难度谱面' });
+    res.status(404).json({
+      error: st('未找到对应 Mania 难度谱面', 'Matching Mania difficulty beatmap not found'),
+    });
     return;
   }
   res.json(chart);
@@ -421,7 +460,7 @@ app.get('/api/skins/:skinId/asset', (req: Request, res: Response) => {
 app.post('/api/game/load', async (req: Request, res: Response) => {
   const setId = Number(req.body?.beatmapsetId);
   if (!Number.isFinite(setId) || setId <= 0) {
-    res.status(400).json({ ok: false, client: null, message: '无效的 beatmapsetId' });
+    res.status(400).json({ ok: false, client: null, message: invalidBeatmapsetIdMsg() });
     return;
   }
   const client =
@@ -440,7 +479,11 @@ app.post('/api/game/load', async (req: Request, res: Response) => {
 app.post('/api/game/launch', async (req: Request, res: Response) => {
   const client = req.body?.client;
   if (client !== 'stable' && client !== 'lazer') {
-    res.status(400).json({ ok: false, client: null, message: '无效的客户端类型 (stable / lazer)' });
+    res.status(400).json({
+      ok: false,
+      client: null,
+      message: st('无效的客户端类型 (stable / lazer)', 'Invalid client type (stable / lazer)'),
+    });
     return;
   }
   const result = await launchGameClient(client, getConfig());
@@ -476,7 +519,7 @@ app.get('/api/books', (req: Request, res: Response) => {
     const refresh = req.query.refresh === 'true';
     res.json(getBooksLibrary(refresh));
   } catch (err) {
-    const msg = err instanceof Error ? err.message : '读取本地曲库失败';
+    const msg = err instanceof Error ? err.message : st('读取本地曲库失败', 'Failed to read local library');
     logError('books', 'Failed to read local books library', { error: msg });
     res.status(500).json({ error: msg });
   }
@@ -533,7 +576,7 @@ app.post('/api/library/sync-to-lazer', async (req: Request, res: Response) => {
     ? req.body.setIds.map((x: unknown) => Number(x)).filter((x: number) => Number.isFinite(x) && x > 0)
     : [];
   if (setIds.length === 0) {
-    res.status(400).json({ error: '请选择至少一个谱面' });
+    res.status(400).json({ error: st('请选择至少一个谱面', 'Please select at least one beatmap') });
     return;
   }
   const cfg = getConfig();
@@ -604,7 +647,7 @@ app.post('/api/downloads', (req: Request, res: Response) => {
   const body = req.body || {};
   const setId = Number(body.beatmapsetId);
   if (!Number.isFinite(setId) || setId <= 0) {
-    res.status(400).json({ error: '无效的 beatmapsetId' });
+    res.status(400).json({ error: invalidBeatmapsetIdMsg() });
     return;
   }
   const task = enqueueDownload({
@@ -622,7 +665,7 @@ app.post('/api/downloads', (req: Request, res: Response) => {
 app.post('/api/downloads/batch', (req: Request, res: Response) => {
   const items = Array.isArray(req.body?.items) ? req.body.items : [];
   if (items.length === 0) {
-    res.status(400).json({ error: '批量列表为空' });
+    res.status(400).json({ error: st('批量列表为空', 'Batch list is empty') });
     return;
   }
   const created = items
@@ -674,7 +717,8 @@ app.post('/api/fast-batch/start', async (req: Request, res: Response) => {
     const snapshot = await startFastBatch(req.body || {});
     res.json(snapshot);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : '启动快速批量下载失败';
+    const msg =
+      err instanceof Error ? err.message : st('启动快速批量下载失败', 'Failed to start fast batch download');
     res.status(409).json({ error: msg });
   }
 });
@@ -695,7 +739,9 @@ app.post('/api/fast-batch/clear', (_req: Request, res: Response) => {
   try {
     res.json(clearFastBatch());
   } catch (err) {
-    res.status(409).json({ error: err instanceof Error ? err.message : '无法清空任务' });
+    res.status(409).json({
+      error: err instanceof Error ? err.message : st('无法清空任务', 'Unable to clear tasks'),
+    });
   }
 });
 
@@ -712,7 +758,7 @@ app.post('/api/filter-archives', (req: Request, res: Response) => {
     pinned?: boolean;
   };
   if (!body.filters || typeof body.filters !== 'object' || Array.isArray(body.filters)) {
-    res.status(400).json({ error: '缺少有效的筛选条件 filters 对象' });
+    res.status(400).json({ error: st('缺少有效的筛选条件 filters 对象', 'Missing valid filters object') });
     return;
   }
   const created = createFilterArchive({
@@ -743,7 +789,7 @@ app.put('/api/filter-archives/:id', (req: Request, res: Response) => {
     pinned: body.pinned,
   });
   if (!updated) {
-    res.status(404).json({ error: 'Filter 存档不存在' });
+    res.status(404).json({ error: archiveNotFoundMsg() });
     return;
   }
   res.json(updated);
@@ -757,7 +803,7 @@ app.delete('/api/filter-archives/:id', (req: Request, res: Response) => {
   }
   const deleted = deleteFilterArchive(id);
   if (!deleted) {
-    res.status(404).json({ error: 'Filter 存档不存在' });
+    res.status(404).json({ error: archiveNotFoundMsg() });
     return;
   }
   res.json({ ok: true, id });
@@ -807,7 +853,7 @@ app.put('/api/playlists/:id', (req: Request, res: Response) => {
     pinned: body.pinned,
   });
   if (!updated) {
-    res.status(404).json({ error: '歌单不存在' });
+    res.status(404).json({ error: playlistNotFoundMsg() });
     return;
   }
   res.json(updated);
@@ -821,7 +867,7 @@ app.delete('/api/playlists/:id', (req: Request, res: Response) => {
   }
   const deleted = deletePlaylist(id);
   if (!deleted) {
-    res.status(404).json({ error: '歌单不存在' });
+    res.status(404).json({ error: playlistNotFoundMsg() });
     return;
   }
   res.json({ ok: true, id });

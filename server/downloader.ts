@@ -3,10 +3,12 @@ import { EventEmitter } from 'node:events';
 import fs from 'node:fs';
 import path from 'node:path';
 import { getConfig, PREVIEW_OSZ_CACHE_DIR, TMP_DIR } from './config.js';
+import { getServerLang, st } from './i18n.js';
 import { installToLazer, installToStable, verifyOszFile } from './installer.js';
 import { getLibraryStatus, libraryEvents } from './library.js';
 import { logError, logInfo, logWarn } from './logger.js';
 import { fetchWithRoute, getRankedMirrors, resolveRoutes } from './network.js';
+import { getLocalizedMirrorInfo } from './sources.js';
 import {
   DownloadTarget,
   DownloadTask,
@@ -109,7 +111,7 @@ async function downloadFromMirror(
   let lastErr: unknown = null;
   for (const route of routes) {
     if (controller.signal.aborted) {
-      throw new Error('已取消');
+      throw new Error(st('已取消', 'Cancelled'));
     }
     try {
       const headers: Record<string, string> = {};
@@ -134,11 +136,12 @@ async function downloadFromMirror(
       const ct = (response.headers.get('content-type') || '').toLowerCase();
       if (ct.includes('text/html') || ct.includes('application/json')) {
         await response.body.cancel().catch(() => {});
-        throw new Error(`镜像返回非谱面类型 (${ct})`);
+        throw new Error(st(`镜像返回非谱面类型 (${ct})`, `Mirror returned non-beatmap content (${ct})`));
       }
 
       const totalHeader = response.headers.get('content-length');
       const totalBytes = totalHeader ? Number(totalHeader) : null;
+      const mirrorName = getLocalizedMirrorInfo(mirror, getServerLang()).shortName;
 
       updateTask(task.id, {
         activeMirror: mirror.id,
@@ -146,7 +149,10 @@ async function downloadFromMirror(
         totalBytes: totalBytes && totalBytes > 0 ? totalBytes : null,
         downloadedBytes: 0,
         progress: 0,
-        message: `正在通过 ${mirror.shortName} (${route === 'proxy' ? '代理' : '直连'}) 下载...`,
+        message: st(
+          `正在通过 ${mirrorName} (${route === 'proxy' ? '代理' : '直连'}) 下载...`,
+          `Downloading via ${mirrorName} (${route === 'proxy' ? 'Proxy' : 'Direct'})...`,
+        ),
       });
 
       const writeStream = fs.createWriteStream(partPath);
@@ -166,7 +172,12 @@ async function downloadFromMirror(
             if (value.length >= 4) {
               checkedMagic = true;
               if (value[0] !== 0x50 || value[1] !== 0x4b || value[2] !== 0x03 || value[3] !== 0x04) {
-                throw new Error('下载流首字节非 ZIP/.osz 格式，切换备用镜像');
+                throw new Error(
+                  st(
+                    '下载流首字节非 ZIP/.osz 格式，切换备用镜像',
+                    'Stream header is not a valid ZIP/.osz archive, switching mirror',
+                  ),
+                );
               }
             }
           }
@@ -213,7 +224,9 @@ async function downloadFromMirror(
     }
   }
 
-  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr || '下载失败'));
+  throw lastErr instanceof Error
+    ? lastErr
+    : new Error(String(lastErr || st('下载失败', 'Download failed')));
 }
 
 async function processTask(taskId: string): Promise<void> {
@@ -232,41 +245,45 @@ async function processTask(taskId: string): Promise<void> {
       status: 'downloading',
       error: null,
       triedMirrors: [],
-      message: '正在匹配最快可用镜像源...',
+      message: st('正在匹配最快可用镜像源...', 'Selecting fastest available mirror...'),
     });
 
     let downloaded = false;
-    let lastError = '所有镜像均下载失败';
+    let lastError = st('所有镜像均下载失败', 'All mirrors failed to download');
 
     for (const mirror of mirrors) {
       if (controller.signal.aborted) {
-        throw new Error('任务已取消');
+        throw new Error(st('任务已取消', 'Task cancelled'));
       }
       task.triedMirrors.push(mirror.id);
+      const mirrorName = getLocalizedMirrorInfo(mirror, getServerLang()).shortName;
       try {
         await downloadFromMirror(task, mirror, partPath, controller);
 
         updateTask(taskId, {
           status: 'verifying',
-          message: `正在校验 .osz 压缩包完整性 (${mirror.shortName})...`,
+          message: st(
+            `正在校验 .osz 压缩包完整性 (${mirrorName})...`,
+            `Verifying .osz archive integrity (${mirrorName})...`,
+          ),
         });
 
         const check = verifyOszFile(partPath);
         if (!check.valid) {
-          throw new Error(check.reason || '.osz 校验失败');
+          throw new Error(check.reason || st('.osz 校验失败', '.osz verification failed'));
         }
         cacheOszForPreview(partPath, task.beatmapsetId);
         downloaded = true;
         break;
       } catch (err) {
-        lastError = `${mirror.shortName}: ${err instanceof Error ? err.message : String(err)}`;
+        lastError = `${mirrorName}: ${err instanceof Error ? err.message : String(err)}`;
         try {
           if (fs.existsSync(partPath)) fs.unlinkSync(partPath);
         } catch {
           // Ignore
         }
         if (controller.signal.aborted) {
-          throw new Error('任务已取消');
+          throw new Error(st('任务已取消', 'Task cancelled'));
         }
       }
     }
@@ -279,10 +296,13 @@ async function processTask(taskId: string): Promise<void> {
       status: 'installing',
       message:
         task.target === 'both'
-          ? '正在同步安装至 Stable 与 Lazer...'
+          ? st('正在同步安装至 Stable 与 Lazer...', 'Installing to both Stable and Lazer...')
           : task.target === 'stable'
-            ? '正在解压安装至 osu!stable Songs 目录...'
-            : '正在投递至 osu!lazer 导入队列...',
+            ? st(
+                '正在解压安装至 osu!stable Songs 目录...',
+                'Extracting and installing to osu!stable Songs folder...',
+              )
+            : st('正在投递至 osu!lazer 导入队列...', 'Staging into osu!lazer import queue...'),
     });
 
     const meta = {
@@ -326,21 +346,53 @@ async function processTask(taskId: string): Promise<void> {
     const finalMsg =
       task.target === 'both'
         ? stableTriggeredIpc && lazerTriggeredIpc
-          ? '已自动导入并在运行中的 Stable 与 Lazer 加载'
+          ? st(
+              '已自动导入并在运行中的 Stable 与 Lazer 加载',
+              'Automatically imported and loaded into running Stable & Lazer',
+            )
           : stableTriggeredIpc
             ? lazerQueuedOnly
-              ? '已自动在运行中的 Stable 加载；Lazer 已放入待导入队列'
-              : '已在运行中的 Stable 加载，并直接导入运行中的 Lazer'
+              ? st(
+                  '已自动在运行中的 Stable 加载；Lazer 已放入待导入队列',
+                  'Loaded into running Stable; staged in Lazer import queue',
+                )
+              : st(
+                  '已在运行中的 Stable 加载，并直接导入运行中的 Lazer',
+                  'Loaded into running Stable and imported directly into running Lazer',
+                )
             : lazerQueuedOnly
-              ? 'Stable 已解压安装；Lazer 已放入待导入队列（启动后可一键导入）'
-              : '已成功安装到 Stable 并直接导入运行中的 Lazer'
+              ? st(
+                  'Stable 已解压安装；Lazer 已放入待导入队列（启动后可一键导入）',
+                  'Installed to Stable; staged in Lazer import queue (ready for 1-click batch import)',
+                )
+              : st(
+                  '已成功安装到 Stable 并直接导入运行中的 Lazer',
+                  'Installed to Stable and imported directly into running Lazer',
+                )
         : task.target === 'stable'
           ? stableTriggeredIpc
-            ? '已自动导入并在运行中的 osu!stable 加载'
-            : `${cfg.stableInstallMode === 'drop_osz' ? '已保存 .osz 到' : '已解压安装到'} ${path.join(cfg.stablePath, 'Songs')}`
+            ? st(
+                '已自动导入并在运行中的 osu!stable 加载',
+                'Automatically imported and loaded into running osu!stable',
+              )
+            : cfg.stableInstallMode === 'drop_osz'
+              ? st(
+                  `已保存 .osz 到 ${path.join(cfg.stablePath, 'Songs')}`,
+                  `Saved .osz to ${path.join(cfg.stablePath, 'Songs')}`,
+                )
+              : st(
+                  `已解压安装到 ${path.join(cfg.stablePath, 'Songs')}`,
+                  `Extracted and installed to ${path.join(cfg.stablePath, 'Songs')}`,
+                )
           : lazerQueuedOnly
-            ? '已保存至 Lazer 待导入队列（可随时一键批量导入）'
-            : '已直接导入正在运行的 osu!lazer 并在游戏中加载';
+            ? st(
+                '已保存至 Lazer 待导入队列（可随时一键批量导入）',
+                'Saved to Lazer import queue (ready for 1-click batch import anytime)',
+              )
+            : st(
+                '已直接导入正在运行的 osu!lazer 并在游戏中加载',
+                'Imported directly into running osu!lazer and loaded in-game',
+              );
 
     updateTask(taskId, {
       status: finalStatus,
@@ -364,12 +416,16 @@ async function processTask(taskId: string): Promise<void> {
     libraryEvents.emit('update', await getLibraryStatus(true));
   } catch (err) {
     const isCancelled = controller.signal.aborted;
-    const errMsg = isCancelled ? '已手动取消' : err instanceof Error ? err.message : String(err);
+    const errMsg = isCancelled
+      ? st('已手动取消', 'Manually cancelled')
+      : err instanceof Error
+        ? err.message
+        : String(err);
     updateTask(taskId, {
       status: isCancelled ? 'cancelled' : 'failed',
       speedBps: 0,
       error: errMsg,
-      message: isCancelled ? '已取消' : '下载或安装失败',
+      message: isCancelled ? st('已取消', 'Cancelled') : st('下载或安装失败', 'Download or installation failed'),
     });
     if (isCancelled) {
       logWarn('download', 'Task cancelled', { taskId, setId: task.beatmapsetId });
@@ -436,7 +492,7 @@ export function enqueueDownload(input: EnqueueDownloadInput): DownloadTask {
     downloadedBytes: 0,
     totalBytes: null,
     speedBps: 0,
-    message: '排队等待下载...',
+    message: st('排队等待下载...', 'Queued for download...'),
     error: null,
     createdAt: now,
     updatedAt: now,
@@ -459,7 +515,10 @@ export function cancelDownload(taskId: string): DownloadTask | null {
   const t = tasks.get(taskId);
   if (!t) return null;
   if (t.status === 'queued') {
-    return updateTask(taskId, { status: 'cancelled', message: '已取消排队' });
+    return updateTask(taskId, {
+      status: 'cancelled',
+      message: st('已取消排队', 'Removed from queue'),
+    });
   }
   const ctrl = abortControllers.get(taskId);
   if (ctrl) {
@@ -481,7 +540,7 @@ export function retryDownload(taskId: string): DownloadTask | null {
     error: null,
     triedMirrors: [],
     activeMirror: null,
-    message: '已重新加入下载队列...',
+    message: st('已重新加入下载队列...', 'Re-queued for download...'),
   });
   pumpQueue();
   return t;

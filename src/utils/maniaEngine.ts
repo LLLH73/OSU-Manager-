@@ -1,3 +1,4 @@
+import { tx } from '../i18n';
 import {
   ManiaNote,
   ManiaSkinAsset,
@@ -1161,7 +1162,7 @@ export function renderManiaPlayfield(
   ctx.save();
   ctx.font = '600 11px "JetBrains Mono", monospace';
   ctx.fillStyle = 'rgba(255,255,255,0.72)';
-  ctx.fillText(`${liveBpm} BPM · ${liveNps} NPS · ${scrollSpeed} 速`, 14, 24);
+  ctx.fillText(`${liveBpm} BPM · ${liveNps} NPS · ${scrollSpeed} ${tx('速', 'spd')}`, 14, 24);
   ctx.restore();
 }
 
