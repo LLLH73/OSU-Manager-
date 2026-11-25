@@ -4,6 +4,39 @@
 
 ---
 
+## Session 18 — 专注画报主题同步、`OM` 图标重绘与 EXE 注入、设置信息、新手引导及双语 README 发布 (`v1.9.0`)
+
+- **日期**：2026-11-25
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **版本**：`v1.8.0` → `v1.9.0`
+- **关联提交**：`4e7c0f3`
+- **本次需求**：
+  1. 修复音乐台「专注画报」模式不跟随全局主题、始终显示黑色主题的问题；
+  2. 在设置中展示应用版本号与开源项目地址（`https://github.com/LLLH73/OSU-Manager-`）；
+  3. 编写包含中英文项目介绍、功能介绍与使用方式的 GitHub `README.md`，核对 `.gitignore` 并推送至 `https://github.com/LLLH73/OSU-Manager-.git`；
+  4. 将 Electron EXE 与任务栏图标及标题栏徽标统一修改为简约粗体线条包含 `O` 与 `M` 两字的图标；
+  5. 新增首次安装自动展示、后续可在设置中重新观看的新手引导。
+- **关键改动**：
+  1. **简约粗体 `OM` 图标设计及全端接入**（`build/icon.svg`, `build/icon.png`, `build/icon.ico`, `scripts/apply-exe-icon.mjs`, `package.json`, `electron/main.ts`, `index.html`, `src/components/TitleBar.tsx`）：
+     - 重绘深黑圆角方形底 + 粗体纯白 `O` / `M` 几何矢量图标（8× 超采样输出 `512px` PNG 与 `16–256px` 多分辨率 `.ico`），同步更新浏览器 Favicon 与标题栏 `LaneEmblem`；
+     - 新增 `scripts/apply-exe-icon.mjs`，在 `npm run electron:pack` 后自动通过 `rcedit.exe` 向 `release\win-unpacked\osu-4k-downloader.exe` 嵌入 `build/icon.ico` 与 `OSU!Manager!` `1.9.0` 版本元数据，并在 `electron/main.ts` 配置 Windows `AppUserModelId` 与 `.ico` 窗口/托盘图标解析。
+  2. **专注画报全 8 主题同步**（`src/components/music/MusicPlayerMode.tsx`, `ConstructivistPosterBg.tsx`, `MusicVisualizerCanvas.tsx`, `MusicParticleCanvas.tsx`）：
+     - 取消 `data-player-dark={zenMode || isDark}` 的强制暗黑锁定，改将 `zenRootStyle`、`ZenPosterInfoCard` 与底部宽轴可视化底座统一绑定至全局 `--t-canvas` / `--t-surface-*` / `--t-ink*` 主题变量并叠合封面谐振色；同时改造无图底色/边角压暗/角标与 Canvas 画布 `theme` 依赖刷新，实现浅色 4 主题与暗色 4 主题实时同步切换。
+  3. **版本号、开源地址与 5 步新手引导**（`vite.config.ts`, `src/constants.ts`, `src/electron.d.ts`, `server/types.ts`, `src/types.ts`, `server/config.ts`, `src/components/OnboardingModal.tsx`, `src/components/SettingsModal.tsx`, `src/App.tsx`）：
+     - 从 `package.json` 注入 `__APP_VERSION__` (`1.9.0`)，在 `SettingsModal` 顶部、新增的「5. 关于与帮助」与底部展示 `v1.9.0`、GitHub 开源外链与复制按钮及「重新观看新手引导」按钮；
+     - 新增 5 步 `OnboardingModal` 与 `onboardingCompleted`（`config.json` + `localStorage`）持久化，初次安装自动弹出，完成/跳过/Esc 关闭后重载不再弹出。
+  4. **中英文双语 README 与 `.gitignore` 加固**（`README.md`, `.gitignore`）：
+     - 补全 `*.tsbuildinfo` 忽略规则，并重写 `README.md` 涵盖简体中文 + English 项目定位、全部特性、安装启动与打包指令及目录结构。
+- **验证结果**：
+  - `npm run typecheck` 与 `npm run electron:pack`（`v1.9.0`）退出码 `0` 通过，生成 `release\win-unpacked\osu-4k-downloader.exe`（`249,975,808` 字节）；提取 PE 关联图标与 `VersionInfo` 验证确认为新版粗体 `OM` 图标及 `ProductName=OSU!Manager!`、`FileVersion=1.9.0`。
+  - **真实浏览器实测**（`http://127.0.0.1:3728`，`1440×900`，空隔离数据目录 `%TEMP%\osu-dl-verify-v190`，0 控制台/页面报错）：
+    - 首次加载自动弹出 5 步新手引导（`1 / 5` → `5 / 5` 无裁切溢出），点「开始使用」并刷新页面后不再自动弹出；
+    - 打开设置确认顶/中/底三处 `v1.9.0`、`https://github.com/LLLH73/OSU-Manager-` 链接与「重新观看新手引导」按钮（点击可重新打开引导）；
+    - 进入音乐台「专注画报」依次切换 `瓷器白`（`data-player-dark="false"` 亮色磨砂底板）、`浅咖啡`（`data-player-dark="false"` 暖浅色调）与 `曜石黑`（`data-player-dark="true"` 深色磨砂底板）均即时响应无强制黑底。
+  - **打包产物冒烟与清理**：`release\win-unpacked\osu-4k-downloader.exe`（`PORT=3729`）实测 `GET /api/health` 返回 `{"ok":true,...}`，清理临时文件与测试进程后 `3721`/`3728`/`3729` 端口监听数为 `0`，用户 `data/config.json` 完整无损。
+
+---
+
 ## Session 17 — 修复搜图主界面切换音乐播放状态触发列表重载 (`v1.8.0`)
 
 - **日期**：2026-11-25

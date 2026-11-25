@@ -35,7 +35,7 @@
 ## 3. 代码架构与文件地图
 
 ### 3.1 桌面壳层 (`electron/`)
-- `electron/main.ts`：单实例锁、无边框主窗口 (`frame: false, titleBarStyle: 'hidden'`, `backgroundThrottling: false`)、macOS 风格磨砂游戏内浮窗（`backgroundMaterial: 'acrylic'`, `/?mode=overlay`, 置顶 `screen-saver`）、全局快捷键 (`Alt+Shift+O`) 与系统托盘（含音乐播控与 `window:hideToTray` 后台挂机）、自动拉起内嵌后端 `dist-server/index.js`（默认端口 `3721`）、注册窗口/浮窗/目录文件选择/外部链接 IPC。
+- `electron/main.ts`：单实例锁、Windows `AppUserModelId` (`com.osumapdownloader.mania4k`) 与 `resolveAppIconPath()`（`build/icon.ico` / `build/icon.png`）、无边框主窗口 (`frame: false, titleBarStyle: 'hidden'`, `backgroundThrottling: false`)、macOS 风格磨砂游戏内浮窗（`backgroundMaterial: 'acrylic'`, `/?mode=overlay`, 置顶 `screen-saver`）、全局快捷键 (`Alt+Shift+O`) 与系统托盘（含音乐播控与 `window:hideToTray` 后台挂机）、自动拉起内嵌后端 `dist-server/index.js`（默认端口 `3721`）、注册窗口/浮窗/目录文件选择/外部链接 IPC。
 - `electron/preload.cjs` & `src/electron.d.ts`：通过 `contextBridge` 暴露 `window.electronAPI`（含主窗控制、文件弹窗及 `toggleOverlay` / `setOverlayOpacity` / `setOverlayCompact` / `setOverlayHotkey` / `openPreviewInMain` 等浮窗 IPC）。
 
 ### 3.2 后端服务 (`server/`, Node + Express v5 + TypeScript ESM)
@@ -84,18 +84,18 @@
 | `src/utils/maniaEngine.ts` | osu!mania Canvas2D 轨道渲染器（480p 坐标、BPM+SV 时间轴、PerCy `NoteBodyStyle` 0/1/2）与右侧滚动缩略图绘制引擎 |
 | `src/api.ts` | 前端 REST 封装（含 Book 档案库、自定义壁纸、IPv6 网络状态、快速批量下载与游戏客户端启动接口） |
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
-| `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏与右侧存档栏折叠按钮、单色粗线图标 `LaneEmblem` + `OSU!Manager!`、浮窗开关、8 主题分组弹窗、代理 6174、镜像延迟、窗口控制） |
+| `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏与右侧存档栏折叠按钮、单色粗线 `OM` 图标 `LaneEmblem` + `OSU!Manager!`、浮窗开关、8 主题分组弹窗、代理 6174、镜像延迟、窗口控制） |
 | `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（三段工作区模式切换 `搜图 \| Book \| 音乐`、并排 `Book 档案库 \| OSU 音乐台` 入口、目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
 | `src/components/music/OsuMusicMark.tsx` | 几何化高精度圆形 `osu!` 矢量徽标组件（随播放态/激活态触发信号色点亮） |
 | `src/components/music/rhythmEngine.ts` | 音乐台节拍计算与 Web Audio 频带能量提取纯函数（`computeBeatState` 精确跟随红线/倍速/Kiai、`extractAudioBands` 分频段能量与瞬态检测） |
 | `src/components/music/MusicPlayerContext.tsx` | 根级持久化音乐播放器上下文（拆分 `MusicControlContext` / `MusicTimeContext`、Web Audio `AnalyserNode`、倍速/原调锁高/NC 变调、歌单与红心、定时关闭、MediaSession 与托盘播控） |
-| `src/components/music/MusicVisualizerCanvas.tsx` | 构成主义/瑞士风格高分屏可视化画布（`FFT // 频谱` 与 `SCOPE // 示波` 双模式，支持暂停态网格重绘与后台零耗挂起） |
+| `src/components/music/MusicVisualizerCanvas.tsx` | 构成主义/瑞士风格高分屏可视化画布（`FFT // 频谱` 与 `SCOPE // 示波` 双模式，随 `theme` 切换重绘并支持后台零耗挂起） |
 | `src/components/music/ConstructivistCoverStage.tsx` | 构成主义画幅 (`PROUN`) 与 Braun 瑞士唱盘 (`DISC`) 双封面舞台（含自适应换行防溢出的 `STABLE`/`LAZER`/`KIAI` 顶栏、60fps DOM-ref 实时节拍矩阵、有效倍速 BPM 与歌单快捷操作） |
 | `src/components/music/constructivistRedraw.ts` | 专注画报模式快速 CIE Lab 封面谐振取色与构图配色族推导器 |
-| `src/components/music/ConstructivistPosterBg.tsx` | 专注画报 (`ZEN`) 全屏高清原图背景层与自适应谐振配色桥接组件 |
-| `src/components/music/MusicParticleCanvas.tsx` | 跟随低频能量与节拍脉冲的构成主义几何律动粒子画布（常规模式/专注画报均支持独立开关） |
+| `src/components/music/ConstructivistPosterBg.tsx` | 专注画报 (`ZEN`) 全屏高清原图背景层（底色/边角压暗/角标随全局明暗主题自适应切换）与谐振配色桥接组件 |
+| `src/components/music/MusicParticleCanvas.tsx` | 跟随低频能量、节拍脉冲与主题配色的构成主义几何律动粒子画布（常规模式/专注画报均支持独立开关） |
 | `src/components/music/MusicMiniDock.tsx` | 非音乐台视图下的后台纯播放瑞士极简悬浮迷你控制条（兼容搜图与 Book 底部避让） |
-| `src/components/music/MusicPlayerMode.tsx` | 构成主义/瑞士风格 `OSU! AUDIO // 音乐台` 完整工作区（默认收起的歌单目录、封面与全宽可视化、可检索/排序曲库与队列、专注画报及含 `.osu` 密度直方图的底部播放/倍速/音量控制甲板） |
+| `src/components/music/MusicPlayerMode.tsx` | 构成主义/瑞士风格 `OSU! AUDIO // 音乐台` 完整工作区（默认收起的歌单目录、封面与全宽可视化、可检索/排序曲库与队列、随 8 套主题联动的专注画报及 `.osu` 密度直方图底栏） |
 | `src/components/book/RhineLoadingVeil.tsx` | RhineLabUI 风格同心扫描环加载校准遮罩 (`RhineLoadingVeil`，支持进入/主题校准/刷新) 与顶部筛选切换扫光提示 (`RhineFilterTransitionHud`) |
 | `src/components/book/bookFilters.ts` | 本地 Book 多维筛选与排序纯函数引擎（来源/模式/键数/状态/评级/星数/PP/BPM/时长/LN%/谱师及 8 维度双向排序） |
 | `src/components/book/BookFilterPanel.tsx` | 仿下载页 RhineLabUI 悬浮高级筛选矩阵（复用 `StarRangeSlider`、`PpRangeSlider`、`SelectField` 与 `QUICK_PRACTICE_TAGS`） |
@@ -122,7 +122,8 @@
 | `src/components/DownloadDrawer.tsx` | 下载任务队列（含完成态预览/再加载按钮）与 Lazer 待导入队列批量导入抽屉 |
 | `src/components/FastBatchModal.tsx` | 极简纯文本「快速批量下载」工作台（目标数量 1–500、IPv6/直连分流、多镜像高并发与实时传输遥测） |
 | `src/components/LibrarySyncModal.tsx` | 双端曲库比对与 Stable→Lazer 零流量同步弹窗 |
-| `src/components/SettingsModal.tsx` | 客户端路径浏览、代理/IPv6 网络协议与镜像测速、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键与可选官方 Cookie 设置弹窗 |
+| `src/components/SettingsModal.tsx` | 客户端路径浏览、代理/IPv6 网络协议与镜像测速、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.9.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
+| `src/components/OnboardingModal.tsx` | 首次安装 5 步交互式新手引导弹窗（支持步骤跳转、`←/→/Esc` 快捷键、跳至设置检查路径，由 `onboardingCompleted` 与 `localStorage` 持久化控制） |
 | `src/components/SelectField.tsx` | 统一下拉封装（支持 `<optgroup>` 嵌套匹配，解决 Chromium 原生箭头重叠问题） |
 
 ---
@@ -146,7 +147,7 @@
    - 本地 PerCy 皮肤（如 `36f-2`）的长条身体图高度常达 `38039px`，切勿直接传入浏览器 `<canvas>`，必须保留 `server/skins.ts` 的 `cropPngTopRows(buf, 2048)` 无损扫描线裁切；且向运行中 `osu!stable` 传参时务必使用 `TMP_DIR` 临时副本（Stable 会吞并/移动传入的 `.osz`）。
    - Electron 浮窗使用 `transparent: false` + `backgroundColor: '#00000000'` + `backgroundMaterial: 'acrylic'`，且 `electron/main.ts` 中的 `window:setBackgroundColor` 必须继续忽略 `overlayWindow`，避免实底色覆盖 Windows 11 亚克力毛玻璃。
 10. **打包交付与清理检查**：
-   - `start-desktop.bat` 与 `start.bat` 会优先启动 `release\win-unpacked\osu-4k-downloader.exe`，**代码修改后务必执行 `npm run typecheck` 和 `npm run electron:pack` 更新打包目录**。
+   - `start-desktop.bat` 与 `start.bat` 会优先启动 `release\win-unpacked\osu-4k-downloader.exe`，**代码修改后务必执行 `npm run typecheck` 和 `npm run electron:pack` 更新打包目录**（`electron:pack` 会自动运行 `scripts/apply-exe-icon.mjs` 调用本地 `rcedit.exe` 注入 `build/icon.ico` 与版本元数据）。
    - 每次通过启动桌面端/后端做完测试后，务必关闭测试进程并确认 `3721` 端口已释放。
 
 ---

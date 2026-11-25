@@ -4,6 +4,22 @@ All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be docum
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.9.0] - 2026-11-25
+
+### Added
+- **极简粗体「`OM`」品牌应用与可执行文件图标**（`build/icon.svg`, `build/icon.png`, `build/icon.ico`, `scripts/apply-exe-icon.mjs`, `electron/main.ts`, `index.html`, `src/components/TitleBar.tsx`, `package.json`）：
+  - 全新设计白描黑底圆角方形粗线条 `OM` 几何图标（8× 超采样生成 `512×512` PNG 与 `16–256px` 多分辨率 `.ico`），并更新顶部标题栏单色 `LaneEmblem` 与网页 `<link rel="icon">`。
+  - 新增 `scripts/apply-exe-icon.mjs` 并在 `npm run electron:pack` 中自动调用本地 `rcedit.exe` 向 `release/win-unpacked/osu-4k-downloader.exe` 写入 `.ico` 图标与 `OSU!Manager!` `1.9.0` 版本信息；`electron/main.ts` 同步配置 Windows `AppUserModelId` 与 `.ico` 窗口/托盘图标加载路径，确保任务栏、托盘与可执行文件图标一致显示。
+- **首次安装 5 步交互式新手引导**（`src/components/OnboardingModal.tsx`, `src/App.tsx`, `server/config.ts`, `server/types.ts`, `src/types.ts`）：
+  - 在配置模型中新增 `onboardingCompleted` 字段（配合 `localStorage` 双重持久化）；初次安装打开应用时自动弹出 5 步新手引导弹窗（欢迎与免登录定位、Lazer 选歌与 PP 筛选、双端同步与 Mania 预览、Book 档案库与音乐台、游戏内浮窗与首次路径检查），支持步骤条直跳与 `←` / `→` / `Esc` 键盘操作，之后可在设置中随时重看。
+- **设置页版本号展示、GitHub 开源地址与新手引导重看入口**（`vite.config.ts`, `src/constants.ts`, `src/electron.d.ts`, `src/components/SettingsModal.tsx`）：
+  - 通过 Vite 构建注入 `package.json` 的 `__APP_VERSION__` (`v1.9.0`)；在设置弹窗顶部、新增的「5. 关于与帮助」分区与底部页脚清晰展示当前版本号、`https://github.com/LLLH73/OSU-Manager-` 可点击外链与一键复制按钮，以及「重新观看新手引导」入口。
+- **中英文双语 GitHub README**（`README.md`）：完善包含项目定位、全功能介绍、安装运行与构建命令、数据目录说明及目录结构的简体中文 + English 双语开源仓库主页文档。
+
+### Fixed
+- **修复音乐台「专注画报 (`ZEN`)」模式不跟随全局主题、始终呈暗色样式的问题**（`src/components/music/MusicPlayerMode.tsx`, `src/components/music/ConstructivistPosterBg.tsx`, `src/components/music/MusicVisualizerCanvas.tsx`, `src/components/music/MusicParticleCanvas.tsx`）：
+  - 移除 `data-player-dark={zenMode || isDark}` 与 `zenRootStyle` / `ZenPosterInfoCard` / `ConstructivistPosterBg` 中写死的暗黑背景与半透明黑底板，改由当前主题的 `--t-canvas`、`--t-surface-*`、`--t-ink*` 与封面谐振主色联动驱动；并让可视化与粒子画布响应 `theme` 变化实时重绘，使「专注画报」在全部 4 套浅色主题与 4 套暗色主题间无缝同步切换。
+
 ## [1.8.0] - 2026-11-24
 
 ### Added

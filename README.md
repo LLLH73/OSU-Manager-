@@ -1,72 +1,75 @@
-# OSU!Manager! (`osu-4k-dual-downloader`)
-
-面向同时游玩 **osu!stable** 与 **osu!lazer** 的 **osu!mania 4K** 玩家的跨端桌面谱面管理与下载工作台（v1.8.0）。无需登录 osu! 账号，即可完成多镜像搜索、音频试听、Mania 谱面实景预览、游戏内磨砂浮窗搜图、免登录高速下载、极速批量扫图、客户端一键启动、双客户端自动导入加载、RhineLab 3D Book 档案库及构成主义/瑞士风格本地 OSU! 背景音乐播放器。
-
----
-
-## 核心特性
-
-1. **三种 Song 选项卡呈现形式（默认 Lazer）与自动无限加载**
-   - **Lazer 选歌界面 (`lazer`，默认)**：仿 osu!lazer 选歌界面双栏视口锁定布局与 GPU 合成动效（主界面锁定不上下滚动，仅右侧选歌卡片轮盘与左侧展板内部滚动，自适应不同窗口大小），并与全桌面动态封面背景联动：
-     - **右侧弧形轮盘**：采用独立弧线层 + 视口裁剪 rAF 引擎实时计算二次曲线弧形偏移与淡出透明度，斜切封面右翼，选中项平滑左移突出，超长标题与难度名自动平滑跑马灯滚动并配右侧渐隐，同时提供悬浮 **「回到选中 ↑/↓」** 与 **「回到顶部」** 快捷定位按钮。
-     - **丝滑交错难度展开**：当前选中谱面集按需交错展开全部难度条目（含单难度 `~XXXpp`），初始默认难度平滑左移到位且彻底消除横向滚动条，点击或键位切换实时联动左侧展示区。
-     - **左侧楔形展示**：大封面、状态与双端已装徽章、4 项动画属性条（`SR` / `OD` / `HP` / `LN%`）、`HT / NM / DT` 快速 PP 速览、物件构成明细、`自动试听` 开关与快速下载操作。
-     - **全窗封面背景与主色调变色**：Lazer 模式下选中歌曲时自动将整窗桌面背景切换为高透明度封面图，并实时提取封面主色调驱动界面强调色。
-     - **键盘快捷键导航**：`↑` / `↓`（或 `W` / `S`）切歌、`←` / `→` 切换难度、`Space` 试听/暂停、`Enter` 打开完整详情弹窗。
-   - **卡片视图 (`grid`)** & **列表视图 (`list`)**：多列大封面卡片与高密度紧凑条目（支持 `content-visibility: auto` 合成优化），展示官方光谱色阶星数胶囊、LN% 长条占比、Ranked 大致 PP（`~XXXpp`）与快捷安装按钮（`L` / `S` / `双`）。
-   - **全视图滚底自动加载更多**：无论处于 `Lazer`、`卡片` 还是 `列表` 模式，滚动到底部附近自动拉取下一页谱面。
-
-2. **Ranked 谱面大致 PP 展示、自定义黄彩比计算器与情景化 PP 范围筛选**
-   - 所有列表视图与详情弹窗难度表对 `ranked`/`approved` 谱面展示基于 `ppy/osu` Mania 准度制公式的大致 PP，并支持与当前 PP 筛选情景实时联动。
-   - 点击任意 `~XXXpp` 徽章或「PP 计算器」即可打开完整情景模拟器，自由调整 **准度（80%–100%）**、**失误数（Miss）**、**倍速（HT 0.75x ~ DT 1.5x / 0.5x–2.0x）**、**Lazer / Classic / EZ / NF** 以及 **自定义黄彩比（320:300 连续滑块 + 数值输入窗）**；未上架练习图也支持开启「模拟上架计算」。
-   - 支持在筛选栏直接通过 **PP 范围双滑块**（`0–2000pp / ∞` 加粗双柄滑轨 + `24×14px` 扁平圆角纯色矩形手柄 + 点击胶囊直输上限）与 **主从分栏情景配置浮层**（左侧主模式轨道独立区分 `NM / DT 1.5x / HT 0.75x / 变速 Rate / 自定义`，右侧展示对应准度×黄彩比×Miss 副词条网格，支持「存为自定义」持久化保存）进行筛选，后端自动反推星数区间并精确过滤匹配难度。
-
-3. **Impeccable 克制界面、可折叠布局（含 Filter 存档右侧栏）、8 套主题与 Lazer 字体**
-   - **`pbakaus/impeccable` 风格交互细节**：无嵌套卡片边框的克制编辑风左侧栏、默认收起的 **Filter 存档右侧栏** 与悬浮胶囊音频试听条（`2px` 细滑轨）；左右侧栏与上方搜索筛选栏均支持一键收起与展开。
-   - **Filter 存档与浏览位置上下文恢复**：可将当前筛选选项、搜索框内容、自定义名称、创建时间以及可选的「当前页面浏览位置与前后上下文」保存至右侧栏（持久化到 `data/filter-archives.json`），支持置顶、重命名、覆盖更新、关键词过滤，并在下次加载时跨 `Lazer / 列表 / 卡片` 视图自动定位到保存时的谱面与相邻上下文。
-   - **8 套主题 + 自定义强调色 + 自定义字号 + 自定义桌面壁纸**：默认使用清简高对比 **瓷器白 (`light`)**，共内置 4 套暗色主题（`曜石黑` / `墨石暗夜` / `深海午夜` / `松影暗绿`）与 4 套浅色纸感主题（`瓷器白` / `暖石纸感` / `浅咖啡` / `樱雾浅粉`）；支持 **界面字体大小缩放（默认 `120%`，支持 `85%–125%`）**、10 组预设强调色、自由拾色器、上传自定义背景图、调节不透明度（`4%–100%`，默认 `75%`）以及独立开关「随选中歌曲换背景」「主题色随背景主色调自动变色」。
-   - **osu!lazer 风格四字体离线层级**：打包内嵌 `@fontsource` WOFF2 字体，离线清晰呈现几何正文/标题（`Quicksand` + `Outfit`）、简体中文（`Noto Sans SC` 400–700）、Lazer 科技感数字（`Exo 2`）与路径/技术指标（`JetBrains Mono`）。
-   - **已装谱面四边金色框体**：在 `Lazer`、`卡片` 与 `列表` 视图中，本地已安装谱面均自动以四边金色框体 + 高对比 `Lazer 已装` / `Stable 已装` 金色胶囊标出。
-
-4. **双客户端识别、极速跨页批量下载与零流量曲库同步**
-   - **极速跨页批量下载（「快速批量下载」）**：针对当前筛选结果自定义目标数量（`1–500` 首），纯文本极简列表（无封面/试听加载），支持 **IPv6 优先 / 双栈 / 仅 IPv6**、直连优先分流、多镜像高并发（`1–12` 线程）、ZIP 尾目录异步极速校验、Stable `.osz` 直投以及 Lazer 合并批量 IPC 导入，自动翻页并跳过本地已装曲目直到达成数量或无新曲可下。
-   - **osu!stable**：默认路径 `D:\OSU`，支持自动解压到 `Songs/` 或保留 `.osz`。
-   - **osu!lazer**：默认数据目录 `D:\OSU\OSUlazer\osu-lazer`、可执行文件自动探测 `osu!.exe`；客户端运行中时自动触发 IPC 导入，未运行时暂存至 `D:\OSU\Downloads\lazer-import` 支持一键启动批量导入。
-   - **本地查重 & 零流量同步**：扫描 Stable `Songs` 与 Lazer 本地库，支持在「双端比对 · 零流量同步」弹窗中将 Stable 已有而 Lazer 缺少的谱面直接打包 `.osz` 导入 Lazer。
-
-5. **多镜像源与 IPv6 / 代理智能路由**
-   - 内置 7 个下载源与自动故障转移：**小夜自动 (`sayobot-auto`)**、**小夜腾讯 (`sayobot-txy`)**、**Nekoha (`nekoha`)**、**osu.direct (`osudirect`)**、**BeatConnect (`beatconnect`)**、**Nerinyan (`nerinyan`)**、**官方源 (`official`，可选 Cookie)**。
-   - 默认探测本地代理 `127.0.0.1:6174`（`proxyMode: "auto"`）与本机 IPv6 连通性：国内镜像直连优先、海外源代理优先，并支持 `IPv6 优先 / 仅 IPv6 / 自动双栈` 与一键并发测速推荐最优节点。
-
-6. **全量官网筛选 + Lazer 星数双滑块 + Mania 4K 专项 + 侧栏一键启动**
-   - 默认锁定 `osu!mania 4K`，常驻加粗 **Lazer 风格光谱星数双滑块（`0.0★–15.0★ / ∞`）**与 **同步风格 PP 范围双滑块（`0–2000pp / ∞`）**，支持模式/键数/状态/排序/曲风/语言/BPM/时长/OD/HP/AR/**LN% 长条占比**、本地查重过滤、高频词条、`4K 单键 Rice` / `4K 长条 LN` / `Dan 段位` / `全部模式` 等工作流预设，支持直接粘贴谱面集 ID 或 `osu.ppy.sh` 链接；左侧栏提供 **「启动 Stable」「启动 Lazer」** 一键拉起按钮（运行中自动切至前台）。
-
-7. **osu!mania 谱面演示预览器（支持本地皮肤与右侧缩略图）**
-   - 下载完成后或任意本地已安装 Mania 谱面均可一键打开实时演示窗口：支持 **NPS 密度直方图可拖动进度条**、**暂停/继续/快进退**、**`1–40` 流速与倍速控制**、**下/上落方向**、**真实本地 `D:\OSU\Skins` 与内置皮肤切换**（兼容 `36f-2` 等 PerCy 超长 LN 皮肤）及 **右侧可上下滑动缩放的音符缩略图**。
-
-8. **macOS 毛玻璃浮窗模式与游戏内自动加载**
-   - 标题栏「浮窗模式」或全局热键 **`Alt+Shift+O`**（可在设置更换）随时在游戏无边框窗口上方呼出磨砂玻璃浮窗，支持折叠为 64px 极简搜索条、调节透明度、搜索下载并直接向运行中的 `osu!lazer` / `osu!stable` 发送导入加载指令。
-
-9. **结构化运行日志**
-   - 服务端日志自动写入 `data/logs/server.log`（超过 2 MB 自动轮转至 `server.log.1`），并可通过 `GET /api/logs?lines=120` 查看最近日志。
-
-10. **Book 模式（RhineLabUI 风格本地曲库档案库）**
-    - **双端本地曲库深度聚合**：内置只读 Realm v24 解析器（`server/realmReader.ts`）与双端聚合器（`server/localLibrary.ts`），融合 `osu!stable`（`osu!.db`、`Songs/`、`scores.db`）与 `osu!lazer`（`client.realm`、`files/`）本地曲目、历史成绩、游玩次数与估算/实得 PP，支持延迟 `.osu` 背景解析与 `206 Range` 音频直出。
-    - **3D 书脊档案架 & 平铺毛玻璃双视图**：默认以 Three.js 3D 书脊档案架呈现（模糊封面书脊与正面、无封面哑光顶面、垂直悬停波浪抽出、中键平移视角、无缝前后循环、远景雾化与点击渐清双页展开）；支持一键切换至无字无缝「平铺毛玻璃」封面视图（方案 A 柔和光学窗 + 邻界混色 + 虹膜叠化翻页），并内置仿下载页高级筛选矩阵与 RhineLab 加载/筛选动效，右上角与展开详情页均支持直达 OSU! 音乐台。
-
-11. **OSU! 构成主义 / 瑞士风格背景音乐播放器（`OSU! AUDIO // 音乐台`）**
-    - **多入口与纯后台不间断播放**：可从左侧栏（「工作区模式」`搜图 | Book | 音乐` 及 `OSU 音乐台`）或 Book 模式（「音乐台」HUD / 「在音乐台中播放」）进入；进入音乐台后自动收起主界面左侧栏（音乐台内置「曲库与歌单」侧栏默认保持关闭），切回搜图或 Book 模式时继续后台播放并在底部显示瑞士极简悬浮迷你条；Electron 下支持「后台挂机」隐藏至系统托盘并同步托盘播控菜单与 Windows MediaSession 媒体键控制。
-    - **全套播放控制、歌单管理与实时节奏可视化**：支持播放/暂停、上/下一首、列表/单曲/随机循环、红心收藏、自定义歌单创建/增删排序（持久化至 `data/playlists.json`）、`0.50×–2.00×` 倍速调节与「原调锁高 / NC 磁带变调」切换、滚轮音量调节与定时关闭；内置 `画幅` 与 Braun 风格 `唱盘` 双封面展示（含自适应防溢出 `STABLE`/`LAZER`/`KIAI` 状态徽标）、基于本地 `.osu` 红线/Kiai/物件密度解析的实时节拍矩阵跟随、`专注画报` 原图直出与可开关音频律动粒子，以及横贯全宽的 `频谱` / `示波` 双模式 Web Audio 可视化画布。
+<div align="center">
+  <img src="build/icon.svg" width="92" height="92" alt="OSU!Manager! OM Logo" />
+  <h1>OSU!Manager!</h1>
+  <p>
+    <strong>面向 osu!stable 与 osu!lazer 双端玩家的 osu!mania 4K 谱面管理、免登录下载、3D 档案库与本地音乐台工作台</strong>
+    <br />
+    <sub>Cross-client osu!mania 4K beatmap downloader, library manager, 3D Book Archive & Constructivist Music Station (v1.9.0)</sub>
+  </p>
+  <p>
+    <a href="#简体中文">简体中文</a> ·
+    <a href="#english">English</a> ·
+    <a href="CHANGELOG.md">Changelog</a> ·
+    <a href="docs/DEVLOG.md">Devlog</a>
+  </p>
+</div>
 
 ---
 
-## 快速启动
+<a id="简体中文"></a>
 
-### 1. 桌面版一键启动（推荐）
-- 双击根目录 [start-desktop.bat](start-desktop.bat)，或直接运行已打包的可执行程序 `release\win-unpacked\osu-4k-downloader.exe`。
-- [start.bat](start.bat) 会优先拉起 Electron 桌面客户端，若未打包则回退至本地 Node 服务 + Edge/Chrome 独立窗口模式。
+## 简体中文
 
-### 2. 开发与打包命令
+### 项目介绍
+
+**OSU!Manager!**（`osu-4k-dual-downloader`）是一款专为同时使用 **osu!stable** 与 **osu!lazer** 的 **osu!mania 4K** 玩家打造的跨端桌面工具（支持 Windows Electron 桌面端与本地 Web 服务）。
+
+**无需登录 osu! 账号或填写 Cookie**，即可完成多镜像源搜图、试听、PP 情景筛选、Mania 谱面实景预览、1–500 首极速批量扫图、双端曲库零流量同步、游戏内磨砂浮窗搜图装图，并内置 **RhineLab 3D Book 本地曲库档案库** 与 **构成主义/瑞士风格 `OSU! AUDIO` 本地音乐台**。
+
+### 功能介绍
+
+1. **三视图搜图选歌（默认 Lazer 轮盘）与全窗动态背景**
+   - **Lazer 选歌轮盘 (`lazer`)**：视口锁定双栏布局、rAF 二次曲线弧形偏移与淡出、平滑交错难度列表、`SR / OD / HP / LN%` 属性条、`HT / NM / DT` 快速 PP 速览，支持 `↑/↓`、`←/→`、`Space` 试听与 `Enter` 看详情。
+   - **卡片 (`grid`) & 列表 (`list`) 视图**：支持多列封面网格与高密度紧凑列表，全视图滚底自动无限加载。
+   - **动态封面背景与主题变色**：Lazer 模式下选中谱面自动切换全窗高透明封面并实时提取主色调联动界面强调色。
+
+2. **Ranked 大致 PP 估算、情景筛选与 PP 计算器**
+   - 所有列表与难度表直接显示 `ranked` / `approved` 谱面的大致 PP（`~XXXpp`）。
+   - 筛选栏配备加粗 **Lazer 光谱星数双滑块（`0.0★–15.0★ / ∞`）** 与 **PP 范围双滑块（`0–2000pp / ∞`）**，以及主从分栏 **PP 情景库**（覆盖 `NM`、`DT 1.5x`、`HT 0.75x`、`变速 Rate` 与持久化 `自定义` 组合）。
+   - 内置交互式 PP 计算器，支持调整准度（80%–100%）、Miss、倍速、Mod 与 **自定义黄彩比（320:300）**，并可对未上架练习图模拟计算。
+
+3. **双端曲库识别、零流量同步与极速批量下载**
+   - 自动扫描 `osu!stable`（`Songs/`、`osu!.db`）与 `osu!lazer`（`client.realm` 只读二进制直读 + `files/`），本地已装谱面在任意视图自动点亮**四边金色框体**。
+   - **双端零流量同步**：将 Stable 已有而 Lazer 缺少的谱面直接打包 `.osz` 导入 Lazer；客户端未启动时暂存至待导入队列支持一键批量导入。
+   - **快速批量下载**：纯文本极简批下工作台，支持设定 `1–500` 首目标数、自动跨页跳过已装曲目、多镜像并发负载均衡（`1–12` 线程）与 IPv6/直连分流。
+   - **一键拉起客户端**：左侧栏支持直接启动或唤起运行中的 Stable / Lazer 客户端。
+
+4. **多镜像智能路由 & 本地代理探测**
+   - 内置 7 大下载源与故障转移：`sayobot-auto`、`sayobot-txy`、`nekoha`、`osudirect`、`beatconnect`、`nerinyan`、`official`（完全可选 Cookie）。
+   - 自动探测本地代理（默认 `127.0.0.1:6174`）与本机 IPv6 连通性，国内镜像直连优先、海外源代理优先，支持一键全源测速。
+
+5. **Mania 谱面实景预览器**
+   - 任意本地已安装 Mania 谱面均可直接预览：支持读取本地 `D:\OSU\Skins`（兼容 PerCy 超长 LN 皮肤）与内置皮肤、1–40 流速与倍速、上下落切换、可拖动 NPS 密度直方图与右侧缩略图条。
+
+6. **Book 模式（RhineLab 3D 本地曲库档案库）**
+   - 统一聚合 Stable 与 Lazer 本地曲目、历史成绩与游玩统计，提供 **3D 书脊档案架**（垂直波浪抽出、中键拖移视角、无缝循环与双页详情）与 **平铺毛玻璃视图**（柔和光学窗 + 虹膜叠化翻页），内置仿下载页高级筛选矩阵。
+
+7. **OSU! AUDIO // 构成主义与瑞士风格本地音乐台**
+   - **多入口与后台不间断播放**：可从左侧栏或 Book 模式进入（进入音乐台时自动收起主界面左侧栏，内置歌单栏默认收起）；切回搜图或 Book 模式后通过底部悬浮迷你条 `MusicMiniDock` 持续播放，Electron 下支持隐藏至系统托盘后台挂机与 Windows 媒体键控制。
+   - **画幅 / 唱盘 & 实时可视化**：支持 `画幅 (PROUN)` 与无框 `唱盘 (DISC)` 双封面舞台、基于本地 `.osu` 红线/Kiai/密度解析的节拍矩阵、`0.50×–2.00×` 原调锁高 / Nightcore 磁带变调、自定义歌单持久化、可开关律动粒子、横贯全宽的 `频谱` / `示波` 双模式画布，以及**跟随全局 8 套主题配色切换的「专注画报」模式**。
+
+8. **macOS 磨砂游戏内浮窗 & 8 套主题与新手引导**
+   - 全局热键 `Alt+Shift+O`（可在设置修改）在无边框游戏中随时呼出亚克力毛玻璃浮窗搜图装图。
+   - 内置 4 套暗色 + 4 套纸感浅色主题（默认「瓷器白」）、`85%–125%` 界面字号缩放（默认 `120%`）、离线 `@fontsource` Lazer 字体、Filter 右侧存档栏，以及**首次启动 5 步新手引导**（之后可在「设置 → 关于与帮助」中随时重看、查看版本号与开源地址）。
+
+### 使用方式
+
+#### 1. 直接运行桌面版（推荐）
+- 运行已打包目录中的 `release\win-unpacked\osu-4k-downloader.exe`，或双击根目录 [start-desktop.bat](start-desktop.bat) / [start.bat](start.bat)。
+- **首次使用提示**：打开后会自动弹出 5 步新手引导；点击左下角「设置」即可核对你的 `osu!stable` / `osu!lazer` 本地路径（默认 `D:\OSU` 与 `D:\OSU\OSUlazer\osu-lazer`）、测试代理端口（默认 `127.0.0.1:6174`）与 7 大镜像延迟、切换主题与字体缩放，或查看当前版本号与重新观看新手引导。
+
+#### 2. 源码开发与构建打包
+
 ```bash
 # 安装依赖
 npm install
@@ -77,41 +80,98 @@ npm run dev
 # 全量 TypeScript 类型检查（Web / Server / Electron）
 npm run typecheck
 
-# 编译全端产物（dist/ + dist-server/ + dist-electron/）
+# 构建生产产物（dist/ + dist-server/ + dist-electron/）
 npm run build
 
 # 启动本地 Electron 开发窗口
 npm run electron
 
-# 打包 Windows 免安装目录版 -> release/win-unpacked/osu-4k-downloader.exe
+# 打包 Windows 免安装目录版并嵌入 OM 图标 -> release/win-unpacked/osu-4k-downloader.exe
 npm run electron:pack
 ```
 
+> **数据目录说明**：打包运行态下配置、歌单与筛选存档默认存储在 `%APPDATA%\osu-4k-downloader\data`（可通过环境变量 `OSU_DL_DATA_DIR` 自定义）；源码开发态下默认存储在工作区 `./data`（已被 `.gitignore` 忽略，不会上传至 Git）。
+
 ---
 
-## 目录结构
+<a id="english"></a>
+
+## English
+
+### Overview
+
+**OSU!Manager!** (`osu-4k-dual-downloader`) is a cross-client desktop companion built for **osu!mania 4K** players who use both **osu!stable** and **osu!lazer**.
+
+No osu! login or session cookie is required. It brings together multi-mirror beatmap search, audio previewing, scenario-aware Ranked PP filtering, a skin-accurate Mania chart previewer, high-concurrency batch downloading, zero-traffic Stable-to-Lazer library sync, an acrylic in-game overlay, a **3D Book Archive** for your local collection, and a **Constructivist / Swiss-style local Music Station**.
+
+### Key Features
+
+- **3 Browse Layouts (Lazer Carousel Default) & Dynamic Backgrounds**
+  - **Lazer Song Select (`lazer`)**: Viewport-locked split layout with rAF-driven curved carousel, staggered difficulty rows, `SR / OD / HP / LN%` bars, quick `HT / NM / DT` PP readout, full keyboard navigation (`↑/↓`, `←/→`, `Space`, `Enter`), and full-window cover-art theming.
+  - **Grid (`grid`) & List (`list`) Views**: Dense card/list browsing with infinite scroll loading and gold borders on locally installed beatmaps.
+- **Ranked PP Estimation, Scenario Presets & PP Calculator**
+  - Dual-thumb spectral Star Rating (`0.0★–15.0★ / ∞`) and PP (`0–2000pp / ∞`) sliders plus master-detail scenario presets (`NM`, `DT 1.5x`, `HT 0.75x`, custom `Rate`, and saved presets) and a custom `320:300` MA ratio calculator.
+- **Dual-Client Recognition, Zero-Traffic Sync & Fast Batch**
+  - Scans both `osu!stable` (`Songs/`, `osu!.db`) and `osu!lazer` (zero-native-dep read-only `client.realm` + `files/`).
+  - Sync maps missing in Lazer directly from Stable without re-downloading, launch/focus either game client from the sidebar, and run `1–500` map text-only Fast Batch downloads across 7 mirrors with IPv6 / proxy (`127.0.0.1:6174` default) smart routing.
+- **Mania Chart Previewer**
+  - Canvas2D 4K–10K playfield with real local `Skins/` support (including PerCy long-LN cropping), scroll speed `1–40`, playback rate, upscroll/downscroll, draggable NPS density timeline, and zoomed overview rail.
+- **Book Mode (`RhineLab` 3D Shelf & Frosted Mosaic)**
+  - Aggregates local beatmaps and scores across both clients into an interactive Three.js 3D spine shelf and a frosted-glass mosaic view with multi-dimensional filtering and two-page spread details.
+- **OSU! AUDIO // Constructivist Music Station**
+  - Persistent background audio engine with `MusicMiniDock` and Electron tray playback controls; auto-collapses the main sidebar upon entering while keeping its own playlist rail collapsed by default.
+  - Poster (`PROUN`) & frameless Turntable (`DISC`) stages with responsive `STABLE`/`LAZER`/`KIAI` badges, `.osu` red-line beat matrix, `0.50×–2.00×` pitch-locked or Nightcore playback, custom playlists, toggleable reactive particles, full-width `Spectrum / Oscilloscope` visualizers, and a **theme-synced Focus Cover (Zen) mode** across all 8 light & dark themes.
+- **Acrylic In-Game Overlay, 8 Themes & First-Run Onboarding**
+  - Global shortcut `Alt+Shift+O` toggles a compact acrylic overlay above borderless osu! windows.
+  - Includes 4 dark + 4 light themes (default `light`), UI font scaling (`85%–125%`, default `120%`), Filter Archives right rail, and an interactive **5-step first-run onboarding guide** (replayable anytime from **Settings → About & Help** along with app version & GitHub repository link).
+
+### Usage & Commands
+
+```bash
+# 1. Install dependencies
+npm install
+
+# 2. Run API (:3721) + Vite (:5173) in dev mode
+npm run dev
+
+# 3. Type-check Web, Server, and Electron targets
+npm run typecheck
+
+# 4. Build production bundles (dist/, dist-server/, dist-electron/)
+npm run build
+
+# 5. Launch Electron desktop app locally
+npm run electron
+
+# 6. Package portable Windows directory + embed OM icon -> release/win-unpacked/osu-4k-downloader.exe
+npm run electron:pack
+```
+
+> Or launch directly via `release\win-unpacked\osu-4k-downloader.exe`, `start-desktop.bat`, or `start.bat`.
+
+---
+
+## 目录结构 / Directory Layout
 
 ```text
-osumapdownloader/
-├── AGENT.md                  # AI 助手快速接手指南（新对话必读）
-├── CHANGELOG.md              # 版本变更日志
-├── README.md                 # 项目说明文档
+OSU-Manager-/
+├── AGENT.md                  # AI 助手快速接手指南 / AI assistant guide
+├── CHANGELOG.md              # 版本变更日志 / Release changelog
+├── README.md                 # 中英文双语说明文档 / Bilingual README
 ├── docs/
-│   └── DEVLOG.md             # 按会话记录的详细开发日志
+│   └── DEVLOG.md             # 按会话记录的开发日志 / Session-by-session devlog
+├── build/                    # OM 矢量与多分辨率应用图标 (icon.svg / icon.png / icon.ico)
+├── scripts/                  # 打包后 PE 图标与版本信息注入脚本 (apply-exe-icon.mjs)
 ├── electron/                 # Electron 主进程与 preload 桥接
-├── server/                   # Express 后端（搜索、镜像路由、下载队列、曲库扫描、日志）
-├── src/                      # React 19 + Tailwind CSS v4 前端（含 book/ 档案库与 music/ 音乐台模块）
-├── build/                    # 应用图标资源
-├── data/                     # 本地运行配置、缓存、日志（已被 .gitignore 忽略）
-├── package.json              # 项目脚本与 Electron Builder 配置
+├── server/                   # Express v5 后端（搜索、镜像路由、Realm 读取、下载队列、本地曲库/歌单）
+├── src/                      # React 19 + Vite 6 + Tailwind CSS v4 前端（含 book/ 与 music/ 模块）
+├── package.json              # 脚本与 Electron Builder 配置
 ├── start-desktop.bat         # 桌面版快捷启动脚本
 └── start.bat                 # 通用启动脚本
 ```
 
----
+## 相关文档 / Documentation
 
-## 相关文档
-
-- **AI 新对话接手手册**：[AGENT.md](AGENT.md)
-- **开发日志（按会话追踪）**：[docs/DEVLOG.md](docs/DEVLOG.md)
-- **版本更新日志**：[CHANGELOG.md](CHANGELOG.md)
+- **AI 接手手册 / Agent Guide**: [AGENT.md](AGENT.md)
+- **开发日志 / Development Log**: [docs/DEVLOG.md](docs/DEVLOG.md)
+- **更新日志 / Changelog**: [CHANGELOG.md](CHANGELOG.md)
