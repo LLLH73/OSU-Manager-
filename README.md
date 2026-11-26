@@ -98,18 +98,18 @@
     <td width="50%" align="center" valign="top">
       <a href="docs/screenshots/10-gacha-pack.png"><img src="docs/screenshots/10-gacha-pack.png" alt="Random Card Draw — 3D Circular Ring Pack Opening Mode" width="100%" /></a>
       <br />
-      <strong>10 · 随机抽卡 · 02 卡包典藏（3D 圆环阵列 + 拖拽/滚轮旋转 + 派蒙星图卡背）</strong>
+      <strong>10 · 随机抽卡 · 02 卡包典藏（PROUN 构成主义圣堂 + 4K 音符下落 + 3D 圆环）</strong>
       <br />
-      <sub>3D circular card ring (`1–20` cards), drag/wheel orbit, click revealed card for 360° slab inspect</sub>
+      <sub>PROUN × osu!mania 4K sanctum, numbered pools (<code>01–07</code>), 3D card ring &amp; hover star glows</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center" valign="top">
       <a href="docs/screenshots/11-gacha-dating.png"><img src="docs/screenshots/11-gacha-dating.png" alt="Random Card Draw — Default Dating Swipe Mode with Right-Fanned Preview Stack" width="100%" /></a>
       <br />
-      <strong>11 · 随机抽卡 · 01 约会试听（默认模式 · 超大卡牌右向扇形叠放 + 极简底部导航栏）</strong>
+      <strong>11 · 随机抽卡 · 01 约会试听（默认模式 · 多分组目标归档与放大卡牌）</strong>
       <br />
-      <sub>Default tab, enlarged cards fanned right, collapsed Liked drawer, open Three.js canvas &amp; auto-play audio</sub>
+      <sub>Default tab, enlarged cards fanned right, direct swipe-to-group targeting &amp; multi-group Liked drawer</sub>
     </td>
     <td width="50%" align="center" valign="top">
       <a href="docs/screenshots/12-gacha-guess.png"><img src="docs/screenshots/12-gacha-guess.png" alt="Random Card Draw — Obsidian Dark English Guess SR Mode with NM/HT/DT and MA Ratio" width="100%" /></a>
@@ -123,16 +123,16 @@
     <td width="50%" align="center" valign="top">
       <a href="docs/screenshots/13-gacha-altar.png"><img src="docs/screenshots/13-gacha-altar.png" alt="Random Card Draw — Unified Global-Theme Collector Sleeve and Collapsible Pack Dossier" width="100%" /></a>
       <br />
-      <strong>13 · 随机抽卡 · 封印祭坛与主题同步卡包（可收起窄版侧栏 + 顺滑进度滑动条）</strong>
+      <strong>13 · 随机抽卡 · 包豪斯斜切收藏卡包（独立 07 条件自选池弹窗 + 后台秒开预取）</strong>
       <br />
-      <sub>Unified global-theme sleeve on open Three.js Sanctum, collapsible narrow Pack Dossier &amp; calibrated range slider</sub>
+      <sub>Bauhaus diagonal-slash theme-synced pack sleeve, editable Pool <code>07</code> filters &amp; background prefetch</sub>
     </td>
     <td width="50%" align="center" valign="top">
       <a href="docs/screenshots/14-gacha-inspector.png"><img src="docs/screenshots/14-gacha-inspector.png" alt="Random Card Draw — 360° 3D Collector Slab Inspector Modal" width="100%" /></a>
       <br />
-      <strong>14 · 随机抽卡 · 360° 3D 立体卡片检视器（鼠标任意拖拽 360° 旋转与实体星级倒角厚边）</strong>
+      <strong>14 · 随机抽卡 · 360° 3D 立体检视（14px PROUN 铭文金属脊 + 主题同调星空卡背）</strong>
       <br />
-      <sub>360° inertial drag yaw/pitch, wheel zoom, Flip <code>180° (F)</code>, Reset <code>(R)</code> &amp; star-rarity 10px bevel edges</sub>
+      <sub>360° drag/zoom slab inspector, <code>14px</code> PROUN metallic engraved spine &amp; theme-tinted celestial card back</sub>
     </td>
   </tr>
 </table>
@@ -189,12 +189,12 @@
    - 覆盖搜图选歌、详情/PP 计算器、Mania 预览器、3D Book 档案库、OSU! 音乐台、游戏内浮窗、Electron 系统托盘菜单与后端错误/镜像描述的全量中英双语体验。
    - 可在「设置 → 分区 3」或新手引导右上角切换 `简体中文` / `English`（切换立即预览，点保存持久化至 `config.json`，取消/Esc 自动回滚）；右上角测速状态与提示文案严格跟随用户实际配置的 `proxyPort`（不再固定写死 `6174`）与直连/代理模式动态显示。
 
-10. **随机抽卡工作室（`v1.14.0` — 细长底部导航 Dock · 全局主题同色卡包 · 3D 圆环与 360° 立体检视）**
+10. **随机抽卡工作室（`v1.15.0` — PROUN × osu!mania 圣堂 · 14px 金属铭文脊 · 秒开预取 · 多分组心动曲库）**
    - 在浏览模式 `Lazer` 按钮右侧提供「随机抽卡」入口，打开后**自动收起主左侧栏与存档栏**；模式切换栏下移至纤细的**底部导航 Dock**，**默认直接进入 `01 约会试听`**（顺序为 `01 约会试听 · 02 卡包典藏 · 03 星数推演`）。所有定格构造转场动画沉底于 `z-[4]` 背景层，不再浮压界面元素。
-   - **Three.js 圣堂通透画布与全主题配色联动**：三大模式主舞台全部去除厚重遮罩面板，让实时响应全球 `--t-canvas` 与强调色 `--t-osu` 的 Three.js 圣堂建筑舞台完整透出；支持 `B` 键快速切换构造线框。
-   - **01 约会试听（默认模式）**：放大卡牌展示尺寸并在**右侧下面扇形叠放预览下一张卡片**，支持左右滑卡、快捷键、撤回与切卡自动试听；右侧「心动曲库」改为默认收起的折叠抽屉。
-   - **02 卡包典藏与 360° 3D 检视**：左侧卡包清单更窄且支持自由收起/展开，抽卡数量滑条 (`1–20`) 填充轨道精确跟随滑块；7 种收藏卡包统一映射当前全局主题色；撕开卡包后所有卡牌按 **3D 椭圆圆环阵列** 分布（支持拖拽空白处、滚轮或左右箭头旋转圆环），悬停卡背亮起对应真实星数光谱光晕与裁切角框，点击任意已翻开正面卡片即可进入 **360° 3D 立体检视弹窗**（鼠标惯性 360° 自由旋转、滚轮缩放、10px 星级倒角厚边、`F` 翻转至派蒙星空卡背、`R` 复位）。
-   - **03 星数推演**：移除卡片 `详情` 入口严格防止窥见真实星数，扩充 24 种严格基于 `NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)` 倍率与**黄彩比（`MA Ratio`）**/ Miss / `EZ` / `Classic` 组合的高信息量情景线索，并将连续精准指标图标焕新为干净的闪电连击徽标（移除火苗 Emoji）。
+   - **PROUN × osu!mania 圣堂舞台与主题同调星图卡背**：Three.js 圣堂舞台融合普劳恩斜向钢梁、悬浮几何圆盘、左右侧 `osu!mania` 4K 下落短键/长条轨道与中央呼吸 Hit Circle / Approach Ring（支持 `B` 键切换构造线框）；派蒙星空卡背采用中性黑炭底色高比例融合全局主题 `--t-osu`，随瓷器白 / 樱雾浅粉 / 松影暗绿等主题呈现深色同调星空质感。
+   - **01 约会试听与多分组持久心动曲库**：放大卡牌并在右侧扇形叠放预报下两张卡片，顶部支持直接切换滑动归属的目标分组（如「默认心动」或自建「高难练习」分组）；全模式收藏持久保存至 `data/gacha-collections.json`，右侧多分组心动抽屉支持**新建、重命名、清空、删除分组、单曲多分组勾选分配与按组一键批量下载**。
+   - **02 卡包典藏、`07 条件自选池` 与 360° 铭文金属脊检视**：精简去除了「开包提示语」等冗余文案，采用包豪斯斜切造型卡包与 `01 综合图池`–`07 条件自选池` 编号体系（含独立「07 条件自选池」弹窗，可同步当前搜图条件或一键导入 Filter 存档）；随视口尺寸等比放大卡包与 3D 圆环阵列并内置工作台后台预取 + 后端并发探针加速秒开；点击已翻开卡牌进入 **360° 3D 立体检视**，配备 **`14px` PROUN 工业铭文金属侧脊**（星级霓虹中缝 + 纵向 `OSU! // ★SR // BPM // #serial` 刻印）、`F` 翻面、`R` 复位与收藏快捷按钮。
+   - **03 星数推演**：移除卡片 `详情` 入口严格防止窥见真实星数，提供 24 种严格基于 `NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)` 倍率与**黄彩比（`MA Ratio`）**/ Miss / `EZ` / `Classic` 组合的情景线索与闪电连击徽标。
 
 ### 快速开始
 
@@ -270,12 +270,12 @@ No osu! login or session cookie is required. It brings together multi-mirror bea
 - **Full ZH / EN Bilingual Switcher & Dynamic Proxy Diagnostics**
   - Complete Simplified Chinese & English localization across Browse, Beatmap Detail & PP Calculator, Mania Previewer, 3D Book Archive, OSU! AUDIO Music Station, Acrylic Overlay, Electron Tray/Hotkeys, and backend mirror/status responses.
   - Switch live via **Settings → Section 3 (`简体中文 | English`)** or the onboarding header pill (persisted in `config.json`, safely rolls back on Cancel/Esc). Top-bar latency checks and toast notifications dynamically reflect your configured `proxyPort` or `Direct` mode.
-- **Random Card Draw Studio (`v1.14.0` — Slim Bottom Dock, Theme-Synced Sleeves, 3D Ring & 360° Inspector)**
-  - Accessible beside the `Lazer` view button in Browse mode; **automatically collapses both sidebars** on launch and exclusively draws non-local beatmapsets.
-  - **Slim Bottom Dock & Open Three.js Stage**: Navigation sits in a sleek bottom dock defaulting directly to **`01 Dating Swipe`** (`01 Dating · 02 Packs · 03 Guess`). Frosted enclosing veils are stripped so the live Three.js Sanctum backdrop (synced dynamically to `--t-canvas` & `--t-osu`), `B` Blueprint wireframe toggle, and background-layered (`z-[4]`) transitions remain crystal clear.
-  - **01 Dating Swipe (Default)**: Enlarged rectangular cards (`~405×600px`) fan the next two upcoming cards visibly to the right underneath the active card, with a **collapsible Liked Archive drawer collapsed by default** and instant auto-playing audio previews.
-  - **02 Pack Opening & 360° 3D Slab Inspector**: Features a narrower collapsible Pack Dossier rail, synced `--fill` card count range slider (`1–20`), unified global-theme collector pack sleeves, and an interactive **3D circular card ring** (orbit by drag, wheel, or buttons) with star-rarity hover glows and Paimon starfield card backs. Clicking any revealed card launches the full-screen **360° 3D Collector Slab Inspector** with inertial mouse-drag 360° yaw/pitch rotation, zoom, 10px rarity bevel edges, `Flip 180° (F)`, and `Reset (R)`.
-  - **03 Guess SR**: Removes the card `Details` modal button so stars stay hidden, provides 24 richer randomized scenarios strictly using **`NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)`** rates with **MA Ratio** (`黄彩比`), misses, and mod clues, uses a crisp Zap streak counter without fire emojis, and renders over the open Three.js canvas.
+- **Random Card Draw Studio (`v1.15.0` — PROUN × osu!mania Sanctum, 14px Metallic Spine, Fast Prefetch & Grouped Likes)**
+  - Accessible beside the `Lazer` view button in Browse mode; **automatically collapses both sidebars** on launch and exclusively draws non-local beatmapsets through clean numbered card pools (`01 All-Pool Mix` – `07 Custom Filter Pool`) and tier labels (`Standard` – `Apex 8★+`).
+  - **PROUN × osu!mania 4K Sanctum & Theme-Synced Card Back**: The open Three.js backdrop blends Constructivist diagonal girders and floating discs with flanking `osu!mania` 4K falling short/LN pillars and a breathing central Hit Circle + Approach Ring (`B` key toggles blueprint wireframe). The Paimon starfield card back mixes neutral charcoal with `--t-osu` so themes like Sakura pink and Forest emerald tint the deep starry cloak organically.
+  - **01 Dating Swipe & Persistent Multi-Group Collections**: Enlarged right-fanned card deck with instant audio playback and a direct header target-group selector for swiped likes. Favorites persist server-side in `data/gacha-collections.json` with a collapsible **Multi-Group Liked Drawer** supporting group create/rename/clear/delete, per-song group assignment checkboxes, and one-click group batch download.
+  - **02 Pack Opening, Custom Pool `07` Modal & 360° Metallic Spine**: Features enlarged viewport-adaptive Bauhaus diagonal-slash pack sleeves and 3D circular rings with redundant helper hints removed, Studio-level Pool `01` pre-warming plus parallel backend fallback probes for rapid opening, and an independent **Pool `07` Custom Filter Modal** (with Browse filter sync & Filter Archive import). Clicking any revealed card opens the **360° 3D Slab Inspector** sporting **`14px` brushed PROUN metallic side spines** with engraved `OSU! // ★SR // BPM // #serial` edges, star-rarity seam glow, `F` flip, `R` reset, and favorite toggle.
+  - **03 Guess SR**: Keeps `Details` locked so stars stay hidden, serves 24 scenarios strictly using **`NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)`** rates with **MA Ratio**, misses, and mod clues, plus a crisp Zap streak counter on the open Three.js canvas.
 
 ### Quick Start
 

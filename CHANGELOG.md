@@ -4,6 +4,24 @@ All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be docum
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.15.0] - 2026-11-26
+
+### Added & Changed
+- **PROUN 构成主义 × osu!mania 4K 圣堂舞台与包豪斯斜切卡包（#1 / #8）**：
+  - `GachaSanctumWorld` 新增普劳恩斜向钢梁、悬浮几何圆盘、左右对称 `osu!mania` 4K 短键/长条音符下落柱与中央呼吸 Hit Circle / Approach Ring；`GachaAtmosphere` 加入构图斜线法则线与右上角 `4K` 圆环水印；
+  - `GachaPackPlate` 重绘包豪斯深红斜梁、4K 双侧虚线轨与 `POOL 01–07` 编号印记，继续跟随全局主题切换。
+- **卡包编号去中二、文案精简与随窗口自适配放大（#2 / #3 / #9）**：
+  - 将卡池名称重构为干净的 `01 综合图池`–`07 条件自选池`（EN `All-Pool Mix`–`Custom Filter Pool`）与 `标准 / 进阶 / 专家 / 大师 / 巅峰` 等级标识；
+  - 移除密封祭坛底部提示胶囊与圆环界面拖拽提示文案，按 Stage 宽高自适配放大未开卡包与 3D 圆环单卡尺寸（兼容 `1280×720` 与 `1440×900`）。
+- **360° 检视 `14px` PROUN 工业铭文金属脊与主题同调星空卡背（#4 / #5）**：
+  - `GachaCardInspectorModal` 为实体卡侧边打造 `14px` 拉丝暗金属厚脊，刻有纵向 `OSU! // ★SR // BPM // #serial` 铭文与星级霓虹中缝；
+  - `PaimonStarfieldBack` 改用中性黑炭底色高比例融合全局 `--t-osu` 与纯 CSS 中央星辉光晕，解决浅粉（Sakura）/ 森绿（Forest）等主题下卡背偏蓝问题。
+- **后台预取与后端并发秒开优化（#6）**：
+  - `GachaStudio` 挂载后即静默预温 Pool `01`，`GachaPackMode` 撕开动作支持并发等待 `inFlight` 预取，配合后端 `drawRandomBeatmapsets()` Probe 0 扩充抽取与 `Promise.allSettled` 并发 fallback 探针显著缩短开包等待。
+- **独立「07 条件自选池」弹窗与持久化多分组心动曲库（#7 / #10）**：
+  - 新增 `GachaCustomFilterModal`（Portal 独立配置 `q`/`keys`/`status`/SR/BPM/LN%/时长，支持一键同步当前搜图条件与导入 Filter 存档）；
+  - 新增 `server/gachaCollections.ts` 与 `/api/gacha/collections*` 接口将收藏原子写入 `data/gacha-collections.json`，新增 `GachaLikedDrawer` 支持默认分组保护、新建/重命名/清空/删除分组、单曲多分组勾选分配、按组批量下载及约会模式顶部滑动目标分组直选。
+
 ## [1.14.0] - 2026-11-26
 
 ### Added & Changed

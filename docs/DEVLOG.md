@@ -4,6 +4,32 @@
 
 ---
 
+## Session 25 — PROUN 圣堂、主题星图卡背、14px 金属脊、秒开预取、自选池弹窗与多分组持久心动曲库 (`v1.15.0`)
+
+- **日期**：2026-11-26
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **功能代码提交**：`fbdb581`
+
+### 需求与设计决策 (`/grill-me` 对齐 10 项需求)
+1. **背景 × 卡包视觉统一 (#1 / #8)**：选用「方案 A · 普劳恩节奏圣堂 (`PROUN`)」，将 Three.js 场景与 `GachaAtmosphere` / `GachaPackPlate` 统一为斜梁、悬浮几何盘、`osu!mania` 4K 下落轨道、中央呼吸 Hit Circle 与包豪斯斜切卡包。
+2. **精简文案与自适应放大 (#2 / #3)**：移除开包底部及圆环拖拽提示文案；根据舞台宽高比放大卡包封套、3D 圆环单卡与检视器卡片尺寸，并通过 `1280×720` 与 `1440×900` 零溢出验证。
+3. **360° 金属脊与主题卡背 (#4 / #5)**：`GachaCardInspectorModal` 新增 `14px` PROUN 工业铭文金属脊（纵向 `OSU! // ★SR // BPM // #serial` + 星级中缝光）；`PaimonStarfieldBack` 改为中性黑炭基色混合 `--t-osu` 与纯 CSS 中央辐射光晕，使 Sakura/Forest 等主题呈现纯正同调深色星空。
+4. **秒开、定制自选池与去中二编号 (#6 / #7 / #9)**：采用编号图池 `01 综合图池`–`07 条件自选池`；后端 `drawRandomBeatmapsets()` 并发执行 fallback 探针、前端 `GachaStudio` 挂载即预热 Pool `01` 并让 `handleRipOpen` 并行接入在途预取；新增 `GachaCustomFilterModal` 支持自主配池、同步浏览筛选与导入 Filter 存档。
+5. **持久化多分组心动曲库 (#10)**：新增 `server/gachaCollections.ts` 将收藏组与曲目原子落盘至 `data/gacha-collections.json`，配合 `GachaLikedDrawer`、卡片收藏红心与约会模式目标分组直选完成跨模式持久化收藏闭环。
+
+### 关键变更文件
+- **版本与共享类型**：`package.json` (`1.15.0`)、`src/constants.ts`、`server/types.ts`、`src/types.ts`、`src/App.tsx`
+- **后端服务**：`server/gachaCollections.ts`（新增）、`server/index.ts`、(`+8` `/api/gacha/collections*` 路由)、`server/search.ts`
+- **前端接口与 Gacha UI**：`src/api.ts`、`src/components/gacha/{GachaSanctumWorld.ts,GachaAtmosphere.tsx,GachaPackPlate.tsx,GachaStudio.tsx,GachaPackMode.tsx,GachaCardInspectorModal.tsx,GachaDatingMode.tsx,GachaCustomFilterModal.tsx,GachaLikedDrawer.tsx,BeatmapGachaCard.tsx,PaimonStarfieldBack.tsx,gachaUtils.ts}`
+- **文档与截图**：`README.md`、`AGENT.md`、`CHANGELOG.md`、`docs/DEVLOG.md`、`docs/screenshots/10–14*.png`
+
+### 验证结果
+- **静态检查与构建**：`npm run typecheck` 与 `npm run build` 均以 exit code `0` 通过（未出现未包裹 i18n CJK 文案）。
+- **无头浏览器全链路 + 复测**：在隔离端口 `:3728` 完成 `1440×900` 与 `1280×720` 全模式验收与跨刷新多分组收藏持久化验证；精修复测证实 Sakura (`--t-osu: #e14b88`) 与 Forest (`--t-osu: #34d399`) 卡背分别呈纯正深樱粉与深森绿星空，`01 约会试听` 停留 `1600ms` 后切换至 `02 卡包典藏` 点击 `撕开卡包 · 5 张` 用时 `1297ms` 完成圆环渲染，控制台/WebGL/HTTP 报错均为 `0`。
+- **本地打包与冒烟**：`npm run electron:pack` 生成 `release\win-unpacked\osu-manager.exe`（`FileVersion=1.15.0`），隔离 `:3729` 冒烟验证 `GET /api/health`、`GET /`、`GET /api/gacha/collections`（含 `default` 组）与 `POST /api/gacha/draw` (`5` 张) 全数通过并清理零残留进程，仓库 `data/config.json` 保持 `898` 字节未改动。
+
+---
+
 ## Session 24 — 随机抽卡工作室 13 项 UX/美学全面升级、3D 圆环与 360° 立体检视 (`v1.14.0`)
 
 - **日期**：2026-11-26
