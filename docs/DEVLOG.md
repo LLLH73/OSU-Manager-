@@ -4,6 +4,32 @@
 
 ---
 
+## Session 27 — 修复卡包 360° 悬停换行、对齐官方 Mania PP 公式与重构星数推演八要素极简台 (`v1.16.1`)
+
+- **日期**：2026-11-26
+- **对话 ID**：`b77055a5-c9a6-48e8-8c6a-ac6acae69e19`
+- **功能代码提交**：`beb515c`
+
+### 需求与根因排查
+1. **卡包模式「点击 360° 检视」悬停排版换行**：`BeatmapGachaCard.tsx` 原悬停浮条锚定于 `top-11 left-1/2 -translate-x-1/2` 且缺少 `inline-flex whitespace-nowrap`，在紧凑圆环窄卡（`134–266px`）受限于半宽收缩被迫折成两行并与顶部星数徽标接近。改为跨全宽居中容器 `inset-x-0 top-[34%] flex justify-center` + `inline-flex shrink-0 whitespace-nowrap`，确保在 5 张/10 张卡包下始终单行居中且不遮挡上下角标与标题。
+2. **osu!mania PP 计算偏差根因与公式对齐**：
+   - 用户实测两份成绩偏差：`On And On!! feat. Jenga (Club Extended)` `[4K] And Or Nor Not`（Lazer NM `95.50%`, `2510/1902/403/44/10/12`）官服 `345.419pp` 误算为 `275.9pp`；`Triumph & Regret` `[4K] Regret`（Stable NM `98.83%`, `2542/1194/105/5/2/5`）官服 `293.32pp` 误算为 `225.3pp`。
+   - 对照上游 `ppy/osu` `ManiaPerformanceCalculator.cs`（`20241007+`）源码，定位两处公式误差与两处精度/换算误差：**官方总乘数基数为 `1.0`（而非 `0.8`），且 `ModClassic` 在 Mania 中无 `×0.96` 惩罚**（仅保留 `NF ×0.75` 与 `EZ ×0.5`）；同时 `localLibrary.ts` 之前将 `starRating` 截断为 2 位小数且 NM 仍查表 `starsByMod[0]`，而情景计算器未按 `Lazer (305)` / `Classic (300)` 基准将界面准度代数换算到官方 `320` 制 `customAccuracy`。
+   - 全量修正 `server/localLibrary.ts`（保留 `rawStarRating` float64 精度并优先采信最新 Lazer `client.realm` 星数）、`server/pp.ts` 与 `src/utils/pp.ts`（新增 `computeManiaCustomAccuracy()`、区分 Lazer LN 双判定计数并同步更新 `deriveStarBoundsFromPpFilter()`），以及 `PpCalculatorPanel.tsx` / `FilterPanel.tsx` 的 `Lazer (305)` / `Classic (300)` 按钮文案。
+3. **「03 星数推演」右侧情景 UI 极简化重构**：在 `GachaGuessMode.tsx` 彻底移除右上角拥挤串联小框（`DT 1.5× · 95% · 黄彩比 2:1 · 5M`）及嵌套实心底框，改用通透毛玻璃描边融入 2D PROUN 舞台；上方突出 Hero PP 与目标难度，下方 4×2 网格大方拆出 **速率倍率 / 目标准度 / 黄彩比 / 失误数 / 等效 BPM / 键数与判定 / 长条占比 / 计分与 Mod** 全部 8 项独立情景要素，并在 `1280×720` 复测捕捉到底部说明行贴边后微调自适应垂直间距彻底消除裁切。
+
+### 关键变更文件
+- **版本与后端计算**：`package.json` (`1.16.1`)、`src/constants.ts`、`server/localLibrary.ts`、`server/pp.ts`
+- **前端 PP 与抽卡 UI**：`src/utils/pp.ts`、`src/components/PpCalculatorPanel.tsx`、`src/components/FilterPanel.tsx`、`src/components/gacha/BeatmapGachaCard.tsx`、`src/components/gacha/GachaGuessMode.tsx`
+- **文档与截图**：`README.md`、`AGENT.md`、`CHANGELOG.md`、`docs/DEVLOG.md`、`docs/screenshots/12-gacha-guess.png`
+
+### 验证结果
+- **静态构建与纯 Node 实绩 PP 校验**：`npm run typecheck` 与 `npm run build` 均退出码 `0`；`verify-pp.mjs` 验证 `On And On!!` Lazer NM 为 `345.4 pp`（官服 `345.419`）、`Triumph & Regret` Stable NM 为 `293.3 pp`（官服 `293.32`，位列第一高于 Lazer `286.1 pp`），`calculateBeatmapPp` 与 `deriveStarBoundsFromPpFilter` 一致且包络真实星数。
+- **浏览器实机视觉验收 (`:3728`, `1440×900` & `1280×720`, Light/Obsidian)**：5 张与 10 张紧凑卡包悬停「点击 360° 检视」均测得单行 `93.00×18.35px`、水平零偏移居于封面中上区；「03 星数推演」浅色/曜石黑及揭晓态通透协调，修正后 `1280×720` 底部说明距底栏留白 `26px`、零横向溢出；`Book 档案库` 实显 `345.4 pp (估算)` 与 `293.3 pp (估算)`，计算器显示 `Lazer (305)` / `Classic (300)`；控制台与 HTTP `>=400` 报错均为 `0`。
+- **本地 EXE 打包与冒烟**：`npm run electron:pack` 生成 `release\win-unpacked\osu-manager.exe`（`FileVersion=1.16.1` / `ProductVersion=1.16.1`），隔离 `:3729` 冒烟实测 `GET /api/health` (`200`)、`GET /` (`200`) 及 `GET /api/books`（`On And On!!` `bestPp=345.4`、`Triumph & Regret` `bestPp=293.3`），清理后监听端口为 `0` 且 `data/config.json` 保持 `898` 字节未改动。
+
+---
+
 ## Session 26 — 纯 2D PROUN 平面舞台、炉石风拖拽开包、?hd=1 原画高清封面、20px 矢量金属脊与全新动效卡背 (`v1.16.0`)
 
 - **日期**：2026-11-26

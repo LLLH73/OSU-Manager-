@@ -112,11 +112,11 @@
       <sub>Default tab, HD fullsize artwork fanned right, direct group swipe targeting &amp; Constructivist foil backs</sub>
     </td>
     <td width="50%" align="center" valign="top">
-      <a href="docs/screenshots/12-gacha-guess.png"><img src="docs/screenshots/12-gacha-guess.png" alt="Random Card Draw — Obsidian Dark English Guess SR Mode with NM/HT/DT and MA Ratio" width="100%" /></a>
+      <a href="docs/screenshots/12-gacha-guess.png"><img src="docs/screenshots/12-gacha-guess.png" alt="Random Card Draw — Obsidian Dark Guess SR Mode with 8-Element Scenario Brief and 2D PROUN Backdrop" width="100%" /></a>
       <br />
-      <strong>12 · 随机抽卡 · 03 星数推演（暗色英文 · NM/HT/DT 与黄彩比 / MA Ratio · 锁定详情）</strong>
+      <strong>12 · 随机抽卡 · 03 星数推演（曜石黑 · Hero PP 顶栏与八项独立情景要素 · 锁定详情）</strong>
       <br />
-      <sub>Open Three.js backdrop, Details locked, 24 NM/HT/DT scenarios with MA Ratio, Zap streak &amp; delta ruler</sub>
+      <sub>Pure 2D PROUN backdrop, Details locked, Hero PP + 8-element Scenario Brief (Rate / Acc / MA / Miss / BPM / Keys·OD / LN% / Mods)</sub>
     </td>
   </tr>
   <tr>
@@ -159,7 +159,7 @@
 2. **Ranked 大致 PP 估算、情景筛选与 PP 计算器**
    - 所有列表与难度表直接显示 `ranked` / `approved` 谱面的大致 PP（`~XXXpp`）。
    - 筛选栏配备加粗 **Lazer 光谱星数双滑块（`0.0★–15.0★ / ∞`）** 与 **PP 范围双滑块（`0–2000pp / ∞`）**，以及主从分栏 **PP 情景库**（覆盖 `NM`、`DT 1.5x`、`HT 0.75x`、`变速 Rate` 与持久化 `自定义` 组合）。
-   - 内置交互式 PP 计算器，支持调整准度（80%–100%）、Miss、倍速、Mod 与 **自定义黄彩比（320:300）**，并可对未上架练习图模拟计算。
+   - 内置交互式 PP 计算器（对齐 `ppy/osu` Mania 准度制公式），支持调整准度（80%–100%）、Miss、倍速、**Lazer (305) / Classic (300)** 计分换算、Mod 与 **自定义黄彩比（320:300）**，并可对未上架练习图模拟计算。
 
 3. **双端曲库识别、零流量同步与极速批量下载**
    - 自动扫描 `osu!stable`（`Songs/`、`osu!.db`）与 `osu!lazer`（`client.realm` 只读二进制直读 + `files/`），本地已装谱面在任意视图自动点亮**四边金色框体**。
@@ -189,13 +189,13 @@
    - 覆盖搜图选歌、详情/PP 计算器、Mania 预览器、3D Book 档案库、OSU! 音乐台、游戏内浮窗、Electron 系统托盘菜单与后端错误/镜像描述的全量中英双语体验。
    - 可在「设置 → 分区 3」或新手引导右上角切换 `简体中文` / `English`（切换立即预览，点保存持久化至 `config.json`，取消/Esc 自动回滚）；右上角测速状态与提示文案严格跟随用户实际配置的 `proxyPort`（不再固定写死 `6174`）与直连/代理模式动态显示。
 
-10. **随机抽卡工作室（`v1.16.0` — 纯 2D PROUN 平面构成舞台 · 炉石拖拽开包 · 原画高清封面 · 动态构成主义卡背）**
+10. **随机抽卡工作室（`v1.16.1` — 纯 2D PROUN 平面构成舞台 · 炉石拖拽开包 · 原画高清封面 · 极简八要素猜星台）**
    - 在浏览模式 `Lazer` 按钮右侧提供「随机抽卡」入口，打开后**自动收起主左侧栏与存档栏**；模式切换栏下移至纤细的**底部导航 Dock**，**默认直接进入 `01 约会试听`**（顺序为 `01 约会试听 · 02 卡包典藏 · 03 星数推演`）。
    - **纯 2D PROUN × osu!mania 4K 平面构成背景（零 WebGL 开销）**：以高精度 SVG 构成主义海报几何与远边距双侧 `osu!mania` 4K 动态下落音符带替代 3D 模型渲染，随约会 / 卡包 / 推演三模式与全局主题切换构图（`B` 键切换平面辅助构造线），兼顾视觉锐度与轻量化性能。
    - **动态构成主义 × osu! 动效卡背（全新替换）**：告别星空样式，采用融合全局主题 `--t-osu` 的深炭金属 Foil 质感卡背，集成包豪斯斜切角、流光扫掠（Specular Foil Sweep）、双侧实时滚动的 `osu!mania` 4K 窄轨音符条以及中央双圈旋动游标尺 + 呼吸缩圈 `osu!` Approach Ring。
-   - **炉石传说风拖拽开包 + 秒开预取 + 高清卡片 & 20px 矢量金属脊**：左侧卡包叠放可按住拖拽并随速度产生 3D 倾斜，拖向右侧「Opening Altar」祭坛时逐级点亮光晕与瞄准锁框，松手磁吸炸开 3D 圆环（拖出松手平滑回弹，亦可点击或拉动顶部虚线封条）；卡片封面通过 `/api/media/cover/:id?hd=1` 代理缓存 `fullsize.jpg` 原画大图，配合 360° 立体检视器的真 3D `translateZ` 推进变焦与 `20px` 高精度 `<svg>` 钛金属雕刻侧脊（含纵向 `OSU! // ★SR // BPM // #serial`），彻底消除放大糊边。
+   - **炉石传说风拖拽开包 + 秒开预取 + 高清卡片 & 20px 矢量金属脊**：左侧卡包叠放可按住拖拽并随速度产生 3D 倾斜，拖向右侧「Opening Altar」祭坛时逐级点亮光晕与瞄准锁框，松手磁吸炸开 3D 圆环（拖出松手平滑回弹，亦可点击或拉动顶部虚线封条）；卡片封面通过 `/api/media/cover/:id?hd=1` 代理缓存 `fullsize.jpg` 原画大图，10 张紧凑圆环悬停单行显示「点击 360° 检视」，配合 360° 立体检视器的真 3D `translateZ` 推进变焦与 `20px` 高精度 `<svg>` 钛金属雕刻侧脊（含纵向 `OSU! // ★SR // BPM // #serial`），彻底消除放大糊边。
    - **多分组持久心动曲库与 `07 条件自选池`**：全模式收藏持久保存至 `data/gacha-collections.json`，支持新建/重命名/清空/删除分组、单曲多分组勾选分配、按组批量下载及约会顶部目标组直选；`07 条件自选池` 配备独立弹窗支持自主配池、同步主搜图条件与导入 Filter 存档。
-   - **03 星数推演**：移除卡片 `详情` 入口严格防止窥见真实星数，提供 24 种严格基于 `NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)` 倍率与**黄彩比（`MA Ratio`）**/ Miss / `EZ` / `Classic` 组合的情景线索与闪电连击徽标。
+   - **03 星数推演**：移除卡片 `详情` 入口严格防止窥见真实星数，采用与 2D 舞台通透融合的极简 Hero PP 顶栏与 **4×2 八项独立情景要素网格**（速率倍率 / 目标准度 / 黄彩比 / 失误数 / 等效 BPM / 键数与判定 / 长条占比 / 计分与 Mod），提供 24 种严格基于 `NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)` 倍率的实景推演。
 
 ### 快速开始
 
@@ -254,7 +254,7 @@ No osu! login or session cookie is required. It brings together multi-mirror bea
   - **Lazer Song Select (`lazer`)**: Viewport-locked split layout with rAF-driven curved carousel, staggered difficulty rows, `SR / OD / HP / LN%` bars, quick `HT / NM / DT` PP readout, full keyboard navigation (`↑/↓`, `←/→`, `Space`, `Enter`), and full-window cover-art theming.
   - **Grid (`grid`) & List (`list`) Views**: Dense card/list browsing with infinite scroll loading and gold borders on locally installed beatmaps.
 - **Ranked PP Estimation, Scenario Presets & PP Calculator**
-  - Dual-thumb spectral Star Rating (`0.0★–15.0★ / ∞`) and PP (`0–2000pp / ∞`) sliders plus master-detail scenario presets (`NM`, `DT 1.5x`, `HT 0.75x`, custom `Rate`, and saved presets) and a custom `320:300` MA ratio calculator.
+  - Dual-thumb spectral Star Rating (`0.0★–15.0★ / ∞`) and PP (`0–2000pp / ∞`) sliders plus master-detail scenario presets (`NM`, `DT 1.5x`, `HT 0.75x`, custom `Rate`, and saved presets), **official `ppy/osu` Mania PP accuracy math**, `Lazer (305)` / `Classic (300)` scoring conversion, and a custom `320:300` MA ratio calculator.
 - **Dual-Client Recognition, Zero-Traffic Sync & Fast Batch**
   - Scans both `osu!stable` (`Songs/`, `osu!.db`) and `osu!lazer` (zero-native-dep read-only `client.realm` + `files/`).
   - Sync maps missing in Lazer directly from Stable without re-downloading, launch/focus either game client from the sidebar, and run `1–500` map text-only Fast Batch downloads across 7 mirrors with IPv6 / proxy (`127.0.0.1:6174` default) smart routing.
@@ -271,12 +271,12 @@ No osu! login or session cookie is required. It brings together multi-mirror bea
 - **Full ZH / EN Bilingual Switcher & Dynamic Proxy Diagnostics**
   - Complete Simplified Chinese & English localization across Browse, Beatmap Detail & PP Calculator, Mania Previewer, 3D Book Archive, OSU! AUDIO Music Station, Acrylic Overlay, Electron Tray/Hotkeys, and backend mirror/status responses.
   - Switch live via **Settings → Section 3 (`简体中文 | English`)** or the onboarding header pill (persisted in `config.json`, safely rolls back on Cancel/Esc). Top-bar latency checks and toast notifications dynamically reflect your configured `proxyPort` or `Direct` mode.
-- **Random Card Draw Studio (`v1.16.0` — Pure 2D PROUN Graphic Stage, Hearthstone Drag-to-Altar, HD Covers & Kinetic Backs)**
+- **Random Card Draw Studio (`v1.16.1` — Pure 2D PROUN Graphic Stage, Hearthstone Drag-to-Altar, HD Covers & Minimalist 8-Element Guess Console)**
   - Accessible beside the `Lazer` view button in Browse mode; **automatically collapses both sidebars** on launch and exclusively draws non-local beatmapsets through clean numbered card pools (`01 All-Pool Mix` – `07 Custom Filter Pool`) and tier labels (`Standard` – `Apex 8★+`).
   - **Zero-WebGL 2D Flat PROUN × osu!mania Stage**: Replaces Three.js 3D meshes with a crisp flat vector editorial backdrop plus far-margin 2D `osu!mania` 4K scrolling rhythm lanes (adapting per tab and `B` blueprint mode) for sharper lines and minimal GPU overhead.
   - **Dynamic Constructivist × osu! Kinetic Card Back**: Replaces starry backdrops with a theme-infused (`--t-osu`) dark foil plate featuring Bauhaus diagonal cuts, drifting metallic sheen, twin live-scrolling 4K margin strips, counter-rotating vernier calipers, and a rhythmic contracting `osu!` Approach Ring.
-  - **Hearthstone Draggable Pack Table, HD Artwork & 20px Vector Spines**: Grab booster packs from a physical left reserve stack with velocity-driven 3D banking and drop them into a magnetically awakening right **Opening Altar** (outside drops smoothly spring back; tear seam drag & direct clicks remain supported). Cards fetch full-res `fullsize.jpg` covers via `/api/media/cover/:id?hd=1`, while the **360° Inspector** switches to true-3D `translateZ` zoom and razor-sharp **`20px` vector `<svg>` engraved titanium spines** (`OSU! // ★SR // BPM // #serial`), alongside `data/gacha-collections.json` multi-group favorites & the Pool `07` Custom Filter Modal.
-  - **03 Guess SR**: Keeps `Details` locked so stars stay hidden, serves 24 scenarios strictly using **`NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)`** rates with **MA Ratio**, misses, and mod clues, plus a crisp Zap streak counter on the open 2D graphic canvas.
+  - **Hearthstone Draggable Pack Table, HD Artwork & 20px Vector Spines**: Grab booster packs from a physical left reserve stack with velocity-driven 3D banking and drop them into a magnetically awakening right **Opening Altar** (outside drops smoothly spring back; tear seam drag & direct clicks remain supported). Cards fetch full-res `fullsize.jpg` covers via `/api/media/cover/:id?hd=1` with a crisp single-line `360° INSPECT` hover badge even in compact 10-card rings, while the **360° Inspector** switches to true-3D `translateZ` zoom and razor-sharp **`20px` vector `<svg>` engraved titanium spines** (`OSU! // ★SR // BPM // #serial`), alongside `data/gacha-collections.json` multi-group favorites & the Pool `07` Custom Filter Modal.
+  - **03 Guess SR**: Keeps `Details` locked so stars stay hidden, pairing a translucent Hero PP header with a **4×2 grid of 8 independent scenario elements** (Rate, Accuracy, MA Ratio, Miss, Effective BPM, Keys & OD, LN%, Mods) across 24 `NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)` challenges harmonized with the 2D graphic canvas.
 
 ### Quick Start
 

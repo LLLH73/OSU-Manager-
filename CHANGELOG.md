@@ -4,6 +4,19 @@ All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be docum
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.16.1] - 2026-11-26
+
+### Changed & Fixed
+- **对齐 `ppy/osu` 官方 Mania 准度制 PP 公式（修复双端本地实绩与情景计算偏低）**（`server/localLibrary.ts`, `server/pp.ts`, `src/utils/pp.ts`, `src/components/PpCalculatorPanel.tsx`, `src/components/FilterPanel.tsx`）：
+  - 对照上游 `ppy/osu` `ManiaPerformanceCalculator.cs`（`20241007+`）：移除过时的 `0.8` 总乘数与误加的 `Classic ×0.96` 惩罚，改用官方 `multiplier = 1.0 * (NF ? 0.75 : 1) * (EZ ? 0.5 : 1)`；
+  - `server/localLibrary.ts` 保留 `client.realm` / `osu!.db` 全精度 float64 `StarRating`（并优先采信最新 Lazer `client.realm` 星数）用于本地成绩估算，消除 NM 覆盖旧 `osu!.db` 或 2 位小数舍入误差（实测 `On And On!!` Lazer NM 提升至 `345.4 pp`，`Triumph & Regret` Stable NM 提升至 `293.3 pp`）；
+  - `calculateBeatmapPp()` 与 `deriveStarBoundsFromPpFilter()` 新增 `computeManiaCustomAccuracy()` 代数换算 `Lazer (305)` / `Classic (300)` 准度与黄彩比并区分 Lazer LN 双端判定计数，同时将计算器切换按钮文本更新为 `Lazer (305)` / `Classic (300)`。
+- **修复卡包模式「点击 360° 检视」悬停标签换行排版**（`src/components/gacha/BeatmapGachaCard.tsx`）：
+  - 将正面上方居中胶囊改为跨全宽居中锚点（`inset-x-0 top-[34%]`）并施加 `inline-flex shrink-0 whitespace-nowrap`，在 5 张及 10 张紧凑卡包尺寸下均保持单行居中不换行，且与顶部星数徽标完全错开不重叠。
+- **重构「03 星数推演」右侧情景控制台美学与信息布局**（`src/components/gacha/GachaGuessMode.tsx`）：
+  - 移除右上角拥挤的串联摘要小框（`DT 1.5× · 95% · ...`）与沉重嵌套底框，改用通透毛玻璃极简描边适配 2D PROUN 背景；
+  - 上方展示大字号 Hero PP 与目标难度名，下方 4×2 网格独立舒展列出全部 8 项情景要素（速率倍率、目标准度、黄彩比、失误数、等效 BPM、键数与判定、长条占比、计分与 Mod），并优化 `1280×720` 紧凑高度适配与左侧卡片提示条。
+
 ## [1.16.0] - 2026-11-26
 
 ### Added & Changed
