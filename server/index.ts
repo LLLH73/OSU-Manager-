@@ -69,9 +69,19 @@ import {
   servePreviewAudio,
   servePreviewBackground,
 } from './preview.js';
+import {
+  clearGachaGroupEntries,
+  createGachaGroup,
+  deleteGachaGroup,
+  getGachaCollections,
+  removeGachaFavorite,
+  renameGachaGroup,
+  setGachaFavoriteGroups,
+  upsertGachaFavorite,
+} from './gachaCollections.js';
 import { drawRandomBeatmapsets, getBeatmapsetDetail, searchBeatmaps } from './search.js';
 import { listSkins, resolveManiaSkin, serveSkinAsset } from './skins.js';
-import { AppConfig, GachaDrawRequest, InstalledFilter, SearchFilters, SearchMode, SearchSource, SearchStatus } from './types.js';
+import { AppConfig, GachaDrawRequest, InstalledFilter, NormalizedBeatmapset, SearchFilters, SearchMode, SearchSource, SearchStatus } from './types.js';
 
 const app = express();
 
@@ -361,6 +371,75 @@ app.post('/api/gacha/draw', async (req: Request, res: Response) => {
     logError('gacha', 'Random draw failed', { packId: req.body?.packId, error: msg });
     res.status(502).json({ error: msg });
   }
+});
+
+// Gacha Persistent Liked Collections & Custom Groups (stored in data/gacha-collections.json)
+app.get('/api/gacha/collections', (_req: Request, res: Response) => {
+  res.json(getGachaCollections());
+});
+
+app.post('/api/gacha/collections/groups', (req: Request, res: Response) => {
+  const body = (req.body || {}) as { name?: string };
+  const result = createGachaGroup(String(body.name || ''));
+  res.status(201).json(result);
+});
+
+app.put('/api/gacha/collections/groups/:id', (req: Request, res: Response) => {
+  const id = String(req.params.id || '').trim();
+  const body = (req.body || {}) as { name?: string };
+  const state = renameGachaGroup(id, String(body.name || ''));
+  if (!state) {
+    res.status(404).json({ error: st('分组不存在', 'Collection group not found') });
+    return;
+  }
+  res.json(state);
+});
+
+app.delete('/api/gacha/collections/groups/:id', (req: Request, res: Response) => {
+  const id = String(req.params.id || '').trim();
+  const state = deleteGachaGroup(id);
+  if (!state) {
+    res.status(400).json({ error: st('无法删除默认分组或分组不存在', 'Cannot delete default or missing group') });
+    return;
+  }
+  res.json(state);
+});
+
+app.delete('/api/gacha/collections/groups/:id/entries', (req: Request, res: Response) => {
+  const id = String(req.params.id || '').trim();
+  res.json(clearGachaGroupEntries(id));
+});
+
+app.post('/api/gacha/collections/entries', (req: Request, res: Response) => {
+  const body = (req.body || {}) as {
+    beatmapset?: NormalizedBeatmapset;
+    groupIds?: string[];
+  };
+  if (!body.beatmapset || !Number.isFinite(Number(body.beatmapset.id))) {
+    res.status(400).json({ error: invalidBeatmapsetIdMsg() });
+    return;
+  }
+  res.json(upsertGachaFavorite(body.beatmapset, body.groupIds));
+});
+
+app.put('/api/gacha/collections/entries/:setId', (req: Request, res: Response) => {
+  const setId = Number(req.params.setId);
+  if (!Number.isFinite(setId) || setId <= 0) {
+    res.status(400).json({ error: invalidBeatmapsetIdMsg() });
+    return;
+  }
+  const body = (req.body || {}) as { groupIds?: string[] };
+  res.json(setGachaFavoriteGroups(setId, Array.isArray(body.groupIds) ? body.groupIds : []));
+});
+
+app.delete('/api/gacha/collections/entries/:setId', (req: Request, res: Response) => {
+  const setId = Number(req.params.setId);
+  if (!Number.isFinite(setId) || setId <= 0) {
+    res.status(400).json({ error: invalidBeatmapsetIdMsg() });
+    return;
+  }
+  const groupId = typeof req.query.groupId === 'string' ? req.query.groupId.trim() : undefined;
+  res.json(removeGachaFavorite(setId, groupId));
 });
 
 app.get('/api/beatmapset/:id', async (req: Request, res: Response) => {

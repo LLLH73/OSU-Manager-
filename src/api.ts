@@ -11,8 +11,10 @@ import {
   FastBatchStartOptions,
   FilterArchive,
   FilterArchiveBrowsePosition,
+  GachaCollectionsState,
   GachaDrawRequest,
   GachaDrawResult,
+  GachaFavoriteGroup,
   LibraryDiffResult,
   LocalLibraryStatus,
   MusicPlaylist,
@@ -366,4 +368,84 @@ export function deletePlaylist(id: string): Promise<{ ok: boolean; id: string }>
   return apiJson<{ ok: boolean; id: string }>(`/api/playlists/${encodeURIComponent(id)}`, {
     method: 'DELETE',
   });
+}
+
+export function fetchGachaCollections(): Promise<GachaCollectionsState> {
+  return apiJson<GachaCollectionsState>('/api/gacha/collections');
+}
+
+export function createGachaGroup(
+  name: string,
+): Promise<{ state: GachaCollectionsState; group: GachaFavoriteGroup }> {
+  return apiJson<{ state: GachaCollectionsState; group: GachaFavoriteGroup }>(
+    '/api/gacha/collections/groups',
+    {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    },
+  );
+}
+
+export function renameGachaGroup(id: string, name: string): Promise<GachaCollectionsState> {
+  return apiJson<GachaCollectionsState>(
+    `/api/gacha/collections/groups/${encodeURIComponent(id)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    },
+  );
+}
+
+export function deleteGachaGroup(id: string): Promise<GachaCollectionsState> {
+  return apiJson<GachaCollectionsState>(
+    `/api/gacha/collections/groups/${encodeURIComponent(id)}`,
+    {
+      method: 'DELETE',
+    },
+  );
+}
+
+export function clearGachaGroupEntries(groupId: string): Promise<GachaCollectionsState> {
+  return apiJson<GachaCollectionsState>(
+    `/api/gacha/collections/groups/${encodeURIComponent(groupId)}/entries`,
+    {
+      method: 'DELETE',
+    },
+  );
+}
+
+export function upsertGachaFavorite(
+  beatmapset: NormalizedBeatmapset,
+  groupIds?: string[],
+): Promise<GachaCollectionsState> {
+  return apiJson<GachaCollectionsState>('/api/gacha/collections/entries', {
+    method: 'POST',
+    body: JSON.stringify({ beatmapset, groupIds }),
+  });
+}
+
+export function setGachaFavoriteGroups(
+  setId: number,
+  groupIds: string[],
+): Promise<GachaCollectionsState> {
+  return apiJson<GachaCollectionsState>(
+    `/api/gacha/collections/entries/${encodeURIComponent(String(setId))}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ groupIds }),
+    },
+  );
+}
+
+export function removeGachaFavorite(
+  setId: number,
+  groupId?: string,
+): Promise<GachaCollectionsState> {
+  const qs = groupId && groupId !== 'all' ? `?groupId=${encodeURIComponent(groupId)}` : '';
+  return apiJson<GachaCollectionsState>(
+    `/api/gacha/collections/entries/${encodeURIComponent(String(setId))}${qs}`,
+    {
+      method: 'DELETE',
+    },
+  );
 }

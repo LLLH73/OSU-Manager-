@@ -45,12 +45,12 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
       id: 'standard',
       code: '01',
       sigil: 'astrolabe',
-      name: isEn ? 'Starlight Classic' : '星辉经典包',
-      editorialSub: 'CELESTIAL STANDARD',
+      name: isEn ? 'All-Pool Mix' : '综合图池',
+      editorialSub: 'POOL 01 // ALL',
       tagline: isEn
-        ? 'Balanced leaderboard maps across all star ratings'
-        : '全分段排行榜热图均衡抽取，惊喜开包首选',
-      badge: isEn ? 'ALL-ROUND' : '全分段',
+        ? 'Balanced beatmaps drawn evenly across all star ratings'
+        : '全分段排行榜谱面均衡抽选',
+      badge: isEn ? 'ALL' : '全分段',
       foilGradient: 'linear-gradient(150deg, #101935 0%, #243e8e 48%, #0a1026 100%)',
       accentHex: '#3a5bc2',
       glowHex: '#8ab4ff',
@@ -61,11 +61,11 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
       id: 'pp_farm',
       code: '02',
       sigil: 'prism',
-      name: isEn ? 'Ranked PP Boost' : 'PP 冲分补给包',
-      editorialSub: 'RANKED PP TELEMETRY',
+      name: isEn ? 'Ranked PP Pool' : 'Ranked 排位池',
+      editorialSub: 'POOL 02 // PP',
       tagline: isEn
-        ? 'Ranked maps tuned for sweet-spot 3.5★–7.2★ PP climbing'
-        : '聚焦 3.5★–7.2★ Ranked 冲分甜点谱面',
+        ? 'Ranked sweet-spot charts tuned for 3.5★–7.2★ PP'
+        : '聚焦 3.5★–7.2★ Ranked 排位刷分谱面',
       badge: 'RANKED PP',
       foilGradient: 'linear-gradient(150deg, #2d0e28 0%, #7d2553 48%, #180716 100%)',
       accentHex: '#b83b74',
@@ -77,12 +77,12 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
       id: 'high_star',
       code: '03',
       sigil: 'crown',
-      name: isEn ? 'Mythic Overdrive' : '魔王高星秘匣',
-      editorialSub: 'APEX DIFFICULTY',
+      name: isEn ? 'High-Star Pool' : '高难进阶池',
+      editorialSub: 'POOL 03 // 6★+',
       tagline: isEn
-        ? '6.0★+ high-density & boss charts for brave climbers'
-        : '6.0★+ 高星魔王与高强度压迫练习图集',
-      badge: '6.0★+ BOSS',
+        ? '6.0★+ high-density speed & technical practice charts'
+        : '6.0★+ 高密度切键与高星进阶练习图',
+      badge: '6.0★+',
       foilGradient: 'linear-gradient(150deg, #330d15 0%, #8a1f32 48%, #1a060a 100%)',
       accentHex: '#c83e4d',
       glowHex: '#fcd34d',
@@ -93,11 +93,11 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
       id: 'rice_stream',
       code: '04',
       sigil: 'pulse',
-      name: isEn ? 'Pure Rice & Stream' : '单键切菜军火库',
-      editorialSub: 'RICE PRECISION',
+      name: isEn ? 'Pure Rice Pool' : '单键打点池',
+      editorialSub: 'POOL 04 // RICE',
       tagline: isEn
         ? 'Crisp Rice, Jumpstream & Handstream focus (LN <= 18%)'
-        : '专注于高手感单键交互、跳串与手串 (LN <= 18%)',
+        : '专注单键交互、跳串与手串手感 (LN <= 18%)',
       badge: 'RICE <=18%',
       foilGradient: 'linear-gradient(150deg, #072834 0%, #0d5d73 48%, #04171f 100%)',
       accentHex: '#0e7490',
@@ -109,10 +109,10 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
       id: 'ln_tech',
       code: '05',
       sigil: 'weave',
-      name: isEn ? 'Long-Note Weaver' : '长条技巧秘典',
-      editorialSub: 'LONG-NOTE WEAVE',
+      name: isEn ? 'Long-Note Pool' : '长条读谱池',
+      editorialSub: 'POOL 05 // LN',
       tagline: isEn
-        ? 'Technical LN & Inverse challenge charts (LN >= 42%)'
+        ? 'Technical LN & Inverse pattern focus (LN >= 42%)'
         : '专攻松手时机与长条读谱技巧 (LN >= 42%)',
       badge: 'LN >=42%',
       foilGradient: 'linear-gradient(150deg, #072a25 0%, #0f6b5f 48%, #041815 100%)',
@@ -125,11 +125,11 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
       id: 'loved_chaos',
       code: '06',
       sigil: 'heart',
-      name: isEn ? 'Loved Gems Sanctuary' : 'Loved 社区遗珠',
-      editorialSub: 'COMMUNITY SANCTUARY',
+      name: isEn ? 'Loved Pool' : 'Loved 社区池',
+      editorialSub: 'POOL 06 // LOVED',
       tagline: isEn
-        ? 'Unranked community favorites with iconic gimmick charts'
-        : '玩家票选精华 Loved 名曲与演出佳作',
+        ? 'Community-curated Loved charts & rhythm showcases'
+        : '社区高票精华 Loved 曲目与特色谱面',
       badge: 'LOVED',
       foilGradient: 'linear-gradient(150deg, #360c27 0%, #981b55 48%, #1c0514 100%)',
       accentHex: '#be185d',
@@ -141,17 +141,17 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
       id: 'current_filter',
       code: '07',
       sigil: 'filter',
-      name: isEn ? 'Custom Filter Pack' : '当前筛选定制包',
-      editorialSub: 'ACTIVE FILTER POOL',
+      name: isEn ? 'Custom Filter Pool' : '条件自选池',
+      editorialSub: 'POOL 07 // CUSTOM',
       tagline: isEn
-        ? 'Draws strictly from your active Browse search & filter rules'
-        : '严格继承你当前搜图页的筛选与场景条件随机抽选',
-      badge: isEn ? 'CUSTOM' : '当前筛选',
+        ? 'Draws from custom keys, stars, BPM, LN% & status rules'
+        : '支持自定义键数、星数、BPM、长条占比与状态抽选',
+      badge: isEn ? 'CUSTOM' : '自选条件',
       foilGradient: 'linear-gradient(150deg, #1b2029 0%, #374357 48%, #0f131a 100%)',
       accentHex: '#475569',
       glowHex: '#93c5fd',
       swatches: ['#334155', '#3a5bc2', '#d97706'],
-      starRangeLabel: isEn ? 'Active Filters' : '跟随筛选',
+      starRangeLabel: isEn ? 'Custom Rules' : '自定义筛选',
     },
   ];
 }
@@ -182,7 +182,7 @@ export function getStarRarityMeta(
   if (safeStars >= 8.0) {
     return {
       tier: 'mythic',
-      label: tx('超新星神话', 'MYTHIC NOVA', lang),
+      label: tx('巅峰 8★+', 'APEX 8★+', lang),
       glow: '#ffd966',
       glowSecondary: '#c084fc',
       spectrum,
@@ -194,7 +194,7 @@ export function getStarRarityMeta(
   if (safeStars >= 6.3) {
     return {
       tier: 'legendary',
-      label: tx('传说星耀', 'LEGENDARY', lang),
+      label: tx('大师 6★+', 'MASTER 6★+', lang),
       glow: '#fbbf24',
       glowSecondary: '#f97316',
       spectrum,
@@ -206,7 +206,7 @@ export function getStarRarityMeta(
   if (safeStars >= 4.8) {
     return {
       tier: 'epic',
-      label: tx('史诗流光', 'EPIC', lang),
+      label: tx('专家', 'EXPERT', lang),
       glow: '#f43f5e',
       glowSecondary: '#a855f7',
       spectrum,
@@ -218,7 +218,7 @@ export function getStarRarityMeta(
   if (safeStars >= 3.0) {
     return {
       tier: 'rare',
-      label: tx('稀有精粹', 'RARE', lang),
+      label: tx('进阶', 'HARD', lang),
       glow: '#34d399',
       glowSecondary: '#facc15',
       spectrum,
@@ -229,7 +229,7 @@ export function getStarRarityMeta(
   }
   return {
     tier: 'common',
-    label: tx('星尘常规', 'STARLIGHT', lang),
+    label: tx('标准', 'STANDARD', lang),
     glow: '#38bdf8',
     glowSecondary: '#818cf8',
     spectrum,

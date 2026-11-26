@@ -1881,6 +1881,7 @@ function AppWorkspace({
           ) : gachaOpen ? (
             <GachaStudio
               filters={filters}
+              filterArchives={archives}
               target={target}
               config={config}
               theme={theme}

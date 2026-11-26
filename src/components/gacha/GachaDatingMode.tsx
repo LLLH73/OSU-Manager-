@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Download,
-  ExternalLink,
+  Filter,
   Heart,
   Loader2,
   Pause,
@@ -9,15 +8,14 @@ import {
   RefreshCw,
   RotateCcw,
   Sparkles,
-  Trash2,
   X,
 } from 'lucide-react';
 import { drawGachaBeatmapsets } from '../../api';
-import { getStarColor } from '../../constants';
 import { useI18n } from '../../i18n';
 import type {
   DownloadTarget,
   DownloadTask,
+  GachaCollectionsState,
   GachaPackId,
   NormalizedBeatmapset,
   SearchFilters,
@@ -26,51 +24,65 @@ import { SelectField } from '../SelectField';
 import { BeatmapGachaCard } from './BeatmapGachaCard';
 import { brokenAxis, crops, ring, rng, ticks } from './gachaSketch';
 import { playSwipeSound } from './gachaSound';
-import { getCardSummaryStats, getGachaPacks } from './gachaUtils';
+import { getGachaPacks } from './gachaUtils';
 
 interface GachaDatingModeProps {
   baseFilters: SearchFilters;
   target: DownloadTarget;
   activeTaskBySet: Map<number, DownloadTask>;
+  collections: GachaCollectionsState;
+  favoriteIds: Set<number>;
+  activeTargetGroupId: string;
+  likedOpen: boolean;
   playingSetId: number | null;
   isPlaying: boolean;
+  onChangeTargetGroup: (groupId: string) => void;
+  onLikeCardToGroup: (set: NormalizedBeatmapset, groupId?: string) => Promise<void>;
+  onRemoveFavorite: (setId: number, groupId?: string) => Promise<void>;
+  onToggleLikedDrawer: () => void;
+  onOpenCustomFilter: () => void;
   onPlaySet: (set: NormalizedBeatmapset, autoplay?: boolean) => void;
   onTogglePlaySet: (set: NormalizedBeatmapset) => void;
   onStopAudio: () => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
-  onBatchDownload: (sets: NormalizedBeatmapset[]) => void;
   onOpenDetail: (set: NormalizedBeatmapset, diffId?: number | null) => void;
   onTriggerEffect: (intensity?: number, hexColor?: string) => void;
-  onNotify: (msg: string) => void;
 }
 
 interface SwipeHistoryEntry {
   set: NormalizedBeatmapset;
   action: 'like' | 'pass';
+  wasAlreadyFavorited?: boolean;
+  targetGroupId?: string;
 }
 
 export function GachaDatingMode({
   baseFilters,
   target,
   activeTaskBySet,
+  collections,
+  favoriteIds,
+  activeTargetGroupId,
+  likedOpen,
   playingSetId,
   isPlaying,
+  onChangeTargetGroup,
+  onLikeCardToGroup,
+  onRemoveFavorite,
+  onToggleLikedDrawer,
+  onOpenCustomFilter,
   onPlaySet,
   onTogglePlaySet,
   onStopAudio,
   onDownload,
-  onBatchDownload,
   onOpenDetail,
   onTriggerEffect,
-  onNotify,
 }: GachaDatingModeProps) {
   const { lang, t } = useI18n();
   const packs = getGachaPacks(lang);
 
   const [packId, setPackId] = useState<GachaPackId>('standard');
   const [deck, setDeck] = useState<NormalizedBeatmapset[]>([]);
-  const [liked, setLiked] = useState<NormalizedBeatmapset[]>([]);
-  const [likedOpen, setLikedOpen] = useState(false); // Collapsed by default
   const [history, setHistory] = useState<SwipeHistoryEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,9 +146,24 @@ export function GachaDatingMode({
     [baseFilters, t],
   );
 
+  const filterKey =
+    packId === 'current_filter'
+      ? JSON.stringify({
+          q: baseFilters.q ?? '',
+          keys: baseFilters.keys ?? '',
+          status: baseFilters.status ?? 'any',
+          minStars: baseFilters.minStars ?? null,
+          maxStars: baseFilters.maxStars ?? null,
+          minBpm: baseFilters.minBpm ?? null,
+          maxBpm: baseFilters.maxBpm ?? null,
+          minLn: baseFilters.minLn ?? null,
+          maxLn: baseFilters.maxLn ?? null,
+        })
+      : '';
+
   useEffect(() => {
     void loadMoreCards(packId, true);
-  }, [packId]);
+  }, [packId, filterKey]);
 
   const topCard = deck[0] ?? null;
 
@@ -171,11 +198,22 @@ export function GachaDatingMode({
       }
 
       const swiped = topCard;
+      const wasFav = favoriteIds.has(swiped.id);
       window.setTimeout(() => {
         setDeck((prev) => prev.slice(1));
-        setHistory((prev) => [{ set: swiped, action }, ...prev].slice(0, 24));
+        setHistory((prev) =>
+          [
+            {
+              set: swiped,
+              action,
+              wasAlreadyFavorited: wasFav,
+              targetGroupId: activeTargetGroupId,
+            },
+            ...prev,
+          ].slice(0, 24),
+        );
         if (action === 'like') {
-          setLiked((prev) => (prev.some((x) => x.id === swiped.id) ? prev : [swiped, ...prev]));
+          void onLikeCardToGroup(swiped, activeTargetGroupId);
           if (autoDownloadLiked) {
             onDownload(swiped, target);
           }
@@ -183,9 +221,19 @@ export function GachaDatingMode({
         setShowBackPeek(false);
         setExitingAction(null);
         setDragOffset({ x: 0, y: 0 });
-      }, 210);
+      }, 190);
     },
-    [topCard, exitingAction, onTriggerEffect, autoDownloadLiked, onDownload, target],
+    [
+      topCard,
+      exitingAction,
+      onTriggerEffect,
+      favoriteIds,
+      activeTargetGroupId,
+      onLikeCardToGroup,
+      autoDownloadLiked,
+      onDownload,
+      target,
+    ],
   );
 
   const handleUndo = useCallback(() => {
@@ -193,12 +241,12 @@ export function GachaDatingMode({
     const [latest, ...rest] = history;
     setHistory(rest);
     setDeck((prev) => [latest.set, ...prev.filter((x) => x.id !== latest.set.id)]);
-    if (latest.action === 'like') {
-      setLiked((prev) => prev.filter((x) => x.id !== latest.set.id));
+    if (latest.action === 'like' && !latest.wasAlreadyFavorited) {
+      void onRemoveFavorite(latest.set.id, latest.targetGroupId);
     }
     setShowBackPeek(false);
     lastAutoPlayedIdRef.current = null;
-  }, [history, exitingAction]);
+  }, [history, exitingAction, onRemoveFavorite]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -297,6 +345,19 @@ export function GachaDatingMode({
             </SelectField>
           </div>
 
+          {packId === 'current_filter' && (
+            <button
+              type="button"
+              data-ga-cursor={t('配置筛选', 'EDIT FILTERS')}
+              onClick={onOpenCustomFilter}
+              className="ga-line-btn h-8 px-2.5 text-[0.75rem]"
+              title={t('编辑自选筛选条件', 'Configure custom filter pool')}
+            >
+              <Filter className="h-3.5 w-3.5 text-[var(--ga-cobalt)]" />
+              <span>{t('条件', 'Filters')}</span>
+            </button>
+          )}
+
           <button
             type="button"
             data-ga-cursor={t('换一批', 'RESHUFFLE')}
@@ -344,20 +405,41 @@ export function GachaDatingMode({
             </button>
           )}
 
-          {/* Right Liked Deck Toggle (collapsed by default) */}
+          {/* Active Swipe Target Group Selector (frictionless) */}
+          <div className="w-34 sm:w-38">
+            <SelectField
+              value={activeTargetGroupId}
+              onChange={onChangeTargetGroup}
+              className="h-8 text-[0.71875rem]"
+              title={t('右滑心动默认收入哪个分组', 'Target group when swiping Right / Like')}
+            >
+              {collections.groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {t(`收入: ${g.name}`, `To: ${g.name}`)}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+
+          {/* Right Liked Library Drawer Toggle (collapsed by default) */}
           <button
             type="button"
             data-active={likedOpen ? 'true' : 'false'}
             data-ga-cursor={t('心动曲库', 'LIKED ARCHIVE')}
-            onClick={() => setLikedOpen((o) => !o)}
+            onClick={onToggleLikedDrawer}
             className="ga-line-btn h-8 px-3 text-[0.75rem]"
           >
             <Heart
               className={`h-3.5 w-3.5 ${
-                liked.length > 0 ? 'fill-current text-[var(--ga-cobalt)]' : ''
+                collections.entries.length > 0 ? 'fill-current text-[var(--ga-cobalt)]' : ''
               }`}
             />
-            <span>{t(`心动曲库 (${liked.length})`, `Liked (${liked.length})`)}</span>
+            <span>
+              {t(
+                `心动曲库 (${collections.entries.length})`,
+                `Liked (${collections.entries.length})`,
+              )}
+            </span>
           </button>
         </div>
       </div>
@@ -436,10 +518,10 @@ export function GachaDatingMode({
             </button>
           </div>
         ) : (
-          /* Taller & Larger Card Stack, shifted slightly left so next cards fan visibly to the right */
+          /* Viewport-adaptive Taller & Larger Card Stack, shifted slightly left so next cards fan visibly to the right */
           <div
-            className={`relative z-10 flex h-[min(calc(100%-16px),600px)] w-[min(86vw,405px)] items-center justify-center ${
-              deck.length > 1 ? '-translate-x-4 sm:-translate-x-10' : ''
+            className={`relative z-10 flex h-[min(calc(100%-10px),640px)] w-[min(86vw,430px)] items-center justify-center ${
+              deck.length > 1 ? '-translate-x-5 sm:-translate-x-12' : ''
             }`}
           >
             {deck
@@ -578,159 +660,6 @@ export function GachaDatingMode({
           <kbd className="ga-mono text-[0.625rem] opacity-80">→</kbd>
         </button>
       </div>
-
-      {/* Collapsible Right Liked Archive Drawer (collapsed by default) */}
-      {likedOpen && (
-        <aside className="animate-fade-in absolute top-12 right-3 bottom-3 z-30 flex w-[min(92vw,346px)] flex-col rounded-[3px] border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] shadow-2xl backdrop-blur-xl sm:right-5">
-          <div className="flex items-center justify-between gap-2 border-b border-[var(--ga-line)] px-3.5 py-2.5">
-            <div className="flex items-center gap-2">
-              <Heart className="h-4 w-4 fill-current text-[var(--ga-cobalt)]" />
-              <div>
-                <div className="ga-mono text-[0.59375rem] tracking-[0.16em] text-[var(--ga-ink-3)] uppercase">
-                  LIKED ARCHIVE // {String(liked.length).padStart(2, '0')}
-                </div>
-                <span className="ga-cn-serif text-[0.84375rem] font-bold text-[var(--ga-ink)]">
-                  {t(`心动曲库 (${liked.length})`, `Liked Deck (${liked.length})`)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1">
-              {liked.length > 0 && (
-                <>
-                  <button
-                    type="button"
-                    data-ga-cursor={t('全部下载', 'DL ALL')}
-                    onClick={() => {
-                      onBatchDownload(liked);
-                      onNotify(
-                        t(
-                          `已将 ${liked.length} 首心动谱面加入下载队列`,
-                          `Queued ${liked.length} liked maps for download`,
-                        ),
-                      );
-                    }}
-                    className="ga-solid-btn h-7 px-2.5 text-[0.6875rem]"
-                  >
-                    <Download className="h-3 w-3" />
-                    <span>{t('全部下载', 'Download All')}</span>
-                  </button>
-                  <button
-                    type="button"
-                    data-ga-cursor={t('清空', 'CLEAR')}
-                    onClick={() => setLiked([])}
-                    title={t('清空心动列表', 'Clear liked list')}
-                    className="ga-line-btn h-7 px-1.5 text-[var(--ga-ink-3)] hover:text-rose-500"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                data-ga-cursor={t('收起', 'CLOSE')}
-                onClick={() => setLikedOpen(false)}
-                title={t('收起心动曲库', 'Collapse liked deck')}
-                className="ga-line-btn h-7 w-7 p-0"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto divide-y divide-[var(--ga-line)]">
-            {liked.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center px-5 text-center text-[0.78125rem] text-[var(--ga-ink-2)]">
-                <p>{t('向右滑动卡片或点击「心动」收集喜欢的谱面', 'Swipe right or press Like to collect beatmaps')}</p>
-                <p className="ga-mono mt-1.5 text-[0.6875rem] text-[var(--ga-ink-3)]">
-                  {t('快捷键：← 跳过 · → 心动 · Space 试听 · Z 撤回', 'Keys: ← Pass · → Like · Space Audio · Z Undo')}
-                </p>
-              </div>
-            ) : (
-              liked.map((item) => {
-                const stats = getCardSummaryStats(item);
-                const srStyle = getStarColor(stats.repStars);
-                const task = activeTaskBySet.get(item.id);
-                const activeBusy = Boolean(
-                  task &&
-                    (task.status === 'queued' ||
-                      task.status === 'downloading' ||
-                      task.status === 'installing'),
-                );
-                return (
-                  <div
-                    key={item.id}
-                    className="flex items-center gap-2.5 px-3 py-2 transition-colors hover:bg-[color-mix(in_srgb,var(--ga-cobalt)_6%,transparent)]"
-                  >
-                    <button
-                      type="button"
-                      data-ga-cursor="PREVIEW"
-                      onClick={() => onTogglePlaySet(item)}
-                      className="relative h-10 w-10 shrink-0 overflow-hidden rounded-[2px]"
-                      title={t('播放试听', 'Preview audio')}
-                    >
-                      <img src={item.coverUrl} alt="" className="h-full w-full object-cover" />
-                      <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
-                        {isPlaying && playingSetId === item.id ? (
-                          <Pause className="h-3.5 w-3.5" />
-                        ) : (
-                          <Play className="h-3.5 w-3.5 fill-current" />
-                        )}
-                      </span>
-                    </button>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-[0.8125rem] font-bold text-[var(--ga-ink)]">
-                        {item.titleUnicode || item.title}
-                      </div>
-                      <div className="ga-mono flex items-center gap-1.5 text-[0.6875rem] text-[var(--ga-ink-3)]">
-                        <span
-                          className="rounded-[2px] px-1 py-px font-bold"
-                          style={{ backgroundColor: srStyle.bg, color: srStyle.text }}
-                        >
-                          {stats.repStars.toFixed(2)}★
-                        </span>
-                        <span className="tabular-nums">{Math.round(item.bpm)} BPM</span>
-                        <span className="font-semibold text-emerald-500 tabular-nums">{stats.ppLabel}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex shrink-0 items-center gap-1">
-                      <button
-                        type="button"
-                        disabled={activeBusy}
-                        data-ga-cursor="GET"
-                        onClick={() => onDownload(item, target)}
-                        title={t('下载谱面', 'Download beatmap')}
-                        className="ga-line-btn h-7 px-2 text-[0.71875rem]"
-                      >
-                        {activeBusy ? `${task?.progress ?? 0}%` : <Download className="h-3 w-3" />}
-                      </button>
-                      <button
-                        type="button"
-                        data-ga-cursor="DETAIL"
-                        onClick={() => onOpenDetail(item)}
-                        title={t('详情', 'Details')}
-                        className="ga-line-btn h-7 px-1.5"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLiked((prev) => prev.filter((x) => x.id !== item.id))}
-                        title={t('移除', 'Remove')}
-                        className="p-1 text-[var(--ga-ink-3)] hover:text-rose-500"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </aside>
-      )}
     </div>
   );
 }

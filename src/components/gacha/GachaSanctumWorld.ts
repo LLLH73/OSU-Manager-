@@ -26,10 +26,27 @@ interface ArchBayRig {
   explodeDir: THREE.Vector3;
 }
 
+interface FallingNoteRig {
+  mesh: THREE.Mesh;
+  x: number;
+  z: number;
+  baseY: number;
+  speed: number;
+  height: number;
+}
+
+interface ProunDiscRig {
+  mesh: THREE.Mesh;
+  basePos: THREE.Vector3;
+  rotSpeed: number;
+  phase: number;
+}
+
 /**
- * Procedural architectural Three.js backdrop inspired by `the-masses-travels` (Sanctum):
- * minimalist colonnade piers, pointed ribs, celestial astrolabe rings, orbiting shards/wings,
- * wireframe blueprint toggle, smooth camera vistas per mode, and radial pulse displacement.
+ * PROUN Constructivist x osu! 3D Sanctum (`方案 A`):
+ * minimalist architectural colonnade piers, diagonal Constructivist steel beams & discs,
+ * perspective flanking osu!mania 4K falling note/LN columns, breathing osu! Hit Circle
+ * Approach Ring centerpiece, blueprint wireframe mode & pulse transitions.
  */
 export class GachaSanctumWorld {
   private container: HTMLElement;
@@ -45,13 +62,22 @@ export class GachaSanctumWorld {
 
   private stoneMat: THREE.MeshStandardMaterial;
   private cobaltMat: THREE.MeshStandardMaterial;
+  private signalMat: THREE.MeshStandardMaterial;
   private glassMat: THREE.MeshStandardMaterial;
+  private noteMat: THREE.MeshStandardMaterial;
+  private lnMat: THREE.MeshStandardMaterial;
+  private receptorMat: THREE.MeshStandardMaterial;
   private wingMat: THREE.MeshStandardMaterial;
   private floorMat: THREE.MeshStandardMaterial;
   private wireGridMat: THREE.LineBasicMaterial;
   private wireframeMats: THREE.MeshStandardMaterial[] = [];
 
   private archBays: ArchBayRig[] = [];
+  private prounGroup = new THREE.Group();
+  private prounDiscs: ProunDiscRig[] = [];
+  private fallingNotes: FallingNoteRig[] = [];
+  private approachRing!: THREE.Mesh;
+  private hitCircleDisc!: THREE.Mesh;
   private astrolabeGroup = new THREE.Group();
   private astrolabeRings: THREE.Mesh[] = [];
   private astrolabeCore!: THREE.Mesh;
@@ -96,6 +122,13 @@ export class GachaSanctumWorld {
       roughness: 0.34,
       metalness: 0.45,
     });
+    this.signalMat = new THREE.MeshStandardMaterial({
+      color: '#d62828',
+      emissive: '#a61c1c',
+      emissiveIntensity: 0.26,
+      roughness: 0.38,
+      metalness: 0.32,
+    });
     this.glassMat = new THREE.MeshStandardMaterial({
       color: '#dbe6f8',
       emissive: '#3a5bc2',
@@ -104,6 +137,31 @@ export class GachaSanctumWorld {
       metalness: 0.2,
       transparent: true,
       opacity: 0.42,
+    });
+    this.noteMat = new THREE.MeshStandardMaterial({
+      color: '#3a5bc2',
+      emissive: '#3a5bc2',
+      emissiveIntensity: 0.42,
+      roughness: 0.28,
+      metalness: 0.38,
+      transparent: true,
+      opacity: 0.78,
+    });
+    this.lnMat = new THREE.MeshStandardMaterial({
+      color: '#6b8fff',
+      emissive: '#3a5bc2',
+      emissiveIntensity: 0.24,
+      roughness: 0.32,
+      metalness: 0.25,
+      transparent: true,
+      opacity: 0.42,
+    });
+    this.receptorMat = new THREE.MeshStandardMaterial({
+      color: '#1b2125',
+      emissive: '#3a5bc2',
+      emissiveIntensity: 0.35,
+      roughness: 0.4,
+      metalness: 0.55,
     });
     this.wingMat = new THREE.MeshStandardMaterial({
       color: '#20262b',
@@ -124,7 +182,15 @@ export class GachaSanctumWorld {
       opacity: 0.22,
     });
 
-    this.wireframeMats = [this.stoneMat, this.cobaltMat, this.glassMat, this.wingMat];
+    this.wireframeMats = [
+      this.stoneMat,
+      this.cobaltMat,
+      this.signalMat,
+      this.glassMat,
+      this.noteMat,
+      this.lnMat,
+      this.wingMat,
+    ];
 
     this.scene.background = new THREE.Color('#e6ebeb');
     this.scene.fog = new THREE.Fog('#e6ebeb', 22, 92);
@@ -136,6 +202,7 @@ export class GachaSanctumWorld {
     this.scene.add(this.root);
 
     this.buildArchitecture();
+    this.buildProunAndOsuColumns();
     this.buildAstrolabe();
     this.buildShardsAndWings();
     this.buildFloor();
@@ -240,13 +307,88 @@ export class GachaSanctumWorld {
     this.root.add(roseRingOuter, roseRingInner);
   }
 
+  private buildProunAndOsuColumns() {
+    // 1. Constructivist PROUN Diagonal Steel Beams & Floating Planes
+    const girderGeom = new THREE.BoxGeometry(24, 0.38, 0.42);
+    const girderA = new THREE.Mesh(girderGeom, this.signalMat);
+    girderA.position.set(-3.2, 7.6, -24);
+    girderA.rotation.set(0.08, 0.16, -0.44);
+
+    const girderB = new THREE.Mesh(new THREE.BoxGeometry(20, 0.26, 0.32), this.cobaltMat);
+    girderB.position.set(4.1, 8.8, -32);
+    girderB.rotation.set(-0.06, -0.14, 0.38);
+
+    const beamC = new THREE.Mesh(new THREE.BoxGeometry(15, 0.18, 0.24), this.stoneMat);
+    beamC.position.set(0.4, 3.4, -38);
+    beamC.rotation.set(0.04, 0.08, -0.19);
+    this.prounGroup.add(girderA, girderB, beamC);
+
+    // Floating flat Constructivist geometric discs
+    const discSpecs = [
+      { r: 2.4, h: 0.12, mat: this.signalMat, pos: new THREE.Vector3(-6.2, 8.2, -28), rx: 1.25, ry: 0.35, speed: 0.14 },
+      { r: 1.85, h: 0.1, mat: this.cobaltMat, pos: new THREE.Vector3(6.8, 7.1, -34), rx: 1.18, ry: -0.42, speed: -0.18 },
+    ];
+    for (const d of discSpecs) {
+      const mesh = new THREE.Mesh(new THREE.CylinderGeometry(d.r, d.r, d.h, 40), d.mat);
+      mesh.position.copy(d.pos);
+      mesh.rotation.set(d.rx, d.ry, 0);
+      this.prounGroup.add(mesh);
+      this.prounDiscs.push({ mesh, basePos: d.pos.clone(), rotSpeed: d.speed, phase: d.pos.x });
+    }
+    this.root.add(this.prounGroup);
+
+    // 2. Flanking Perspective osu!mania 4K Falling Note & LN Columns
+    const trackCenters = [
+      { baseX: -12.8, z: -20 },
+      { baseX: 10.6, z: -22 },
+    ];
+    const colRailGeom = new THREE.BoxGeometry(0.06, 15.5, 0.06);
+    const receptorGeom = new THREE.BoxGeometry(3.15, 0.14, 0.34);
+
+    for (let tIdx = 0; tIdx < trackCenters.length; tIdx += 1) {
+      const track = trackCenters[tIdx];
+      const receptor = new THREE.Mesh(receptorGeom, this.receptorMat);
+      receptor.position.set(track.baseX + 1.05, 0.15, track.z);
+      this.root.add(receptor);
+
+      // Vertical 4K lane divider rails
+      for (let lane = 0; lane <= 4; lane += 1) {
+        const rail = new THREE.Mesh(colRailGeom, this.glassMat);
+        rail.position.set(track.baseX - 0.52 + lane * 0.72, 7.8, track.z);
+        this.root.add(rail);
+      }
+
+      // 12 falling notes + tall LN bars per flanking column (24 total)
+      for (let k = 0; k < 12; k += 1) {
+        const lane = k % 4;
+        const isLn = k % 3 === 1;
+        const h = isLn ? 1.85 + (k % 2) * 0.85 : 0.28;
+        const geom = new THREE.BoxGeometry(0.54, h, 0.18);
+        const mat = isLn ? this.lnMat : lane === 1 || lane === 2 ? this.signalMat : this.noteMat;
+        const mesh = new THREE.Mesh(geom, mat);
+        const x = track.baseX - 0.16 + lane * 0.72;
+        const y = 1.2 + ((k * 1.18 + tIdx * 0.55) % 13.5);
+        mesh.position.set(x, y, track.z);
+        this.root.add(mesh);
+        this.fallingNotes.push({
+          mesh,
+          x,
+          z: track.z,
+          baseY: y,
+          speed: 2.3 + (tIdx === 0 ? 0.25 : 0),
+          height: h,
+        });
+      }
+    }
+  }
+
   private buildAstrolabe() {
     this.astrolabeGroup.position.set(0, 6.2, -22);
 
     const ringSpecs = [
-      { r: 4.8, tube: 0.09, mat: this.cobaltMat, rx: 0.42, ry: 0.2 },
-      { r: 3.7, tube: 0.06, mat: this.stoneMat, rx: -0.68, ry: 0.45 },
-      { r: 2.6, tube: 0.055, mat: this.cobaltMat, rx: 0.18, ry: -0.52 },
+      { r: 4.9, tube: 0.085, mat: this.cobaltMat, rx: 0.42, ry: 0.2 },
+      { r: 3.7, tube: 0.055, mat: this.stoneMat, rx: -0.68, ry: 0.45 },
+      { r: 2.6, tube: 0.05, mat: this.signalMat, rx: 0.18, ry: -0.52 },
     ];
 
     for (const spec of ringSpecs) {
@@ -256,7 +398,18 @@ export class GachaSanctumWorld {
       this.astrolabeRings.push(m);
     }
 
-    this.astrolabeCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.95, 0), this.glassMat);
+    // Center osu! Hit Circle + Contracting Approach Ring
+    this.hitCircleDisc = new THREE.Mesh(new THREE.CircleGeometry(1.18, 48), this.glassMat);
+    const hitOutline = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.09, 12, 56), this.cobaltMat);
+    this.hitCircleDisc.add(hitOutline);
+    this.astrolabeGroup.add(this.hitCircleDisc);
+
+    this.approachRing = new THREE.Mesh(new THREE.TorusGeometry(1.18, 0.048, 10, 56), this.signalMat);
+    this.approachRing.position.z = 0.08;
+    this.astrolabeGroup.add(this.approachRing);
+
+    this.astrolabeCore = new THREE.Mesh(new THREE.OctahedronGeometry(0.45, 0), this.cobaltMat);
+    this.astrolabeCore.position.z = 0.12;
     this.astrolabeGroup.add(this.astrolabeCore);
     this.root.add(this.astrolabeGroup);
   }
@@ -365,6 +518,14 @@ export class GachaSanctumWorld {
     this.scene.background = bgColor.clone();
     this.scene.fog = new THREE.Fog(bgColor.clone(), 20, 88);
 
+    const hsl = { h: 0, s: 0, l: 0 };
+    this.accentColor.getHSL(hsl);
+    const accentNearRed = (hsl.h < 0.06 || hsl.h > 0.93) && hsl.s > 0.35;
+    const signalHex = accentNearRed ? (isDark ? '#f59e0b' : '#1b2125') : isDark ? '#ef476f' : '#d62828';
+    this.signalMat.color.set(signalHex);
+    this.signalMat.emissive.set(signalHex);
+    this.signalMat.emissiveIntensity = isDark ? 0.38 : 0.18;
+
     if (isDark) {
       const pierColor = bgColor.clone().lerp(new THREE.Color('#344166'), 0.36);
       const floorColor = bgColor.clone().lerp(new THREE.Color('#13192b'), 0.45);
@@ -379,6 +540,13 @@ export class GachaSanctumWorld {
       this.cobaltMat.color.copy(this.accentColor);
       this.cobaltMat.emissive.copy(this.accentColor);
       this.cobaltMat.emissiveIntensity = 0.62;
+      this.noteMat.color.copy(this.accentColor);
+      this.noteMat.emissive.copy(this.accentColor);
+      this.noteMat.emissiveIntensity = 0.68;
+      this.lnMat.color.copy(this.accentColor).lerp(new THREE.Color('#ffffff'), 0.32);
+      this.lnMat.emissive.copy(this.accentColor);
+      this.receptorMat.color.set('#222a3a');
+      this.receptorMat.emissive.copy(this.accentColor);
       this.glassMat.color.copy(this.accentColor).lerp(new THREE.Color('#1a2442'), 0.45);
       this.glassMat.emissive.copy(this.accentColor);
       this.glassMat.emissiveIntensity = 0.34;
@@ -398,6 +566,13 @@ export class GachaSanctumWorld {
       this.cobaltMat.color.copy(this.accentColor);
       this.cobaltMat.emissive.copy(this.accentColor);
       this.cobaltMat.emissiveIntensity = 0.28;
+      this.noteMat.color.copy(this.accentColor);
+      this.noteMat.emissive.copy(this.accentColor);
+      this.noteMat.emissiveIntensity = 0.3;
+      this.lnMat.color.copy(this.accentColor).lerp(new THREE.Color('#eef4ff'), 0.45);
+      this.lnMat.emissive.copy(this.accentColor);
+      this.receptorMat.color.set('#1f262e');
+      this.receptorMat.emissive.copy(this.accentColor);
       this.glassMat.color.copy(this.accentColor).lerp(new THREE.Color('#eef4ff'), 0.68);
       this.glassMat.emissive.copy(this.accentColor);
       this.glassMat.emissiveIntensity = 0.16;
@@ -499,15 +674,36 @@ export class GachaSanctumWorld {
       bay.group.position.copy(bay.basePos).addScaledVector(bay.explodeDir, this.explodeAmount * 2.2);
     }
 
-    // Astrolabe rotation
+    // Astrolabe & osu! Approach Ring breathing cycle
     if (this.astrolabeRings[0]) this.astrolabeRings[0].rotation.z += dt * 0.16;
     if (this.astrolabeRings[1]) this.astrolabeRings[1].rotation.x += dt * 0.21;
     if (this.astrolabeRings[2]) this.astrolabeRings[2].rotation.y -= dt * 0.28;
+    if (this.approachRing) {
+      const cycle = (this.clock * 0.45) % 1;
+      const appScale = 1.9 - cycle * 0.9;
+      this.approachRing.scale.setScalar(appScale + this.explodeAmount * 0.35);
+    }
     if (this.astrolabeCore) {
       this.astrolabeCore.rotation.y += dt * 0.42;
       this.astrolabeCore.rotation.x += dt * 0.24;
       const coreScale = 1 + this.explodeAmount * 0.35;
       this.astrolabeCore.scale.setScalar(coreScale);
+    }
+
+    // PROUN floating Constructivist discs
+    for (const disc of this.prounDiscs) {
+      disc.mesh.rotation.z += dt * disc.rotSpeed;
+      disc.mesh.position.y = disc.basePos.y + Math.sin(this.clock * 0.65 + disc.phase) * 0.32;
+    }
+
+    // Falling osu!mania 4K notes & LN pillars
+    const noteBoost = 1 + this.explodeAmount * 1.4;
+    for (const note of this.fallingNotes) {
+      let ny = note.mesh.position.y - dt * note.speed * noteBoost;
+      if (ny < 0.25 + note.height * 0.5) {
+        ny = 14.5 + note.height * 0.5;
+      }
+      note.mesh.position.y = ny;
     }
 
     // Orbiting shards

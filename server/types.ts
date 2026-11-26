@@ -786,3 +786,22 @@ export interface GachaDrawResult {
   packId: GachaPackId;
   totalCandidates: number;
 }
+
+export interface GachaFavoriteGroup {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GachaFavoriteEntry {
+  beatmapset: NormalizedBeatmapset;
+  groupIds: string[];
+  addedAt: number;
+}
+
+export interface GachaCollectionsState {
+  groups: GachaFavoriteGroup[];
+  entries: GachaFavoriteEntry[];
+}

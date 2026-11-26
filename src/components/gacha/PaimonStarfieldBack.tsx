@@ -101,16 +101,26 @@ export const PaimonStarfieldBack = memo(function PaimonStarfieldBack({
       className={`relative h-full w-full overflow-hidden border-0 select-none ${className}`}
       style={{
         background:
-          'radial-gradient(ellipse at 50% 34%, #1c296b 0%, #0d153e 46%, #060a22 86%, #040614 100%)',
+          'radial-gradient(ellipse at 50% 34%, color-mix(in srgb, var(--t-osu, #e03a82) 74%, #0b0b0f) 0%, color-mix(in srgb, var(--t-osu, #e03a82) 46%, #07070a) 46%, color-mix(in srgb, var(--t-osu, #e03a82) 22%, #040406) 82%, #030305 100%)',
       }}
     >
-      {/* Drifting Paimon-Cloak Nebula Veil */}
+      {/* Drifting Paimon-Cloak Nebula Veil (harmonized with active global --t-osu accent) */}
       <div
         aria-hidden="true"
         className="paimon-nebula pointer-events-none absolute -inset-[18%]"
         style={{
           background:
-            'radial-gradient(circle at 26% 24%, rgba(56, 189, 248, 0.24), transparent 46%), radial-gradient(circle at 76% 68%, rgba(167, 139, 250, 0.24), transparent 48%), radial-gradient(circle at 48% 52%, rgba(251, 191, 36, 0.14), transparent 40%)',
+            'radial-gradient(circle at 26% 24%, color-mix(in srgb, var(--t-osu, #e03a82) 42%, transparent), transparent 48%), radial-gradient(circle at 76% 68%, color-mix(in srgb, var(--t-lazer, var(--t-osu, #e03a82)) 34%, transparent), transparent 50%), radial-gradient(circle at 48% 52%, color-mix(in srgb, var(--t-osu, #fde68a) 26%, rgba(251, 191, 36, 0.12)), transparent 44%)',
+        }}
+      />
+
+      {/* Central theme-tinted celestial aura (pure CSS gradient for reliable CSS var inheritance) */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--t-osu, #e03a82) 40%, transparent) 0%, color-mix(in srgb, var(--t-osu, #e03a82) 16%, transparent) 34%, transparent 64%)',
         }}
       />
 
@@ -121,22 +131,12 @@ export const PaimonStarfieldBack = memo(function PaimonStarfieldBack({
         preserveAspectRatio="xMidYMid slice"
         className="pointer-events-none absolute inset-0 h-full w-full"
       >
-        <defs>
-          <radialGradient id={`paimon-glow-${seed}`} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(253, 230, 138, 0.34)" />
-            <stop offset="60%" stopColor="rgba(147, 197, 253, 0.08)" />
-            <stop offset="100%" stopColor="rgba(0, 0, 0, 0)" />
-          </radialGradient>
-        </defs>
-
-        {/* Central golden-indigo celestial aura */}
-        <circle cx="150" cy="210" r="108" fill={`url(#paimon-glow-${seed})`} />
-
         {/* Broken drafting coordinate axes */}
         <path
           d={sketch.crossAxes}
           fill="none"
-          stroke="rgba(186, 230, 253, 0.14)"
+          stroke="color-mix(in srgb, var(--t-osu, #bae6fd) 42%, #ffffff)"
+          strokeOpacity="0.18"
           strokeWidth="0.7"
           strokeDasharray="3 5"
         />
@@ -145,22 +145,25 @@ export const PaimonStarfieldBack = memo(function PaimonStarfieldBack({
         <path
           d={sketch.cornerCrops}
           fill="none"
-          stroke="rgba(199, 210, 254, 0.24)"
+          stroke="color-mix(in srgb, var(--t-osu, #c7d2fe) 50%, #ffffff)"
+          strokeOpacity="0.28"
           strokeWidth="0.75"
         />
 
-        {/* Tilted celestial halo oval (double-inked offset pass) */}
+        {/* Tilted celestial halo oval (double-inked offset pass synced to theme accent) */}
         <path
           d={sketch.tiltedHalo}
           fill="none"
-          stroke="rgba(253, 230, 138, 0.28)"
+          stroke="color-mix(in srgb, var(--t-osu, #fde68a) 72%, #fef3c7)"
+          strokeOpacity="0.42"
           strokeWidth="0.9"
         />
         <path
           d={sketch.tiltedHalo}
           transform="translate(1.4 1.0)"
           fill="none"
-          stroke="rgba(147, 197, 253, 0.14)"
+          stroke="var(--t-osu, #93c5fd)"
+          strokeOpacity="0.22"
           strokeWidth="0.9"
         />
 
@@ -170,7 +173,7 @@ export const PaimonStarfieldBack = memo(function PaimonStarfieldBack({
             key={idx}
             d={lk}
             fill="none"
-            stroke="rgba(199, 210, 254, 0.26)"
+            stroke="rgba(226, 232, 240, 0.24)"
             strokeWidth="0.75"
             strokeLinecap="round"
           />
@@ -213,7 +216,8 @@ export const PaimonStarfieldBack = memo(function PaimonStarfieldBack({
         <text
           x="22"
           y="30"
-          fill="rgba(191, 219, 254, 0.42)"
+          fill="color-mix(in srgb, var(--t-osu, #e03a82) 45%, #e2e8f0)"
+          fillOpacity="0.52"
           fontSize="7"
           fontFamily="Consolas, monospace"
           letterSpacing="1.8"
@@ -224,12 +228,13 @@ export const PaimonStarfieldBack = memo(function PaimonStarfieldBack({
           x="278"
           y="398"
           textAnchor="end"
-          fill="rgba(253, 230, 138, 0.36)"
+          fill="color-mix(in srgb, var(--t-osu, #fde68a) 72%, #ffffff)"
+          fillOpacity="0.48"
           fontSize="6.5"
           fontFamily="Consolas, monospace"
           letterSpacing="1.6"
         >
-          4K // CELESTIAL
+          OSU! // ARCHIVE
         </text>
       </svg>
 
@@ -249,31 +254,35 @@ export const PaimonStarfieldBack = memo(function PaimonStarfieldBack({
             <path
               d={sketch.outerAstrolabe}
               fill="none"
-              stroke="rgba(253, 230, 138, 0.48)"
+              stroke="color-mix(in srgb, var(--t-osu, #fde68a) 78%, #fef3c7)"
+              strokeOpacity="0.62"
               strokeWidth="0.95"
             />
             <path
               d={sketch.outerAstrolabe}
               transform="translate(1.4 1.0)"
               fill="none"
-              stroke="rgba(165, 243, 252, 0.22)"
+              stroke="color-mix(in srgb, var(--t-osu, #e03a82) 72%, #ffffff)"
+              strokeOpacity="0.34"
               strokeWidth="0.95"
             />
             <path
               d={sketch.innerAstrolabe}
               fill="none"
-              stroke="rgba(165, 243, 252, 0.36)"
+              stroke="color-mix(in srgb, var(--t-osu, #e03a82) 60%, #ffffff)"
+              strokeOpacity="0.44"
               strokeWidth="0.7"
               strokeDasharray="4 3"
             />
             <path
               d={sketch.dialTicks}
               fill="none"
-              stroke="rgba(253, 230, 138, 0.26)"
+              stroke="color-mix(in srgb, var(--t-osu, #fde68a) 68%, #ffffff)"
+              strokeOpacity="0.34"
               strokeWidth="0.65"
             />
-            <path d={sketch.northStar} fill="#fde68a" />
-            <circle cx="70" cy="128" r="1.9" fill="#93c5fd" opacity="0.88" />
+            <path d={sketch.northStar} fill="color-mix(in srgb, var(--t-osu, #fde68a) 76%, #fef3c7)" />
+            <circle cx="70" cy="128" r="1.9" fill="color-mix(in srgb, var(--t-osu, #e03a82) 75%, #ffffff)" opacity="0.9" />
           </svg>
 
           {/* Centered Minimalist Thin-Stroke `osu!` Emblem */}
@@ -285,9 +294,9 @@ export const PaimonStarfieldBack = memo(function PaimonStarfieldBack({
               style={{
                 fontWeight: 200,
                 letterSpacing: '0.2em',
-                color: '#fef3c7',
+                color: '#fefce8',
                 textShadow:
-                  '0 0 18px rgba(251, 191, 36, 0.45), 0 0 32px rgba(147, 197, 253, 0.32)',
+                  '0 0 18px color-mix(in srgb, var(--t-osu, #fbbf24) 70%, transparent), 0 0 34px color-mix(in srgb, var(--t-osu, #93c5fd) 48%, transparent)',
                 paddingLeft: '0.2em',
               }}
             >
@@ -295,9 +304,12 @@ export const PaimonStarfieldBack = memo(function PaimonStarfieldBack({
             </span>
             <span
               className="mt-0.5 font-mono text-[0.52rem] tracking-[0.28em] uppercase"
-              style={{ color: 'rgba(191, 219, 254, 0.68)', paddingLeft: '0.28em' }}
+              style={{
+                color: 'color-mix(in srgb, var(--t-osu, #bfdbfe) 52%, #e2e8f0)',
+                paddingLeft: '0.28em',
+              }}
             >
-              CELESTIAL DECK
+              4K // ARCHIVE
             </span>
           </div>
         </div>

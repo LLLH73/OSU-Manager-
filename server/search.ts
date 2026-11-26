@@ -999,21 +999,22 @@ export async function drawRandomBeatmapsets(req: GachaDrawRequest): Promise<Gach
   );
 
   const sortOrder = shuffleInPlace([...GACHA_SORTS]);
+  const probeLimit = Math.max(48, count * 3);
   const probes: Array<{ sort: string; offset: number; limit: number }> = [
     {
       sort: sortOrder[0],
       offset: maxOffset > 0 ? Math.floor(Math.random() * maxOffset) : 0,
-      limit: 48,
+      limit: probeLimit,
     },
     {
       sort: sortOrder[1] || 'play_count:desc',
       offset: maxOffset > 48 ? Math.floor(Math.random() * Math.min(96, maxOffset)) : 0,
-      limit: 48,
+      limit: probeLimit,
     },
     {
       sort: sortOrder[2] || 'ranked_date:desc',
       offset: 0,
-      limit: 48,
+      limit: probeLimit,
     },
   ];
 
@@ -1024,46 +1025,67 @@ export async function drawRandomBeatmapsets(req: GachaDrawRequest): Promise<Gach
   let fallbackUsed = false;
   let fallbackReason: string | undefined;
 
-  for (let i = 0; i < probes.length; i += 1) {
-    if (pool.length >= Math.max(count * 2, count + 6)) break;
-    const probe = probes[i];
-    try {
-      const res = await searchBeatmaps({
-        ...packFilters,
-        sort: probe.sort,
-        offset: probe.offset,
-        limit: probe.limit,
-      });
-      provider = res.provider;
-      if (res.fallbackUsed) {
-        fallbackUsed = true;
-        if (!fallbackReason && res.fallbackReason) fallbackReason = res.fallbackReason;
+  const absorbSearchResult = (res: Awaited<ReturnType<typeof searchBeatmaps>>) => {
+    provider = res.provider;
+    if (res.fallbackUsed) {
+      fallbackUsed = true;
+      if (!fallbackReason && res.fallbackReason) fallbackReason = res.fallbackReason;
+    }
+    for (const set of res.beatmapsets) {
+      if (set.localStatus.inStable || set.localStatus.inLazer) continue;
+      if (
+        requireRankedPp &&
+        (!isRankedForPp(set.status) ||
+          !set.beatmaps.some((bm) => bm.matchesFilter !== false && bm.difficultyRating >= 0.5))
+      ) {
+        continue;
       }
-      for (const set of res.beatmapsets) {
-        if (set.localStatus.inStable || set.localStatus.inLazer) continue;
-        if (
-          requireRankedPp &&
-          (!isRankedForPp(set.status) ||
-            !set.beatmaps.some((bm) => bm.matchesFilter !== false && bm.difficultyRating >= 0.5))
-        ) {
-          continue;
-        }
-        if (seenIds.has(set.id)) continue;
-        seenIds.add(set.id);
-        if (excludeSet.has(set.id)) {
-          fallbackPool.push(set);
-        } else {
-          pool.push(set);
-        }
-      }
-      if (i === 0 && pool.length >= count && res.beatmapsets.length > 0) {
-        break;
-      }
-    } catch (err) {
-      if (i === probes.length - 1 && pool.length === 0 && fallbackPool.length === 0) {
-        throw err;
+      if (seenIds.has(set.id)) continue;
+      seenIds.add(set.id);
+      if (excludeSet.has(set.id)) {
+        fallbackPool.push(set);
+      } else {
+        pool.push(set);
       }
     }
+  };
+
+  let firstErr: unknown = null;
+  try {
+    const firstRes = await searchBeatmaps({
+      ...packFilters,
+      sort: probes[0].sort,
+      offset: probes[0].offset,
+      limit: probes[0].limit,
+    });
+    absorbSearchResult(firstRes);
+  } catch (err) {
+    firstErr = err;
+  }
+
+  // If the primary probe didn't collect enough unowned maps, run fallback probes concurrently
+  if (pool.length < count) {
+    const rest = await Promise.allSettled(
+      probes.slice(1).map((probe) =>
+        searchBeatmaps({
+          ...packFilters,
+          sort: probe.sort,
+          offset: probe.offset,
+          limit: probe.limit,
+        }),
+      ),
+    );
+    for (const entry of rest) {
+      if (entry.status === 'fulfilled') {
+        absorbSearchResult(entry.value);
+      } else if (!firstErr) {
+        firstErr = entry.reason;
+      }
+    }
+  }
+
+  if (pool.length === 0 && fallbackPool.length === 0 && firstErr) {
+    throw firstErr;
   }
 
   shuffleInPlace(pool);

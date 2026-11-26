@@ -204,9 +204,22 @@ export const GachaPackPlate = memo(function GachaPackPlate({
           letterSpacing="3.8"
         >
           <textPath href={`#${plate.trackId}`} startOffset="6%">
-            OSU!MANAGER · NON-LOCAL ARCHIVE · SERIES {pack.code} ·
+            OSU!MANAGER · PROUN MANIA · POOL {pack.code} ·
           </textPath>
         </text>
+
+        {/* PROUN Diagonal Constructivist Accent Girder + Flanking 4K Vertical Lane Rails */}
+        <polygon
+          points="74,476 588,92 612,114 98,498"
+          fill="var(--ga-crimson)"
+          fillOpacity={blueprint ? 0.14 : 0.18}
+        />
+        <g stroke="var(--ga-cobalt)" strokeOpacity="0.22" strokeWidth="1">
+          <line x1="156" y1="126" x2="156" y2="454" strokeDasharray="5 5" />
+          <line x1="176" y1="126" x2="176" y2="454" strokeDasharray="5 5" />
+          <line x1="504" y1="126" x2="504" y2="454" strokeDasharray="5 5" />
+          <line x1="524" y1="126" x2="524" y2="454" strokeDasharray="5 5" />
+        </g>
 
         {/* Diagonal Calligraphic Brush & Flying Light Shards */}
         <path

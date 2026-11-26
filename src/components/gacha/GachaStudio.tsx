@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   ArrowLeft,
   Compass,
   Flame,
+  Heart,
   HelpCircle,
   PackageOpen,
   Pause,
@@ -10,26 +11,45 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import {
+  clearGachaGroupEntries,
+  createGachaGroup,
+  deleteGachaGroup,
+  drawGachaBeatmapsets,
+  fetchGachaCollections,
+  removeGachaFavorite,
+  renameGachaGroup,
+  setGachaFavoriteGroups,
+  upsertGachaFavorite,
+} from '../../api';
 import { getTargetMeta, isDarkTheme } from '../../constants';
 import { useI18n } from '../../i18n';
 import type {
   AppConfig,
   DownloadTarget,
   DownloadTask,
+  FilterArchive,
+  GachaCollectionsState,
   NormalizedBeatmapset,
   SearchFilters,
   ThemeId,
 } from '../../types';
 import { GachaAtmosphere, ScrambleText, type GachaAtmosphereHandle } from './GachaAtmosphere';
+import { GachaCustomFilterModal } from './GachaCustomFilterModal';
 import { GachaDatingMode } from './GachaDatingMode';
 import { GachaGuessMode } from './GachaGuessMode';
+import { GachaLikedDrawer } from './GachaLikedDrawer';
 import { GachaPackMode } from './GachaPackMode';
 import { isGachaSfxMuted, setGachaSfxMuted } from './gachaSound';
 
 export type GachaStudioTab = 'dating' | 'pack' | 'guess';
 
+const GACHA_TARGET_GROUP_KEY = 'osu4k-gacha-target-group';
+const GACHA_CUSTOM_FILTERS_KEY = 'osu4k-gacha-custom-filters';
+
 interface GachaStudioProps {
   filters: SearchFilters;
+  filterArchives: FilterArchive[];
   target: DownloadTarget;
   config: AppConfig | null;
   theme: ThemeId;
@@ -43,6 +63,7 @@ interface GachaStudioProps {
 
 export function GachaStudio({
   filters,
+  filterArchives,
   target,
   config,
   theme,
@@ -65,8 +86,60 @@ export function GachaStudio({
     canvas: isDark ? '#0b0c12' : '#f3f5f9',
   });
 
+  // Persistent Liked Library + Multi-Group State (collapsed by default)
+  const [collections, setCollections] = useState<GachaCollectionsState>(() => ({
+    groups: [
+      {
+        id: 'default',
+        name: t('默认心动', 'Default Likes'),
+        isDefault: true,
+        createdAt: 0,
+        updatedAt: 0,
+      },
+    ],
+    entries: [],
+  }));
+  const [likedDrawerOpen, setLikedDrawerOpen] = useState(false);
+  const [activeTargetGroupId, setActiveTargetGroupId] = useState<string>(() => {
+    try {
+      return localStorage.getItem(GACHA_TARGET_GROUP_KEY) || 'default';
+    } catch {
+      return 'default';
+    }
+  });
+
+  // Independent Custom Filter Pool Criteria (`POOL 07`)
+  const [customFilterModalOpen, setCustomFilterModalOpen] = useState(false);
+  const [customFilters, setCustomFilters] = useState<SearchFilters>(() => {
+    try {
+      const raw = localStorage.getItem(GACHA_CUSTOM_FILTERS_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as SearchFilters;
+        if (parsed && typeof parsed === 'object') return parsed;
+      }
+    } catch {
+      // Ignore storage error
+    }
+    return {
+      mode: filters.mode ?? '3',
+      q: filters.q ?? '',
+      keys: filters.keys ?? '',
+      status: filters.status ?? 'any',
+      minStars: filters.minStars,
+      maxStars: filters.maxStars,
+      minBpm: filters.minBpm,
+      maxBpm: filters.maxBpm,
+      minLn: filters.minLn,
+      maxLn: filters.maxLn,
+      minLength: filters.minLength,
+      maxLength: filters.maxLength,
+    };
+  });
+
   const studioRef = useRef<HTMLDivElement | null>(null);
   const atmosphereRef = useRef<GachaAtmosphereHandle | null>(null);
+  const packPrefetchCacheRef = useRef<Map<string, NormalizedBeatmapset[]>>(new Map());
+  const packPrefetchInFlightRef = useRef<Map<string, Promise<void>>>(new Map());
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [audioSet, setAudioSet] = useState<NormalizedBeatmapset | null>(null);
@@ -78,7 +151,209 @@ export function GachaStudio({
 
   const targetMeta = getTargetMeta(lang)[target];
 
-  // Read live global CSS accent & canvas colors so 3D Sanctum & sleeve follow active global theme
+  // Load persistent Gacha collections on mount
+  useEffect(() => {
+    let active = true;
+    void fetchGachaCollections()
+      .then((res) => {
+        if (!active) return;
+        setCollections(res);
+        setActiveTargetGroupId((cur) =>
+          res.groups.some((g) => g.id === cur) ? cur : (res.groups[0]?.id ?? 'default'),
+        );
+      })
+      .catch(() => {
+        // Keep local fallback state if offline
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Pre-warm Pool 01 (`standard`) in the background right after Studio mounts so ripping opens instantaneously
+  useEffect(() => {
+    const key = 'standard';
+    if (
+      (packPrefetchCacheRef.current.get(key)?.length ?? 0) >= 20 ||
+      packPrefetchInFlightRef.current.has(key)
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      if (
+        (packPrefetchCacheRef.current.get(key)?.length ?? 0) >= 20 ||
+        packPrefetchInFlightRef.current.has(key)
+      ) {
+        return;
+      }
+      const promise = drawGachaBeatmapsets({
+        count: 20,
+        packId: 'standard',
+        baseFilters: customFilters,
+        excludeIds: [],
+      })
+        .then((res) => {
+          if (res.cards.length === 0) return;
+          const prev = packPrefetchCacheRef.current.get(key) ?? [];
+          const prevIds = new Set(prev.map((c) => c.id));
+          packPrefetchCacheRef.current.set(key, [
+            ...prev,
+            ...res.cards.filter((c) => !prevIds.has(c.id)),
+          ]);
+        })
+        .catch(() => {
+          // Silent pre-warm errors are safe to ignore
+        })
+        .finally(() => {
+          packPrefetchInFlightRef.current.delete(key);
+        });
+      packPrefetchInFlightRef.current.set(key, promise);
+    }, 280);
+    return () => window.clearTimeout(timer);
+    // Intentionally pre-warm once on Studio mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const favoriteIds = useMemo(
+    () => new Set(collections.entries.map((e) => e.beatmapset.id)),
+    [collections.entries],
+  );
+
+  const handleChangeTargetGroup = useCallback((groupId: string) => {
+    setActiveTargetGroupId(groupId);
+    try {
+      localStorage.setItem(GACHA_TARGET_GROUP_KEY, groupId);
+    } catch {
+      // Ignore
+    }
+  }, []);
+
+  const handleApplyCustomFilters = useCallback(
+    (next: SearchFilters) => {
+      setCustomFilters(next);
+      try {
+        localStorage.setItem(GACHA_CUSTOM_FILTERS_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore
+      }
+      onNotify(t('已更新「条件自选池」筛选规则', 'Updated Custom Filter Pool rules'));
+    },
+    [onNotify, t],
+  );
+
+  const handleLikeCardToGroup = useCallback(
+    async (set: NormalizedBeatmapset, groupId?: string) => {
+      const targetGid = groupId || activeTargetGroupId || 'default';
+      try {
+        const updated = await upsertGachaFavorite(set, [targetGid]);
+        setCollections(updated);
+      } catch (err) {
+        onNotify(err instanceof Error ? err.message : t('保存收藏失败', 'Failed to save favorite'));
+      }
+    },
+    [activeTargetGroupId, onNotify, t],
+  );
+
+  const handleToggleFavorite = useCallback(
+    async (set: NormalizedBeatmapset) => {
+      try {
+        if (favoriteIds.has(set.id)) {
+          const updated = await removeGachaFavorite(set.id);
+          setCollections(updated);
+          onNotify(t('已从心动曲库移除', 'Removed from Liked Library'));
+        } else {
+          const targetGid = activeTargetGroupId || 'default';
+          const updated = await upsertGachaFavorite(set, [targetGid]);
+          setCollections(updated);
+          const gName =
+            collections.groups.find((g) => g.id === targetGid)?.name ?? t('默认心动', 'Default');
+          onNotify(t(`已加入心动分组「${gName}」`, `Saved to "${gName}"`));
+        }
+      } catch (err) {
+        onNotify(err instanceof Error ? err.message : t('更新收藏失败', 'Failed to update favorite'));
+      }
+    },
+    [favoriteIds, activeTargetGroupId, collections.groups, onNotify, t],
+  );
+
+  const handleCreateGroup = useCallback(
+    async (name: string) => {
+      try {
+        const res = await createGachaGroup(name);
+        setCollections(res.state);
+        handleChangeTargetGroup(res.group.id);
+        onNotify(t(`已新建分组「${res.group.name}」`, `Created group "${res.group.name}"`));
+      } catch (err) {
+        onNotify(err instanceof Error ? err.message : t('创建分组失败', 'Failed to create group'));
+      }
+    },
+    [handleChangeTargetGroup, onNotify, t],
+  );
+
+  const handleRenameGroup = useCallback(
+    async (groupId: string, name: string) => {
+      try {
+        const updated = await renameGachaGroup(groupId, name);
+        setCollections(updated);
+      } catch (err) {
+        onNotify(err instanceof Error ? err.message : t('重命名失败', 'Rename failed'));
+      }
+    },
+    [onNotify, t],
+  );
+
+  const handleDeleteGroup = useCallback(
+    async (groupId: string) => {
+      try {
+        const updated = await deleteGachaGroup(groupId);
+        setCollections(updated);
+        if (activeTargetGroupId === groupId) {
+          handleChangeTargetGroup('default');
+        }
+      } catch (err) {
+        onNotify(err instanceof Error ? err.message : t('删除分组失败', 'Failed to delete group'));
+      }
+    },
+    [activeTargetGroupId, handleChangeTargetGroup, onNotify, t],
+  );
+
+  const handleClearGroup = useCallback(
+    async (groupId: string) => {
+      try {
+        const updated = await clearGachaGroupEntries(groupId);
+        setCollections(updated);
+      } catch (err) {
+        onNotify(err instanceof Error ? err.message : t('清空分组失败', 'Failed to clear group'));
+      }
+    },
+    [onNotify, t],
+  );
+
+  const handleSetEntryGroups = useCallback(
+    async (setId: number, groupIds: string[]) => {
+      try {
+        const updated = await setGachaFavoriteGroups(setId, groupIds);
+        setCollections(updated);
+      } catch (err) {
+        onNotify(err instanceof Error ? err.message : t('更新分组归属失败', 'Failed to update groups'));
+      }
+    },
+    [onNotify, t],
+  );
+
+  const handleRemoveEntry = useCallback(
+    async (setId: number, groupId?: string) => {
+      try {
+        const updated = await removeGachaFavorite(setId, groupId);
+        setCollections(updated);
+      } catch (err) {
+        onNotify(err instanceof Error ? err.message : t('移除收藏失败', 'Failed to remove favorite'));
+      }
+    },
+    [onNotify, t],
+  );
+
+  // Read live global CSS accent & canvas colors so 3D Sanctum & card back follow active global theme
   useEffect(() => {
     const syncGlobalColors = () => {
       const style = getComputedStyle(document.documentElement);
@@ -256,30 +531,45 @@ export function GachaStudio({
       <div className="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden">
         {tab === 'dating' && (
           <GachaDatingMode
-            baseFilters={filters}
+            baseFilters={customFilters}
             target={target}
             activeTaskBySet={activeTaskBySet}
+            collections={collections}
+            favoriteIds={favoriteIds}
+            activeTargetGroupId={activeTargetGroupId}
+            likedOpen={likedDrawerOpen}
             playingSetId={audioSet?.id ?? null}
             isPlaying={isPlaying}
+            onChangeTargetGroup={handleChangeTargetGroup}
+            onLikeCardToGroup={handleLikeCardToGroup}
+            onRemoveFavorite={handleRemoveEntry}
+            onToggleLikedDrawer={() => setLikedDrawerOpen((o) => !o)}
+            onOpenCustomFilter={() => setCustomFilterModalOpen(true)}
             onPlaySet={handlePlaySet}
             onTogglePlaySet={handleTogglePlaySet}
             onStopAudio={stopAudio}
             onDownload={onDownload}
-            onBatchDownload={onBatchDownload}
             onOpenDetail={onOpenDetail}
             onTriggerEffect={triggerEffect}
-            onNotify={onNotify}
           />
         )}
 
         {tab === 'pack' && (
           <GachaPackMode
-            baseFilters={filters}
+            baseFilters={customFilters}
             target={target}
             blueprint={blueprint}
             activeTaskBySet={activeTaskBySet}
+            favoriteIds={favoriteIds}
+            likedCount={collections.entries.length}
+            likedOpen={likedDrawerOpen}
             playingSetId={audioSet?.id ?? null}
             isPlaying={isPlaying}
+            prefetchCacheRef={packPrefetchCacheRef}
+            prefetchInFlightRef={packPrefetchInFlightRef}
+            onToggleFavorite={handleToggleFavorite}
+            onToggleLikedDrawer={() => setLikedDrawerOpen((o) => !o)}
+            onOpenCustomFilter={() => setCustomFilterModalOpen(true)}
             onTogglePlaySet={handleTogglePlaySet}
             onDownload={onDownload}
             onBatchDownload={onBatchDownload}
@@ -291,7 +581,7 @@ export function GachaStudio({
 
         {tab === 'guess' && (
           <GachaGuessMode
-            baseFilters={filters}
+            baseFilters={customFilters}
             target={target}
             activeTaskBySet={activeTaskBySet}
             playingSetId={audioSet?.id ?? null}
@@ -299,6 +589,41 @@ export function GachaStudio({
             onTogglePlaySet={handleTogglePlaySet}
             onDownload={onDownload}
             onTriggerEffect={triggerEffect}
+          />
+        )}
+
+        {likedDrawerOpen && (
+          <GachaLikedDrawer
+            collections={collections}
+            activeTargetGroupId={activeTargetGroupId}
+            target={target}
+            activeTaskBySet={activeTaskBySet}
+            playingSetId={audioSet?.id ?? null}
+            isPlaying={isPlaying}
+            onChangeTargetGroup={handleChangeTargetGroup}
+            onCreateGroup={handleCreateGroup}
+            onRenameGroup={handleRenameGroup}
+            onDeleteGroup={handleDeleteGroup}
+            onClearGroup={handleClearGroup}
+            onSetEntryGroups={handleSetEntryGroups}
+            onRemoveEntry={handleRemoveEntry}
+            onTogglePlaySet={handleTogglePlaySet}
+            onDownload={onDownload}
+            onBatchDownload={onBatchDownload}
+            onOpenDetail={onOpenDetail}
+            onNotify={onNotify}
+            onClose={() => setLikedDrawerOpen(false)}
+          />
+        )}
+
+        {customFilterModalOpen && (
+          <GachaCustomFilterModal
+            initialFilters={customFilters}
+            browseFilters={filters}
+            filterArchives={filterArchives}
+            isDark={isDark}
+            onApply={handleApplyCustomFilters}
+            onClose={() => setCustomFilterModalOpen(false)}
           />
         )}
       </div>
@@ -447,6 +772,21 @@ export function GachaStudio({
               aria-label={t('抽卡试听音量', 'Card preview volume')}
             />
           </div>
+
+          <button
+            type="button"
+            data-active={likedDrawerOpen ? 'true' : 'false'}
+            onClick={() => setLikedDrawerOpen((o) => !o)}
+            title={t('打开/收起心动收藏曲库', 'Toggle persistent Liked Library')}
+            className="ga-line-btn h-7 px-2 text-[0.6875rem]"
+          >
+            <Heart
+              className={`h-3.5 w-3.5 ${
+                collections.entries.length > 0 ? 'fill-current text-[var(--ga-cobalt)]' : ''
+              }`}
+            />
+            <span className="ga-mono">{collections.entries.length}</span>
+          </button>
 
           <button
             type="button"

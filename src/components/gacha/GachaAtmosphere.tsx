@@ -441,12 +441,55 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
           className="ga-blueprint-grid pointer-events-none absolute inset-0 z-[2]"
         />
 
-        {/* 4. Subtle NodeField Canvas + Floating Ghost Serif Glyphs */}
+        {/* 4. Subtle NodeField Canvas + PROUN / osu! Architectural Accents + Floating Ghost Glyphs */}
         <canvas
           ref={nodeCanvasRef}
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-[3] h-full w-full"
         />
+
+        {/* Constructivist PROUN Diagonal Rule & Top-Right osu! Approach Ring Emblem */}
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 1440 900"
+          preserveAspectRatio="xMidYMid slice"
+          className="pointer-events-none absolute inset-0 z-[2] h-full w-full opacity-55"
+        >
+          <line
+            x1="-40"
+            y1="790"
+            x2="920"
+            y2="160"
+            stroke="var(--ga-cobalt)"
+            strokeOpacity="0.16"
+            strokeWidth="2.4"
+          />
+          <line
+            x1="40"
+            y1="820"
+            x2="960"
+            y2="190"
+            stroke="var(--ga-ink)"
+            strokeOpacity="0.08"
+            strokeWidth="0.9"
+          />
+          <g transform="translate(1310, 128)" opacity="0.22">
+            <circle cx="0" cy="0" r="46" fill="none" stroke="var(--ga-cobalt)" strokeWidth="1.2" strokeDasharray="10 6" />
+            <circle cx="0" cy="0" r="30" fill="none" stroke="var(--ga-ink)" strokeWidth="1.4" />
+            <text
+              x="0"
+              y="4"
+              textAnchor="middle"
+              fill="var(--ga-ink)"
+              fontSize="11"
+              fontFamily="var(--ga-mono)"
+              fontWeight="700"
+              letterSpacing="1.6"
+            >
+              4K
+            </text>
+          </g>
+        </svg>
 
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden">
           {GHOST_GLYPHS.map((g, i) => (
@@ -473,7 +516,7 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
           className="ga-mono pointer-events-none absolute top-[54%] left-2 z-[5] hidden -translate-y-1/2 whitespace-nowrap text-[9px] tracking-[0.22em] opacity-40 select-none sm:block"
           style={{ writingMode: 'vertical-rl' }}
         >
-          OSU!MANAGER · CELESTIAL ARCHIVE // NON-LOCAL
+          OSU!MANAGER · PROUN MANIA // 4K–10K ARCHIVE
         </div>
 
         <div aria-hidden="true" className="ga-edge-ruler hidden sm:flex">

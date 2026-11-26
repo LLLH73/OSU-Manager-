@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -46,8 +46,16 @@ interface GachaPackModeProps {
   target: DownloadTarget;
   blueprint: boolean;
   activeTaskBySet: Map<number, DownloadTask>;
+  favoriteIds: Set<number>;
+  likedCount: number;
+  likedOpen: boolean;
   playingSetId: number | null;
   isPlaying: boolean;
+  prefetchCacheRef: MutableRefObject<Map<string, NormalizedBeatmapset[]>>;
+  prefetchInFlightRef: MutableRefObject<Map<string, Promise<void>>>;
+  onToggleFavorite: (set: NormalizedBeatmapset) => void;
+  onToggleLikedDrawer: () => void;
+  onOpenCustomFilter: () => void;
   onTogglePlaySet: (set: NormalizedBeatmapset) => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
   onBatchDownload: (sets: NormalizedBeatmapset[]) => void;
@@ -84,8 +92,16 @@ export function GachaPackMode({
   target,
   blueprint,
   activeTaskBySet,
+  favoriteIds,
+  likedCount,
+  likedOpen,
   playingSetId,
   isPlaying,
+  prefetchCacheRef,
+  prefetchInFlightRef,
+  onToggleFavorite,
+  onToggleLikedDrawer,
+  onOpenCustomFilter,
   onTogglePlaySet,
   onDownload,
   onBatchDownload,
@@ -127,6 +143,55 @@ export function GachaPackMode({
   const lastHoveredCardRef = useRef<number | null>(null);
 
   const selectedPack = packs.find((p) => p.id === packId) ?? packs[0];
+  const filterSignature =
+    packId === 'current_filter'
+      ? JSON.stringify({
+          q: baseFilters.q ?? '',
+          keys: baseFilters.keys ?? '',
+          status: baseFilters.status ?? 'any',
+          minStars: baseFilters.minStars ?? null,
+          maxStars: baseFilters.maxStars ?? null,
+          minBpm: baseFilters.minBpm ?? null,
+          maxBpm: baseFilters.maxBpm ?? null,
+          minLn: baseFilters.minLn ?? null,
+          maxLn: baseFilters.maxLn ?? null,
+          minLength: baseFilters.minLength ?? null,
+          maxLength: baseFilters.maxLength ?? null,
+        })
+      : '';
+  const poolKey = filterSignature ? `${packId}::${filterSignature}` : packId;
+
+  const ensurePrefetch = useCallback(
+    (pid: GachaPackId, key: string) => {
+      const existing = prefetchCacheRef.current.get(key) ?? [];
+      if (existing.length >= 20 || prefetchInFlightRef.current.has(key)) return;
+      const promise = drawGachaBeatmapsets({
+        count: 20,
+        packId: pid,
+        baseFilters,
+        excludeIds: Array.from(seenIdsRef.current).slice(-160),
+      })
+        .then((res) => {
+          if (res.cards.length === 0) return;
+          const prev = prefetchCacheRef.current.get(key) ?? [];
+          const prevIds = new Set(prev.map((c) => c.id));
+          const merged = [...prev, ...res.cards.filter((c) => !prevIds.has(c.id))];
+          prefetchCacheRef.current.set(key, merged);
+        })
+        .catch(() => {
+          // Silent prefetch failure is harmless; interactive draw handles errors
+        })
+        .finally(() => {
+          prefetchInFlightRef.current.delete(key);
+        });
+      prefetchInFlightRef.current.set(key, promise);
+    },
+    [baseFilters],
+  );
+
+  useEffect(() => {
+    ensurePrefetch(packId, poolKey);
+  }, [packId, poolKey, ensurePrefetch]);
 
   // Observe Circular Ring dimensions dynamically
   useEffect(() => {
@@ -145,6 +210,10 @@ export function GachaPackMode({
     async (overridePackId?: GachaPackId, overrideCount?: number) => {
       if (stage === 'tearing') return;
       const targetPack = overridePackId ?? packId;
+      const targetKey =
+        targetPack === 'current_filter' && filterSignature
+          ? `${targetPack}::${filterSignature}`
+          : targetPack;
       const targetCount = Math.min(20, Math.max(1, overrideCount ?? cardCount));
 
       setError(null);
@@ -153,27 +222,41 @@ export function GachaPackMode({
       playPackTearSound();
       onTriggerEffect(1.0);
 
-      const fetchPromise = drawGachaBeatmapsets({
-        count: targetCount,
-        packId: targetPack,
-        baseFilters,
-        excludeIds: Array.from(seenIdsRef.current).slice(-160),
-      });
-
       const minAnimPromise = new Promise<void>((resolve) => {
-        window.setTimeout(resolve, 640);
+        window.setTimeout(resolve, 240);
       });
 
       try {
-        const [res] = await Promise.all([fetchPromise, minAnimPromise]);
-        if (res.cards.length === 0) {
+        let cachedPool = prefetchCacheRef.current.get(targetKey) ?? [];
+        const inFlight = prefetchInFlightRef.current.get(targetKey);
+        if (cachedPool.length < targetCount && inFlight) {
+          await Promise.all([inFlight, minAnimPromise]);
+          cachedPool = prefetchCacheRef.current.get(targetKey) ?? [];
+        }
+        let drawn: NormalizedBeatmapset[] = [];
+        if (cachedPool.length >= targetCount) {
+          drawn = cachedPool.slice(0, targetCount);
+          prefetchCacheRef.current.set(targetKey, cachedPool.slice(targetCount));
+          await minAnimPromise;
+        } else {
+          const fetchPromise = drawGachaBeatmapsets({
+            count: targetCount,
+            packId: targetPack,
+            baseFilters,
+            excludeIds: Array.from(seenIdsRef.current).slice(-160),
+          });
+          const [res] = await Promise.all([fetchPromise, minAnimPromise]);
+          drawn = res.cards;
+        }
+
+        if (drawn.length === 0) {
           setError(t('该卡池暂时没有符合条件的未安装谱面', 'No non-local maps found in this pack pool'));
           setStage('sealed');
           setTearDragPct(0);
           return;
         }
-        for (const c of res.cards) seenIdsRef.current.add(c.id);
-        setCards(res.cards);
+        for (const c of drawn) seenIdsRef.current.add(c.id);
+        setCards(drawn);
         setFlippedIds(new Set());
         setRevealTriggers({});
         setInspectorIndex(null);
@@ -181,14 +264,15 @@ export function GachaPackMode({
         setFlashBurst(true);
         setStage('opened');
         setTearDragPct(0);
-        window.setTimeout(() => setFlashBurst(false), 720);
+        ensurePrefetch(targetPack, targetKey);
+        window.setTimeout(() => setFlashBurst(false), 620);
       } catch (err) {
         setError(err instanceof Error ? err.message : t('开包失败，请重试', 'Failed to open card pack'));
         setStage('sealed');
         setTearDragPct(0);
       }
     },
-    [stage, packId, cardCount, onTriggerEffect, baseFilters, t],
+    [stage, packId, filterSignature, cardCount, onTriggerEffect, baseFilters, ensurePrefetch, t],
   );
 
   const flipSingleCard = useCallback(
@@ -290,21 +374,23 @@ export function GachaPackMode({
     { common: 0, rare: 0, epic: 0, legendary: 0, mythic: 0 },
   );
 
-  // Compute responsive 3D circular ring geometry for 1..20 cards
+  // Compute viewport-adaptive enlarged 3D circular ring geometry for 1..20 cards
   const N = Math.max(1, cards.length);
   const w = Math.max(360, stageSize.width);
   const h = Math.max(360, stageSize.height);
-  const baseCardW =
+  const maxByHeight = Math.round(((h - 52) * 0.68) / 1.48);
+  const targetByWidth =
     N <= 1
-      ? Math.min(276, w * 0.42)
+      ? Math.min(340, w * 0.44)
       : N <= 5
-        ? Math.min(212, Math.max(150, w * 0.162))
+        ? Math.min(266, Math.max(168, w * 0.195))
         : N <= 10
-          ? Math.min(190, Math.max(138, w * 0.145))
-          : Math.min(176, Math.max(128, w * 0.135));
+          ? Math.min(226, Math.max(150, w * 0.168))
+          : Math.min(198, Math.max(134, w * 0.148));
+  const baseCardW = Math.max(134, Math.min(targetByWidth, maxByHeight));
   const baseCardH = Math.round(baseCardW * 1.48);
-  const rx = N <= 1 ? 0 : Math.min(w * 0.37, Math.max(250, N * 36));
-  const ry = N <= 1 ? 0 : Math.min(h * 0.21, 74 + Math.min(N, 8) * 6);
+  const rx = N <= 1 ? 0 : Math.min(w * 0.39, Math.max(260, N * 38));
+  const ry = N <= 1 ? 0 : Math.min(h * 0.22, 78 + Math.min(N, 8) * 6);
 
   return (
     <div
@@ -413,6 +499,33 @@ export function GachaPackMode({
                   );
                 })}
               </div>
+
+              {packId === 'current_filter' && (
+                <button
+                  type="button"
+                  data-ga-cursor={t('配置筛选', 'EDIT FILTERS')}
+                  onClick={onOpenCustomFilter}
+                  className="ga-line-btn h-8 w-full justify-between px-2.5 text-[0.71875rem]"
+                >
+                  <span className="inline-flex items-center gap-1.5 font-semibold text-[var(--ga-ink)]">
+                    <Filter className="h-3.5 w-3.5 text-[var(--ga-cobalt)]" />
+                    <span>{t('编辑自选筛选条件', 'Configure Filter Criteria')}</span>
+                  </span>
+                  <span className="ga-mono text-[0.625rem] text-[var(--ga-cobalt)]">
+                    {[
+                      baseFilters.keys ? `${baseFilters.keys}K` : t('全键', 'ALL'),
+                      baseFilters.minStars !== undefined || baseFilters.maxStars !== undefined
+                        ? `${baseFilters.minStars ?? 0}–${baseFilters.maxStars ?? '∞'}★`
+                        : null,
+                      baseFilters.status && baseFilters.status !== 'any'
+                        ? baseFilters.status.toUpperCase()
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                </button>
+              )}
 
               {/* Card Count Calibration Strip (1..20) with working --fill track */}
               <div className="space-y-2">
@@ -529,7 +642,7 @@ export function GachaPackMode({
               pointer={platePointer}
             />
 
-            {/* Unified Global-Theme Collector Booster Sleeve */}
+            {/* Enlarged PROUN Constructivist x osu! Theme-Synced Collector Sleeve */}
             <div
               onMouseMove={(e) => {
                 if (stage !== 'sealed') return;
@@ -543,11 +656,11 @@ export function GachaPackMode({
                 transform: `perspective(1000px) rotateX(${packTilt.rx}deg) rotateY(${packTilt.ry}deg)`,
                 transition: 'transform 160ms ease-out',
               }}
-              className={`relative z-10 -mt-5 w-[240px] sm:w-[258px] ${
+              className={`relative z-10 w-[clamp(270px,24vw,356px)] ${
                 stage === 'tearing' ? 'gacha-pack-shake' : 'gacha-pack-float'
               }`}
             >
-              {/* Top Tear Seam (Unified theme ink + cobalt stripe) */}
+              {/* Top Tear Seam (High-contrast Constructivist ink header + perforated cobalt seam) */}
               <div
                 data-ga-target="true"
                 data-ga-cursor={t('沿虚线划开', 'DRAG TEAR')}
@@ -556,97 +669,114 @@ export function GachaPackMode({
                 onPointerUp={handlePackSeamPointerUp}
                 onPointerCancel={handlePackSeamPointerUp}
                 title={t('沿此虚线左右划动或直接点击下方卡包撕开', 'Drag across seam or click pack body to open')}
-                className={`relative cursor-ew-resize overflow-hidden rounded-t-[3px] border border-b-0 border-[var(--ga-cobalt)] px-4 py-3 text-center select-none ${
+                className={`relative cursor-ew-resize overflow-hidden rounded-t-[3px] border border-b-0 border-[var(--ga-ink)] px-4 py-3 text-center select-none ${
                   stage === 'tearing' ? 'gacha-pack-rip-top' : ''
                 }`}
                 style={{
-                  background:
-                    'linear-gradient(160deg, var(--ga-panel-strong) 0%, color-mix(in srgb, var(--ga-cobalt) 22%, var(--ga-paper)) 100%)',
-                  borderBottom: '2px dashed var(--ga-cobalt)',
-                  boxShadow: '0 -6px 24px -6px color-mix(in srgb, var(--ga-cobalt) 40%, transparent)',
+                  background: 'var(--ga-ink)',
+                  color: 'var(--ga-paper)',
+                  borderBottom: '2.5px dashed var(--ga-cobalt)',
+                  boxShadow: '0 -8px 26px -6px color-mix(in srgb, var(--ga-cobalt) 42%, transparent)',
                 }}
               >
-                <div className="ga-mono flex items-center justify-center gap-1.5 text-[0.65625rem] font-bold tracking-[0.2em] text-[var(--ga-ink)] uppercase">
-                  <Scissors className="h-3 w-3 text-[var(--ga-cobalt)]" />
-                  <span>{t('沿虚线划开', 'DRAG TO TEAR')}</span>
+                <div className="ga-mono flex items-center justify-center gap-1.5 text-[0.6875rem] font-bold tracking-[0.22em] uppercase">
+                  <Scissors className="h-3.5 w-3.5 text-[var(--ga-cobalt)]" />
+                  <span>{t(`沿虚线撕开 · ${selectedPack.code}`, `TEAR // POOL ${selectedPack.code}`)}</span>
                 </div>
                 {tearDragPct > 0 && (
                   <div
-                    className="mt-1 h-1 bg-[var(--ga-cobalt)]"
+                    className="mt-1.5 h-1 bg-[var(--ga-cobalt)]"
                     style={{ width: `${tearDragPct}%` }}
                   />
                 )}
               </div>
 
-              {/* Unified Theme-Synchronized Collector Sleeve Body */}
+              {/* PROUN Bauhaus Diagonal-Slash Collector Sleeve Body */}
               <div
                 data-ga-target="true"
-                data-ga-cursor={t('点击撕开', 'UNSEAL PACK')}
+                data-ga-cursor={t('点击开启', 'UNSEAL PACK')}
                 onClick={() => void handleRipOpen()}
-                className="relative flex h-[288px] cursor-pointer flex-col items-center justify-between overflow-hidden rounded-b-[4px] border border-t-0 border-[var(--ga-line-strong)] px-5 py-6 text-[var(--ga-ink)] select-none"
+                className="relative flex h-[clamp(350px,50vh,464px)] cursor-pointer flex-col items-center justify-between overflow-hidden rounded-b-[4px] border border-t-0 border-[var(--ga-line-strong)] bg-[var(--ga-paper)] px-6 py-7 text-[var(--ga-ink)] select-none"
                 style={{
-                  background:
-                    'linear-gradient(155deg, color-mix(in srgb, var(--ga-paper) 94%, var(--ga-cobalt) 6%) 0%, color-mix(in srgb, var(--ga-paper) 78%, var(--ga-cobalt) 22%) 100%)',
                   boxShadow:
-                    '0 28px 60px -16px rgba(0,0,0,0.42), 0 0 38px -10px color-mix(in srgb, var(--ga-cobalt) 42%, transparent)',
+                    '0 32px 68px -18px rgba(0,0,0,0.44), 0 0 42px -10px color-mix(in srgb, var(--ga-cobalt) 42%, transparent)',
                 }}
               >
-                {/* Crisp Architectural Inner Hairline Frame */}
+                {/* Bauhaus Diagonal Theme-Accent Block + Constructivist Crimson Corner Wedge */}
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-2.5 border border-[color-mix(in_srgb,var(--ga-cobalt)_36%,transparent)]"
+                  className="pointer-events-none absolute inset-0 opacity-90"
+                  style={{
+                    background: 'var(--ga-cobalt)',
+                    clipPath: 'polygon(0 0, 68% 0, 0 44%)',
+                  }}
                 />
                 <div
                   aria-hidden="true"
-                  className="ga-halftone pointer-events-none absolute top-0 right-0 h-28 w-28 text-[var(--ga-cobalt)] opacity-15"
+                  className="pointer-events-none absolute inset-0 opacity-88"
+                  style={{
+                    background: 'var(--ga-crimson)',
+                    clipPath: 'polygon(100% 62%, 100% 100%, 48% 100%)',
+                  }}
+                />
+
+                {/* Crisp Architectural Inner Frame + Halftone Micro Accent */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-3 border border-[color-mix(in_srgb,var(--ga-ink)_22%,transparent)]"
+                />
+                <div
+                  aria-hidden="true"
+                  className="ga-halftone pointer-events-none absolute top-0 right-0 h-32 w-32 text-[var(--ga-cobalt)] opacity-15"
                   style={{ maskImage: 'radial-gradient(circle at top right, black 10%, transparent 74%)' }}
                 />
 
-                <div className="ga-mono relative z-10 flex w-full items-center justify-between text-[0.625rem] font-bold tracking-[0.16em] text-[var(--ga-ink-2)] uppercase">
-                  <span>PACK {selectedPack.code}</span>
-                  <span className="text-[var(--ga-cobalt)]">{selectedPack.starRangeLabel}</span>
+                {/* Top Technical Pool Index */}
+                <div className="ga-mono relative z-10 flex w-full items-center justify-between text-[0.6875rem] font-bold tracking-[0.16em] uppercase">
+                  <span className="rounded-[2px] bg-[var(--ga-ink)] px-2 py-0.5 text-[var(--ga-paper)]">
+                    POOL {selectedPack.code}
+                  </span>
+                  <span className="rounded-[2px] border border-[var(--ga-line-strong)] bg-[var(--ga-paper)] px-2 py-0.5 text-[var(--ga-cobalt)]">
+                    {selectedPack.starRangeLabel}
+                  </span>
                 </div>
 
-                {/* Central Minimalist Sigil + Thin-Stroke `osu!` */}
+                {/* Central Double-Ring osu! Hit Circle + Approach Ring Stamp */}
                 <div className="relative z-10 flex flex-col items-center text-center">
                   <div
-                    className="relative flex h-20 w-20 items-center justify-center rounded-full border border-[var(--ga-cobalt)]"
+                    className="relative flex h-26 w-26 items-center justify-center rounded-full border-2 border-[var(--ga-ink)] bg-[var(--ga-paper)] shadow-lg"
                     style={{
-                      background:
-                        'radial-gradient(circle, color-mix(in srgb, var(--ga-cobalt) 18%, transparent) 0%, transparent 76%)',
-                      boxShadow: '0 0 28px color-mix(in srgb, var(--ga-cobalt) 35%, transparent)',
+                      boxShadow: '0 0 32px color-mix(in srgb, var(--ga-cobalt) 35%, transparent)',
                     }}
                   >
+                    <div className="pointer-events-none absolute inset-2 rounded-full border border-[var(--ga-cobalt)]" />
                     <span
-                      className="font-display text-[1.45rem] tracking-[0.16em] text-[var(--ga-ink)]"
+                      className="font-display text-[1.85rem] tracking-[0.16em] text-[var(--ga-ink)]"
                       style={{ fontWeight: 200, paddingLeft: '0.16em' }}
                     >
                       osu!
                     </span>
-                    <span className="absolute -right-1 -bottom-1 flex h-6 w-6 items-center justify-center rounded-full bg-[var(--ga-cobalt)] text-white shadow">
-                      <PackSigilIcon sigil={selectedPack.sigil} className="h-3 w-3" />
+                    <span className="absolute -right-1.5 -bottom-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ga-cobalt)] text-white shadow">
+                      <PackSigilIcon sigil={selectedPack.sigil} className="h-3.5 w-3.5" />
                     </span>
                   </div>
-                  <div className="ga-cn-serif mt-3 text-[1.125rem] font-bold tracking-wide text-[var(--ga-ink)]">
+                  <div className="ga-cn-serif mt-4 rounded-[2px] bg-[color-mix(in_srgb,var(--ga-paper)_90%,transparent)] px-3 py-0.5 text-[1.25rem] font-bold tracking-wide text-[var(--ga-ink)] backdrop-blur-sm">
                     {selectedPack.name}
                   </div>
-                  <div className="ga-mono mt-0.5 text-[0.625rem] tracking-[0.18em] text-[var(--ga-ink-3)] uppercase">
+                  <div className="ga-mono mt-0.5 text-[0.65625rem] font-semibold tracking-[0.18em] text-[var(--ga-ink-2)] uppercase">
                     {selectedPack.editorialSub}
                   </div>
                 </div>
 
-                <div className="ga-mono relative z-10 rounded-[2px] border border-[var(--ga-cobalt)] bg-[color-mix(in_srgb,var(--ga-cobalt)_14%,transparent)] px-3 py-1 text-[0.6875rem] font-bold tracking-[0.14em] text-[var(--ga-cobalt)]">
-                  × {String(cardCount).padStart(2, '0')} {t('张未装谱面', 'UNOWNED MAPS')}
+                {/* Constructivist Ink Quantity Stamp */}
+                <div className="ga-mono relative z-10 flex w-full items-center justify-between border border-[var(--ga-ink)] bg-[var(--ga-ink)] px-3 py-1.5 text-[0.71875rem] font-bold tracking-[0.14em] text-[var(--ga-paper)]">
+                  <span>{selectedPack.badge}</span>
+                  <span>
+                    × {String(cardCount).padStart(2, '0')} {t('张', 'CARDS')}
+                  </span>
                 </div>
               </div>
             </div>
-
-            <p className="ga-mono absolute bottom-2.5 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-[2px] bg-[var(--ga-panel-strong)] px-3 py-1 text-[0.65625rem] text-[var(--ga-ink-2)] backdrop-blur-sm">
-              {t(
-                '开包后卡片将呈圆环排列 · 悬停亮起星数光晕 · 翻开后可点击进入 360° 3D 检视',
-                'CARDS DEAL IN A 3D RING · HOVER FOR STAR AURA · CLICK REVEALED CARD FOR 360° INSPECT',
-              )}
-            </p>
           </div>
         </div>
       ) : (
@@ -749,6 +879,17 @@ export function GachaPackMode({
               >
                 <Sparkles className="h-3.5 w-3.5 text-[var(--ga-cobalt)]" />
                 <span>{t('再开一包', 'Open Another')}</span>
+              </button>
+
+              <button
+                type="button"
+                data-ga-cursor={t('心动曲库', 'LIKED ARCHIVE')}
+                data-active={likedOpen ? 'true' : 'false'}
+                onClick={onToggleLikedDrawer}
+                className="ga-line-btn h-7 px-2.5 text-[0.71875rem]"
+              >
+                <Heart className={`h-3.5 w-3.5 ${likedCount > 0 ? 'fill-current text-[var(--ga-cobalt)]' : ''}`} />
+                <span>{t(`心动 (${likedCount})`, `Liked (${likedCount})`)}</span>
               </button>
 
               <button
@@ -859,6 +1000,7 @@ export function GachaPackMode({
                     target={target}
                     activeTask={activeTaskBySet.get(card.id)}
                     isPlaying={isPlaying && playingSetId === card.id}
+                    isFavorited={favoriteIds.has(card.id)}
                     className="h-full w-full"
                     onHoverBack={(tier) => {
                       if (lastHoveredCardRef.current !== card.id) {
@@ -866,6 +1008,7 @@ export function GachaPackMode({
                         playCardHoverTick(tier);
                       }
                     }}
+                    onToggleFavorite={!isFaceDown ? onToggleFavorite : undefined}
                     onFlip={() => flipSingleCard(card)}
                     onInspect={() => setInspectorIndex(idx)}
                     onTogglePlay={onTogglePlaySet}
@@ -894,12 +1037,6 @@ export function GachaPackMode({
                 </div>
               );
             })}
-
-            {cards.length > 1 && (
-              <div className="ga-mono pointer-events-none absolute right-2 bottom-1 text-[0.625rem] text-[var(--ga-ink-3)]">
-                {t('拖拽空白处或滚轮旋转圆环 · 翻开后点击卡片 360° 检视', 'Drag canvas or scroll to orbit · Click revealed card for 360° 3D view')}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -911,8 +1048,10 @@ export function GachaPackMode({
           initialIndex={inspectorIndex}
           target={target}
           activeTaskBySet={activeTaskBySet}
+          favoriteIds={favoriteIds}
           playingSetId={playingSetId}
           isPlaying={isPlaying}
+          onToggleFavorite={onToggleFavorite}
           onTogglePlay={onTogglePlaySet}
           onDownload={onDownload}
           onOpenDetail={onOpenDetail}

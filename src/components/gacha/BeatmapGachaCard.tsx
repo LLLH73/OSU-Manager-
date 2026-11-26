@@ -1,5 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { Check, Download, ExternalLink, Loader2, Pause, Play, Sparkles, Star } from 'lucide-react';
+import { Check, Download, ExternalLink, Heart, Loader2, Pause, Play, Sparkles, Star } from 'lucide-react';
 import { formatDuration, getLnCategory, getStarColor, getStatusBadge } from '../../constants';
 import { useI18n } from '../../i18n';
 import type { DownloadTarget, DownloadTask, NormalizedBeatmapset } from '../../types';
@@ -21,12 +21,14 @@ interface BeatmapGachaCardProps {
   clueBanner?: ReactNode;
   compact?: boolean;
   isPlaying?: boolean;
+  isFavorited?: boolean;
   activeTask?: DownloadTask;
   target: DownloadTarget;
   className?: string;
   onFlip?: () => void;
   onInspect?: () => void;
   onHoverBack?: (tier: StarRarityTier) => void;
+  onToggleFavorite?: (set: NormalizedBeatmapset) => void;
   onTogglePlay?: (set: NormalizedBeatmapset) => void;
   onDownload?: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
   onOpenDetail?: (set: NormalizedBeatmapset, diffId?: number | null) => void;
@@ -56,12 +58,14 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
   clueBanner,
   compact = false,
   isPlaying = false,
+  isFavorited = false,
   activeTask,
   target,
   className = '',
   onFlip,
   onInspect,
   onHoverBack,
+  onToggleFavorite,
   onTogglePlay,
   onDownload,
   onOpenDetail,
@@ -398,6 +402,28 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
                     </span>
                   ))}
 
+                {onToggleFavorite && (
+                  <button
+                    type="button"
+                    data-ga-cursor={isFavorited ? t('已收藏', 'SAVED') : t('收藏心动', 'FAVORITE')}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleFavorite(beatmapset);
+                    }}
+                    title={isFavorited ? t('移出心动曲库', 'Remove from Liked Library') : t('加入心动曲库', 'Save to Liked Library')}
+                    className={`flex shrink-0 items-center justify-center rounded-full shadow-lg transition-transform hover:scale-105 ${
+                      compact ? 'h-7 w-7' : 'h-8 w-8'
+                    } ${
+                      isFavorited
+                        ? 'bg-rose-500 text-white'
+                        : 'bg-black/65 text-white/90 backdrop-blur-md hover:bg-rose-500 hover:text-white'
+                    }`}
+                  >
+                    <Heart className={`h-3.5 w-3.5 ${isFavorited ? 'fill-current' : ''}`} />
+                  </button>
+                )}
+
                 {onTogglePlay && (
                   <button
                     type="button"
@@ -412,8 +438,8 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
                       compact ? 'h-7 w-7' : 'h-8 w-8'
                     } ${
                       isPlaying
-                        ? 'bg-[#3a5bc2] text-white'
-                        : 'bg-black/65 text-white backdrop-blur-md hover:bg-[#3a5bc2]'
+                        ? 'bg-[var(--ga-cobalt,var(--t-osu,#3a5bc2))] text-white'
+                        : 'bg-black/65 text-white backdrop-blur-md hover:bg-[var(--ga-cobalt,var(--t-osu,#3a5bc2))]'
                     }`}
                   >
                     {isPlaying ? (

@@ -5,6 +5,7 @@ import {
   ChevronRight,
   Download,
   ExternalLink,
+  Heart,
   Pause,
   Play,
   RotateCcw,
@@ -23,8 +24,10 @@ interface GachaCardInspectorModalProps {
   initialIndex: number;
   target: DownloadTarget;
   activeTaskBySet: Map<number, DownloadTask>;
+  favoriteIds?: Set<number>;
   playingSetId: number | null;
   isPlaying: boolean;
+  onToggleFavorite?: (set: NormalizedBeatmapset) => void;
   onTogglePlay: (set: NormalizedBeatmapset) => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
   onOpenDetail?: (set: NormalizedBeatmapset, diffId?: number | null) => void;
@@ -36,8 +39,10 @@ export function GachaCardInspectorModal({
   initialIndex,
   target,
   activeTaskBySet,
+  favoriteIds,
   playingSetId,
   isPlaying,
+  onToggleFavorite,
   onTogglePlay,
   onDownload,
   onOpenDetail,
@@ -204,6 +209,8 @@ export function GachaCardInspectorModal({
 
   const summary = getCardSummaryStats(card);
   const rarity = getStarRarityMeta(summary.repStars, lang);
+  const isFav = Boolean(favoriteIds?.has(card.id));
+  const spineText = `OSU! // ★${summary.repStars.toFixed(2)} // ${Math.round(card.bpm)} BPM // #${String(index + 1).padStart(2, '0')}`;
 
   const modalContent = (
     <div
@@ -300,57 +307,110 @@ export function GachaCardInspectorModal({
           }}
         />
 
-        {/* 3D Solid Card Slab (front + back + 10px physical bevel edges) */}
+        {/* 3D Solid Collector Slab (front + back + 14px PROUN industrial engraved metallic spine edges) */}
         <div
           ref={slabRef}
-          className="ga-inspector-slab h-[min(calc(100%-16px),530px)] w-[min(86vw,365px)]"
+          className="ga-inspector-slab h-[min(calc(100%-36px),640px)] w-[min(86vw,430px)]"
         >
-          {/* Physical Left Edge */}
+          {/* Left 14px PROUN Industrial Metallic Spine */}
           <div
             aria-hidden="true"
-            className="ga-slab-edge top-0 bottom-0 left-0 w-[10px]"
+            className="ga-slab-edge top-0 bottom-0 left-0 flex w-[14px] flex-col items-center justify-between overflow-hidden border-y border-white/15 py-2.5"
             style={{
-              transform: 'translateX(-5px) rotateY(-90deg)',
-              background: `linear-gradient(180deg, ${rarity.glow}, ${rarity.glowSecondary})`,
+              transform: 'translateX(-7px) rotateY(-90deg)',
+              background: 'linear-gradient(90deg, #10141f 0%, #2b3347 50%, #10141f 100%)',
             }}
-          />
-          {/* Physical Right Edge */}
-          <div
-            aria-hidden="true"
-            className="ga-slab-edge top-0 right-0 bottom-0 w-[10px]"
-            style={{
-              transform: 'translateX(5px) rotateY(90deg)',
-              background: `linear-gradient(180deg, ${rarity.glowSecondary}, ${rarity.glow})`,
-            }}
-          />
-          {/* Physical Top Edge */}
-          <div
-            aria-hidden="true"
-            className="ga-slab-edge top-0 right-0 left-0 h-[10px]"
-            style={{
-              transform: 'translateY(-5px) rotateX(90deg)',
-              background: rarity.glow,
-            }}
-          />
-          {/* Physical Bottom Edge */}
-          <div
-            aria-hidden="true"
-            className="ga-slab-edge right-0 bottom-0 left-0 h-[10px]"
-            style={{
-              transform: 'translateY(5px) rotateX(-90deg)',
-              background: rarity.glowSecondary,
-            }}
-          />
+          >
+            <div
+              className="pointer-events-none absolute inset-y-0 left-1/2 w-[2px] -translate-x-1/2 opacity-90"
+              style={{
+                background: `linear-gradient(180deg, ${rarity.glow}, ${rarity.glowSecondary}, ${rarity.glow})`,
+                boxShadow: `0 0 8px ${rarity.glow}`,
+              }}
+            />
+            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-white/75" />
+            <span
+              className="relative z-10 rounded-[1px] bg-black/70 px-0.5 py-1 font-mono text-[7px] font-bold tracking-[0.16em] text-white/90"
+              style={{ writingMode: 'vertical-rl' }}
+            >
+              {spineText}
+            </span>
+            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-white/75" />
+          </div>
 
-          {/* Front Collector Plate (+5px Z) */}
-          <div className="ga-slab-face" style={{ transform: 'translateZ(5px)' }}>
+          {/* Right 14px PROUN Industrial Metallic Spine */}
+          <div
+            aria-hidden="true"
+            className="ga-slab-edge top-0 right-0 bottom-0 flex w-[14px] flex-col items-center justify-between overflow-hidden border-y border-white/15 py-2.5"
+            style={{
+              transform: 'translateX(7px) rotateY(90deg)',
+              background: 'linear-gradient(90deg, #10141f 0%, #2b3347 50%, #10141f 100%)',
+            }}
+          >
+            <div
+              className="pointer-events-none absolute inset-y-0 left-1/2 w-[2px] -translate-x-1/2 opacity-90"
+              style={{
+                background: `linear-gradient(180deg, ${rarity.glowSecondary}, ${rarity.glow}, ${rarity.glowSecondary})`,
+                boxShadow: `0 0 8px ${rarity.glow}`,
+              }}
+            />
+            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-white/75" />
+            <span
+              className="relative z-10 rounded-[1px] bg-black/70 px-0.5 py-1 font-mono text-[7px] font-bold tracking-[0.16em] text-white/90"
+              style={{ writingMode: 'vertical-rl' }}
+            >
+              {spineText}
+            </span>
+            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-white/75" />
+          </div>
+
+          {/* Top 14px Brushed Metallic Bevel */}
+          <div
+            aria-hidden="true"
+            className="ga-slab-edge top-0 right-0 left-0 flex h-[14px] items-center justify-between overflow-hidden border-x border-white/15 px-3"
+            style={{
+              transform: 'translateY(-7px) rotateX(90deg)',
+              background: 'linear-gradient(180deg, #10141f 0%, #2a3145 50%, #10141f 100%)',
+            }}
+          >
+            <div
+              className="pointer-events-none absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 opacity-90"
+              style={{ background: rarity.glow }}
+            />
+            <span className="relative z-10 bg-black/75 px-1 font-mono text-[7px] font-bold tracking-[0.18em] text-white/90">
+              PROUN // {rarity.label}
+            </span>
+          </div>
+
+          {/* Bottom 14px Brushed Metallic Bevel */}
+          <div
+            aria-hidden="true"
+            className="ga-slab-edge right-0 bottom-0 left-0 flex h-[14px] items-center justify-between overflow-hidden border-x border-white/15 px-3"
+            style={{
+              transform: 'translateY(7px) rotateX(-90deg)',
+              background: 'linear-gradient(180deg, #10141f 0%, #2a3145 50%, #10141f 100%)',
+            }}
+          >
+            <div
+              className="pointer-events-none absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 opacity-90"
+              style={{ background: rarity.glowSecondary }}
+            />
+            <span className="relative z-10 ml-auto bg-black/75 px-1 font-mono text-[7px] font-bold tracking-[0.18em] text-white/90">
+              ARCHIVE #{card.id}
+            </span>
+          </div>
+
+          {/* Front Collector Plate (+7px Z) */}
+          <div className="ga-slab-face" style={{ transform: 'translateZ(7px)' }}>
             <BeatmapGachaCard
               beatmapset={card}
               faceDown={false}
               target={target}
               activeTask={activeTaskBySet.get(card.id)}
               isPlaying={isPlaying && playingSetId === card.id}
+              isFavorited={isFav}
               className="h-full w-full"
+              onToggleFavorite={onToggleFavorite}
               onTogglePlay={onTogglePlay}
               onDownload={onDownload}
               onOpenDetail={onOpenDetail}
@@ -362,10 +422,10 @@ export function GachaCardInspectorModal({
             />
           </div>
 
-          {/* Back Celestial Cloak (+5px Z along rotated back) */}
+          {/* Back Celestial Cloak (+7px Z along rotated back) */}
           <div
             className="ga-slab-face overflow-hidden rounded-[3px]"
-            style={{ transform: 'rotateY(180deg) translateZ(5px)' }}
+            style={{ transform: 'rotateY(180deg) translateZ(7px)' }}
           >
             <PaimonStarfieldBack seed={card.id} className="h-full w-full" />
           </div>
@@ -430,6 +490,21 @@ export function GachaCardInspectorModal({
             )}
             <span>{isPlaying && playingSetId === card.id ? t('暂停', 'Pause') : t('试听', 'Preview')}</span>
           </button>
+
+          {onToggleFavorite && (
+            <button
+              type="button"
+              onClick={() => onToggleFavorite(card)}
+              className={`inline-flex h-8 items-center gap-1.5 rounded-[2px] border px-3 text-[0.75rem] font-semibold transition-colors ${
+                isFav
+                  ? 'border-rose-400/70 bg-rose-500/80 text-white hover:bg-rose-500'
+                  : 'border-white/20 bg-white/8 text-white hover:bg-white/18'
+              }`}
+            >
+              <Heart className={`h-3.5 w-3.5 ${isFav ? 'fill-current' : ''}`} />
+              <span>{isFav ? t('已收藏', 'Saved') : t('收藏心动', 'Like')}</span>
+            </button>
+          )}
 
           <button
             type="button"
