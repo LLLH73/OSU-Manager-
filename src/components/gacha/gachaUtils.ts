@@ -14,9 +14,19 @@ import {
   type PpScenarioInput,
 } from '../../utils/pp';
 
+export type GachaPackSigil =
+  | 'astrolabe'
+  | 'prism'
+  | 'crown'
+  | 'pulse'
+  | 'weave'
+  | 'heart'
+  | 'filter';
+
 export interface GachaPackMeta {
   id: GachaPackId;
   code: string;
+  sigil: GachaPackSigil;
   name: string;
   editorialSub: string;
   tagline: string;
@@ -34,6 +44,7 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
     {
       id: 'standard',
       code: '01',
+      sigil: 'astrolabe',
       name: isEn ? 'Starlight Classic' : '星辉经典包',
       editorialSub: 'CELESTIAL STANDARD',
       tagline: isEn
@@ -49,6 +60,7 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
     {
       id: 'pp_farm',
       code: '02',
+      sigil: 'prism',
       name: isEn ? 'Ranked PP Boost' : 'PP 冲分补给包',
       editorialSub: 'RANKED PP TELEMETRY',
       tagline: isEn
@@ -64,6 +76,7 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
     {
       id: 'high_star',
       code: '03',
+      sigil: 'crown',
       name: isEn ? 'Mythic Overdrive' : '魔王高星秘匣',
       editorialSub: 'APEX DIFFICULTY',
       tagline: isEn
@@ -79,6 +92,7 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
     {
       id: 'rice_stream',
       code: '04',
+      sigil: 'pulse',
       name: isEn ? 'Pure Rice & Stream' : '单键切菜军火库',
       editorialSub: 'RICE PRECISION',
       tagline: isEn
@@ -94,6 +108,7 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
     {
       id: 'ln_tech',
       code: '05',
+      sigil: 'weave',
       name: isEn ? 'Long-Note Weaver' : '长条技巧秘典',
       editorialSub: 'LONG-NOTE WEAVE',
       tagline: isEn
@@ -109,6 +124,7 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
     {
       id: 'loved_chaos',
       code: '06',
+      sigil: 'heart',
       name: isEn ? 'Loved Gems Sanctuary' : 'Loved 社区遗珠',
       editorialSub: 'COMMUNITY SANCTUARY',
       tagline: isEn
@@ -124,6 +140,7 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
     {
       id: 'current_filter',
       code: '07',
+      sigil: 'filter',
       name: isEn ? 'Custom Filter Pack' : '当前筛选定制包',
       editorialSub: 'ACTIVE FILTER POOL',
       tagline: isEn
@@ -298,6 +315,8 @@ export function getCardSummaryStats(
 export interface GuessScenarioChoice {
   id: string;
   input: PpScenarioInput;
+  rateTag: 'NM' | 'HT' | 'DT';
+  maRatioLabel: string;
   shortTag: string;
   detailLabel: string;
 }
@@ -306,58 +325,77 @@ export function pickGuessScenario(
   seed: number,
   lang: UiLanguage = getCurrentLang(),
 ): GuessScenarioChoice {
-  const presets: Array<{ id: string; input: PpScenarioInput; zhDesc: string; enDesc: string }> = [
-    {
-      id: 'nm98',
-      input: { accuracy: 98, misses: 0, rate: 1, mods: { ...DEFAULT_PP_MODS }, maRatio: null },
-      zhDesc: '原速 NM · 98.0% · 0 Miss',
-      enDesc: 'NM 1.0× · 98.0% · 0 Miss',
-    },
-    {
-      id: 'nm99',
-      input: { accuracy: 99, misses: 0, rate: 1, mods: { ...DEFAULT_PP_MODS }, maRatio: null },
-      zhDesc: '原速 NM · 99.0% 高准度 · 0 Miss',
-      enDesc: 'NM 1.0× · 99.0% High Acc · 0 Miss',
-    },
-    {
-      id: 'dt98',
-      input: { accuracy: 98, misses: 0, rate: 1.5, mods: { ...DEFAULT_PP_MODS }, maRatio: null },
-      zhDesc: 'DT 1.5× 加速 · 98.0% · 0 Miss',
-      enDesc: 'DT 1.5× Speed · 98.0% · 0 Miss',
-    },
-    {
-      id: 'ht98',
-      input: { accuracy: 98, misses: 0, rate: 0.75, mods: { ...DEFAULT_PP_MODS }, maRatio: null },
-      zhDesc: 'HT 0.75× 减速 · 98.0% · 0 Miss',
-      enDesc: 'HT 0.75× Slow · 98.0% · 0 Miss',
-    },
-    {
-      id: 'rate12',
-      input: { accuracy: 98, misses: 0, rate: 1.2, mods: { ...DEFAULT_PP_MODS }, maRatio: null },
-      zhDesc: 'Rate 1.2× 练图 · 98.0% · 0 Miss',
-      enDesc: 'Rate 1.2× Practice · 98.0% · 0 Miss',
-    },
-    {
-      id: 'nm95',
-      input: { accuracy: 95, misses: 0, rate: 1, mods: { ...DEFAULT_PP_MODS }, maRatio: null },
-      zhDesc: '原速 NM · 95.0% · 0 Miss',
-      enDesc: 'NM 1.0× · 95.0% · 0 Miss',
-    },
-    {
-      id: 'nmss',
-      input: { accuracy: 100, misses: 0, rate: 1, mods: { ...DEFAULT_PP_MODS }, maRatio: null },
-      zhDesc: '原速 NM · 理论满分 100% SS',
-      enDesc: 'NM 1.0× · 100% SS Theoretical',
-    },
-  ];
-  const idx = Math.abs(Math.floor(seed)) % presets.length;
-  const picked = presets[idx];
-  return {
-    id: picked.id,
-    input: picked.input,
-    shortTag: formatPpScenarioShort(picked.input, lang),
-    detailLabel: tx(picked.zhDesc, picked.enDesc, lang),
+  const mk = (
+    id: string,
+    rateTag: 'NM' | 'HT' | 'DT',
+    acc: number,
+    misses: number,
+    maRatio: number | null,
+    opts?: { ez?: boolean; classic?: boolean },
+  ) => {
+    const rate = rateTag === 'DT' ? 1.5 : rateTag === 'HT' ? 0.75 : 1;
+    const mods = {
+      ...DEFAULT_PP_MODS,
+      ez: Boolean(opts?.ez),
+      classic: Boolean(opts?.classic),
+    };
+    const input: PpScenarioInput = { accuracy: acc, misses, rate, mods, maRatio };
+    const maRatioLabel =
+      maRatio === null
+        ? tx('直算标准', 'Direct', lang)
+        : maRatio >= 999
+          ? tx('∞ 全彩 MAX', 'MAX ∞:1', lang)
+          : `${maRatio}:1`;
+    const modBits = [
+      opts?.ez ? 'EZ' : null,
+      opts?.classic ? 'Classic' : null,
+    ].filter(Boolean);
+    const modSuffix = modBits.length > 0 ? ` · ${modBits.join('+')}` : '';
+    const detailLabel = tx(
+      `${rateTag} ${rate}× · ${acc}% · 黄彩比 ${maRatioLabel} · ${misses}M${modSuffix}`,
+      `${rateTag} ${rate}× · ${acc}% · MA ${maRatioLabel} · ${misses}M${modSuffix}`,
+      lang,
+    );
+    return {
+      id,
+      input,
+      rateTag,
+      maRatioLabel,
+      shortTag: formatPpScenarioShort(input, lang),
+      detailLabel,
+    };
   };
+
+  // Strictly NM (1.0x), HT (0.75x), or DT (1.5x) — zero custom rates; rich MA ratios & mods
+  const scenarios: GuessScenarioChoice[] = [
+    mk('nm-95-2', 'NM', 95, 5, 2),
+    mk('nm-965-25', 'NM', 96.5, 3, 2.5),
+    mk('nm-975-3', 'NM', 97.5, 2, 3),
+    mk('nm-98-direct', 'NM', 98, 0, null),
+    mk('nm-98-4', 'NM', 98, 1, 4),
+    mk('nm-985-5', 'NM', 98.5, 0, 5),
+    mk('nm-99-8', 'NM', 99, 0, 8),
+    mk('nm-995-12', 'NM', 99.5, 0, 12),
+    mk('nm-100-max', 'NM', 100, 0, 999),
+    mk('nm-ez-98', 'NM', 98, 1, 3, { ez: true }),
+    mk('ht-95-2', 'HT', 95, 4, 2),
+    mk('ht-965-25', 'HT', 96.5, 2, 2.5),
+    mk('ht-975-3', 'HT', 97.5, 1, 3),
+    mk('ht-98-4', 'HT', 98, 0, 4),
+    mk('ht-985-5', 'HT', 98.5, 0, 5),
+    mk('ht-995-12', 'HT', 99.5, 0, 12),
+    mk('ht-100-max', 'HT', 100, 0, 999),
+    mk('dt-935-15', 'DT', 93.5, 8, 1.5),
+    mk('dt-95-2', 'DT', 95, 5, 2),
+    mk('dt-965-25', 'DT', 96.5, 3, 2.5),
+    mk('dt-975-3', 'DT', 97.5, 2, 3),
+    mk('dt-985-5', 'DT', 98.5, 0, 5),
+    mk('dt-99-8', 'DT', 99, 0, 8),
+    mk('dt-classic-98', 'DT', 98, 1, 3, { classic: true }),
+  ];
+
+  const hashed = Math.abs(Math.imul(Math.floor(seed) + 7, 2654435761)) >>> 0;
+  return scenarios[hashed % scenarios.length];
 }
 
 export interface StarGuessScoreResult {

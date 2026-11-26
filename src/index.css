@@ -2689,40 +2689,31 @@
   }
 }
 
-/* ---------- The Masses' Travels Atelier Design System (v1.13.0) ---------- */
+/* ---------- The Masses' Travels Atelier Design System (v1.14.0) ---------- */
 .gacha-atelier {
-  --ga-bg: #e8eceb;
-  --ga-paper: #eff2f0;
-  --ga-panel: rgba(244, 247, 245, 0.80);
-  --ga-panel-strong: rgba(247, 249, 248, 0.92);
-  --ga-ink: #1b2125;
-  --ga-ink-2: #485258;
-  --ga-ink-3: #707b80;
-  --ga-cobalt: #3a5bc2;
-  --ga-vivid: #2a3fff;
-  --ga-crimson: #c84264;
-  --ga-line: rgba(26, 34, 38, 0.16);
-  --ga-line-strong: rgba(26, 34, 38, 0.34);
-  --ga-cta-bg: #1b2125;
-  --ga-cta-fg: #f3f6f4;
-  --ga-cta-border: #1b2125;
-  --ga-cta-hover-bg: #3a5bc2;
-  --ga-cta-hover-border: #3a5bc2;
-  --ga-veil:
-    linear-gradient(
-      95deg,
-      rgba(236, 240, 237, 0.92) 0%,
-      rgba(236, 240, 237, 0.72) 38%,
-      rgba(236, 240, 237, 0.28) 76%,
-      rgba(232, 238, 236, 0.45) 100%
-    ),
-    linear-gradient(
-      0deg,
-      rgba(237, 241, 238, 0.94) 0%,
-      transparent 22%,
-      transparent 82%,
-      rgba(236, 240, 237, 0.85) 100%
-    );
+  --ga-bg: var(--t-canvas);
+  --ga-paper: var(--t-surface-2);
+  --ga-panel: color-mix(in srgb, var(--t-surface-2) 52%, transparent);
+  --ga-panel-strong: color-mix(in srgb, var(--t-surface-2) 88%, transparent);
+  --ga-ink: var(--t-ink);
+  --ga-ink-2: var(--t-ink-2);
+  --ga-ink-3: var(--t-ink-3);
+  --ga-cobalt: var(--t-osu);
+  --ga-vivid: var(--t-lazer);
+  --ga-crimson: var(--t-bad);
+  --ga-line: var(--t-hairline-strong);
+  --ga-line-strong: color-mix(in srgb, var(--t-ink) 32%, transparent);
+  --ga-cta-bg: var(--t-ink);
+  --ga-cta-fg: var(--t-surface-2);
+  --ga-cta-border: var(--t-ink);
+  --ga-cta-hover-bg: var(--t-osu);
+  --ga-cta-hover-border: var(--t-osu);
+  --ga-veil: radial-gradient(
+    ellipse at 54% 48%,
+    color-mix(in srgb, var(--t-canvas) 10%, transparent) 0%,
+    color-mix(in srgb, var(--t-canvas) 38%, transparent) 62%,
+    color-mix(in srgb, var(--t-canvas) 68%, transparent) 100%
+  );
   --ga-serif: "Bodoni MT", "Bodoni 72", Didot, Georgia, "Noto Serif SC", "Source Han Serif SC", STSong, serif;
   --ga-cn-serif: "Noto Serif SC", "Source Han Serif SC", STSong, SimSun, Georgia, serif;
   --ga-mono: "JetBrains Mono", Consolas, "Cascadia Mono", monospace;
@@ -2731,38 +2722,29 @@
 }
 
 .gacha-atelier[data-dark="true"] {
-  --ga-bg: #090c14;
-  --ga-paper: #0e1320;
-  --ga-panel: rgba(13, 18, 30, 0.76);
-  --ga-panel-strong: rgba(16, 22, 36, 0.90);
-  --ga-ink: #eef2f8;
-  --ga-ink-2: #a4b0c8;
-  --ga-ink-3: #6c7894;
-  --ga-cobalt: #6c8eff;
-  --ga-vivid: #5b7bff;
-  --ga-crimson: #f46488;
-  --ga-line: rgba(168, 192, 255, 0.15);
-  --ga-line-strong: rgba(168, 192, 255, 0.32);
-  --ga-cta-bg: #3a5bc2;
+  --ga-bg: var(--t-canvas);
+  --ga-paper: var(--t-surface-1);
+  --ga-panel: color-mix(in srgb, var(--t-surface-1) 44%, transparent);
+  --ga-panel-strong: color-mix(in srgb, var(--t-surface-1) 86%, transparent);
+  --ga-ink: var(--t-ink);
+  --ga-ink-2: var(--t-ink-2);
+  --ga-ink-3: var(--t-ink-3);
+  --ga-cobalt: var(--t-osu);
+  --ga-vivid: var(--t-lazer);
+  --ga-crimson: var(--t-bad);
+  --ga-line: var(--t-hairline-strong);
+  --ga-line-strong: color-mix(in srgb, var(--t-ink) 30%, transparent);
+  --ga-cta-bg: var(--t-osu);
   --ga-cta-fg: #ffffff;
-  --ga-cta-border: #6c8eff;
-  --ga-cta-hover-bg: #4f73ff;
-  --ga-cta-hover-border: #8ab4ff;
-  --ga-veil:
-    linear-gradient(
-      95deg,
-      rgba(9, 12, 20, 0.90) 0%,
-      rgba(9, 12, 20, 0.68) 40%,
-      rgba(9, 12, 20, 0.30) 76%,
-      rgba(9, 12, 20, 0.48) 100%
-    ),
-    linear-gradient(
-      0deg,
-      rgba(9, 12, 20, 0.94) 0%,
-      transparent 24%,
-      transparent 82%,
-      rgba(9, 12, 20, 0.86) 100%
-    );
+  --ga-cta-border: color-mix(in srgb, var(--t-osu) 85%, #ffffff);
+  --ga-cta-hover-bg: color-mix(in srgb, var(--t-osu) 84%, #ffffff);
+  --ga-cta-hover-border: #ffffff;
+  --ga-veil: radial-gradient(
+    ellipse at 54% 48%,
+    color-mix(in srgb, var(--t-canvas) 12%, transparent) 0%,
+    color-mix(in srgb, var(--t-canvas) 44%, transparent) 64%,
+    color-mix(in srgb, var(--t-canvas) 72%, transparent) 100%
+  );
 }
 
 .ga-serif {
@@ -3039,25 +3021,21 @@
   0% {
     opacity: 0;
   }
-  18% {
-    opacity: 0.9;
+  20% {
+    opacity: 0.42;
   }
   72% {
-    opacity: 0.85;
+    opacity: 0.36;
   }
   100% {
     opacity: 0;
   }
 }
 
-.ga-fx-veil {
-  animation: ga-fx-veil 620ms ease-out forwards;
-}
-
 .ga-fx-frame {
   opacity: 0;
-  animation: ga-fx-step 240ms steps(2, end) forwards;
-  animation-delay: calc(var(--ga-f, 0) * 145ms);
+  animation: ga-fx-step 220ms steps(2, end) forwards;
+  animation-delay: calc(var(--ga-f, 0) * 125ms);
 }
 
 @keyframes ga-blade-spin-out {
@@ -3088,4 +3066,57 @@
 .ga-eq-bar {
   transform-origin: bottom center;
   animation: ga-eq-bounce 0.72s ease-in-out infinite;
+}
+
+.gacha-atelier .impeccable-range {
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--ga-cobalt) 0%,
+    var(--ga-cobalt) var(--fill, 50%),
+    var(--ga-line-strong) var(--fill, 50%),
+    var(--ga-line-strong) 100%
+  );
+}
+
+.gacha-atelier .impeccable-range::-webkit-slider-thumb {
+  width: 11px;
+  height: 11px;
+  background: var(--ga-cobalt);
+  border: 1.5px solid var(--ga-paper);
+}
+
+/* 3D Circular Ring Stage & 360-Degree Collector Slab Inspector */
+.ga-ring-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transition:
+    transform 460ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 320ms ease,
+    filter 280ms ease;
+  will-change: transform, opacity;
+}
+
+.ga-inspector-perspective {
+  perspective: 1800px;
+}
+
+.ga-inspector-slab {
+  position: relative;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.ga-slab-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.ga-slab-edge {
+  position: absolute;
+  pointer-events: none;
+  backface-visibility: visible;
 }

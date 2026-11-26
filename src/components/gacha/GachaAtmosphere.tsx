@@ -75,6 +75,7 @@ interface GachaAtmosphereProps {
   mode: SanctumCameraMode;
   blueprint: boolean;
   accentHex?: string;
+  canvasHex?: string;
 }
 
 interface BurstState {
@@ -167,7 +168,7 @@ const RETICLE_SELECTOR = 'button:not(:disabled), a, select, input[type="range"],
  * - Stop-motion construction burst transitions
  */
 export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphereProps>(
-  function GachaAtmosphere({ containerRef, isDark, mode, blueprint, accentHex }, ref) {
+  function GachaAtmosphere({ containerRef, isDark, mode, blueprint, accentHex, canvasHex }, ref) {
     const worldMountRef = useRef<HTMLDivElement | null>(null);
     const worldRef = useRef<GachaSanctumWorld | null>(null);
     const nodeCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -183,17 +184,17 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
       ref,
       () => ({
         triggerEffect: (intensity = 1, hexColor?: string) => {
-          worldRef.current?.triggerPulse(intensity, hexColor);
+          worldRef.current?.triggerPulse(intensity, hexColor || accentHex);
           const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
           if (reduced) return;
           burstNonceRef.current += 1;
-          const color = hexColor || (isDark ? '#6c8eff' : '#3a5bc2');
+          const color = hexColor || accentHex || (isDark ? '#6c8eff' : '#3a5bc2');
           setBurst(buildStopMotionBurst(burstNonceRef.current, color));
           if (burstTimerRef.current) window.clearTimeout(burstTimerRef.current);
-          burstTimerRef.current = window.setTimeout(() => setBurst(null), 680);
+          burstTimerRef.current = window.setTimeout(() => setBurst(null), 640);
         },
       }),
-      [isDark],
+      [isDark, accentHex],
     );
 
     useEffect(() => {
@@ -208,7 +209,7 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
       if (!mount) return undefined;
       const world = new GachaSanctumWorld(mount);
       worldRef.current = world;
-      world.setTheme(isDark, accentHex);
+      world.setTheme(isDark, accentHex, canvasHex);
       world.setMode(mode);
       world.setBlueprint(blueprint);
       return () => {
@@ -218,8 +219,8 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
     }, []);
 
     useEffect(() => {
-      worldRef.current?.setTheme(isDark, accentHex);
-    }, [isDark, accentHex]);
+      worldRef.current?.setTheme(isDark, accentHex, canvasHex);
+    }, [isDark, accentHex, canvasHex]);
 
     useEffect(() => {
       worldRef.current?.setMode(mode);
@@ -293,7 +294,8 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
           bx = lx - 14;
           by = ly - 14;
         }
-        const hit = (e.target as Element | null)?.closest?.(RETICLE_SELECTOR) ?? null;
+        const rawHit = (e.target as Element | null)?.closest?.(RETICLE_SELECTOR) ?? null;
+        const hit = rawHit?.closest?.('footer') ? null : rawHit;
         if (hit !== targetEl) {
           targetEl = hit;
           if (reticleBoxRef.current) {
@@ -327,9 +329,10 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
         lastTime = now;
         clock += dt;
 
-        // Animate Reticle brackets smoothly toward hovered target
+        // Animate Reticle brackets smoothly toward hovered target (hidden when any dialog is open)
         if (finePointer && !reduced && reticleBoxRef.current && reticleLabelRef.current) {
-          if (!visible) {
+          const hasDialog = Boolean(document.querySelector('[role="dialog"]'));
+          if (!visible || hasDialog) {
             reticleBoxRef.current.style.opacity = '0';
             reticleLabelRef.current.style.opacity = '0';
           } else {
@@ -338,6 +341,11 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
             let ty = py - 13;
             let tw = 26;
             let th = 26;
+            if (targetEl && !targetEl.isConnected) {
+              targetEl = null;
+              reticleBoxRef.current.setAttribute('data-locked', 'false');
+              reticleLabelRef.current.textContent = `X ${String(Math.round(px)).padStart(4, '0')} · Y ${String(Math.round(py)).padStart(4, '0')}`;
+            }
             if (targetEl && targetEl.isConnected) {
               const r = targetEl.getBoundingClientRect();
               if (r.width > 0 && r.width < cRect.width * 0.55 && r.height < cRect.height * 0.45) {
@@ -483,7 +491,7 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
           aria-hidden="true"
           data-locked="false"
           style={{ opacity: 0 }}
-          className="ga-reticle-box z-[45] hidden lg:block"
+          className="ga-reticle-box z-[18] hidden lg:block"
         >
           <b />
           <b />
@@ -494,20 +502,16 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
           ref={reticleLabelRef}
           aria-hidden="true"
           style={{ opacity: 0 }}
-          className="ga-reticle-label z-[45] hidden lg:block"
+          className="ga-reticle-label z-[18] hidden lg:block"
         />
 
-        {/* 8. Stop-Motion Architectural Burst Transition Layer */}
+        {/* 8. Stop-Motion Architectural Burst Transition Layer (strictly beneath UI content at z-[4]) */}
         {burst && (
           <div
             key={burst.id}
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-[46] overflow-hidden"
+            className="pointer-events-none absolute inset-0 z-[4] overflow-hidden opacity-60"
           >
-            <div
-              className="ga-fx-veil absolute inset-0"
-              style={{ backgroundColor: isDark ? 'rgba(9,12,20,0.45)' : 'rgba(240,244,242,0.55)' }}
-            />
             {burst.frames.map((frame, fIdx) => (
               <svg
                 key={fIdx}

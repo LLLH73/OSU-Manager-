@@ -4,12 +4,12 @@ import {
   Award,
   CheckCircle2,
   Download,
-  ExternalLink,
   HelpCircle,
   Loader2,
   RefreshCw,
   Sparkles,
   Trophy,
+  Zap,
 } from 'lucide-react';
 import { drawGachaBeatmapsets } from '../../api';
 import { getStarColor, getStarSpectrum } from '../../constants';
@@ -43,7 +43,6 @@ interface GachaGuessModeProps {
   isPlaying: boolean;
   onTogglePlaySet: (set: NormalizedBeatmapset) => void;
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
-  onOpenDetail: (set: NormalizedBeatmapset, diffId?: number | null) => void;
   onTriggerEffect: (intensity?: number, hexColor?: string) => void;
 }
 
@@ -66,7 +65,6 @@ export function GachaGuessMode({
   isPlaying,
   onTogglePlaySet,
   onDownload,
-  onOpenDetail,
   onTriggerEffect,
 }: GachaGuessModeProps) {
   const { lang, t } = useI18n();
@@ -133,7 +131,7 @@ export function GachaGuessMode({
   const actualStars = featuredDiff?.difficultyRating ?? 0;
 
   useEffect(() => {
-    setScenario(pickGuessScenario(roundNum + (currentCard?.id ?? 0), lang));
+    setScenario(pickGuessScenario(roundNum * 37 + (currentCard?.id ?? 0), lang));
   }, [lang, roundNum, currentCard?.id]);
 
   useEffect(() => {
@@ -200,18 +198,17 @@ export function GachaGuessMode({
         <span className="font-stat text-[1.25rem] font-extrabold text-emerald-300 tabular-nums">
           {formatPp(scenarioPp)} PP
         </span>
-        <span className="ga-mono text-[0.6875rem] text-white/70 tabular-nums">
-          OD {featuredDiff.od.toFixed(1)} ·{' '}
-          {featuredDiff.lnRatio !== null ? `LN ${featuredDiff.lnRatio}%` : `HP ${featuredDiff.hp.toFixed(1)}`}
+        <span className="ga-mono text-[0.65625rem] text-white/75 tabular-nums">
+          {t('黄彩', 'MA')} {scenario.maRatioLabel} · OD {featuredDiff.od.toFixed(1)}
         </span>
       </div>
     </div>
   );
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-y-auto p-3 sm:p-5 lg:flex-row lg:overflow-hidden">
-      {/* Left: Crop-Framed Specimen Stage */}
-      <div className="flex shrink-0 flex-col items-center justify-center lg:w-[385px] xl:w-[415px]">
+    <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-5 overflow-y-auto p-3 sm:p-5 lg:flex-row lg:overflow-hidden">
+      {/* Left: Crop-Framed Specimen Stage over Open Sanctum Canvas (zero frosted box) */}
+      <div className="flex shrink-0 flex-col items-center justify-center lg:w-[376px] xl:w-[404px]">
         <div className="mb-2.5 flex w-full items-center justify-between gap-2">
           <div className="w-44">
             <SelectField
@@ -238,26 +235,26 @@ export function GachaGuessMode({
           </button>
         </div>
 
-        {/* Printmaker Crop-Framed Specimen Mount */}
-        <div className="relative flex h-[456px] w-[min(100%,352px)] flex-col items-center justify-center rounded-[3px] border border-[var(--ga-line)] bg-[var(--ga-panel)] p-4 backdrop-blur-sm sm:h-[490px]">
+        {/* Open Specimen Frame (corner crop marks directly on Sanctum stage, no Details modal) */}
+        <div className="relative flex h-[456px] w-[min(100%,352px)] flex-col items-center justify-center bg-transparent p-3.5 sm:h-[490px]">
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute top-1.5 left-1.5 h-3.5 w-3.5 border-t-2 border-l-2 border-[var(--ga-cobalt)]"
+            className="pointer-events-none absolute top-0 left-0 h-4 w-4 border-t-2 border-l-2 border-[var(--ga-cobalt)]"
           />
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute top-1.5 right-1.5 h-3.5 w-3.5 border-t-2 border-r-2 border-[var(--ga-cobalt)]"
+            className="pointer-events-none absolute top-0 right-0 h-4 w-4 border-t-2 border-r-2 border-[var(--ga-cobalt)]"
           />
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute bottom-1.5 left-1.5 h-3.5 w-3.5 border-b-2 border-l-2 border-[var(--ga-cobalt)]"
+            className="pointer-events-none absolute bottom-0 left-0 h-4 w-4 border-b-2 border-l-2 border-[var(--ga-cobalt)]"
           />
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute right-1.5 bottom-1.5 h-3.5 w-3.5 border-r-2 border-b-2 border-[var(--ga-cobalt)]"
+            className="pointer-events-none absolute right-0 bottom-0 h-4 w-4 border-r-2 border-b-2 border-[var(--ga-cobalt)]"
           />
 
-          <div className="ga-mono mb-2 flex w-full items-center justify-between text-[0.625rem] font-bold tracking-[0.16em] text-[var(--ga-ink-3)] uppercase">
+          <div className="ga-mono mb-2 flex w-full items-center justify-between text-[0.625rem] font-bold tracking-[0.16em] text-[var(--ga-ink-2)] uppercase">
             <span>SPECIMEN #{String(roundNum).padStart(2, '0')}</span>
             <span className={revealed ? 'text-emerald-500' : 'text-[var(--ga-cobalt)]'}>
               {revealed ? 'VERIFIED' : 'SR MASKED'}
@@ -297,16 +294,15 @@ export function GachaGuessMode({
                 className="h-full w-full"
                 onTogglePlay={onTogglePlaySet}
                 onDownload={onDownload}
-                onOpenDetail={(s, diffId) => onOpenDetail(s, diffId)}
               />
             ) : null}
           </div>
         </div>
       </div>
 
-      {/* Right: Precision Calibration Console */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-3.5 overflow-y-auto rounded-[3px] border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] p-4 backdrop-blur-md sm:p-5">
-        {/* Top Hairline-Divided Telemetry Matrix */}
+      {/* Right: Open Calibration Console over Three.js Sanctum (no heavy frosted wrapper) */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-3.5 overflow-y-auto border-0 bg-transparent p-2 sm:p-3">
+        {/* Top Hairline-Divided Telemetry Matrix (no ugly fire emoji!) */}
         <div className="grid grid-cols-2 border border-[var(--ga-line)] bg-[var(--ga-panel)] sm:grid-cols-5 sm:divide-x sm:divide-[var(--ga-line)]">
           <div className="px-3 py-2">
             <div className="ga-mono text-[0.625rem] font-semibold tracking-wider text-[var(--ga-ink-3)] uppercase">
@@ -333,14 +329,15 @@ export function GachaGuessMode({
             </div>
           </div>
           <div className="px-3 py-2">
-            <div className="ga-mono text-[0.625rem] font-semibold tracking-wider text-[var(--ga-ink-3)] uppercase">
-              {t('精准连击', 'STREAK')}
+            <div className="ga-mono flex items-center gap-1 text-[0.625rem] font-semibold tracking-wider text-[var(--ga-ink-3)] uppercase">
+              <Zap className="h-3 w-3 text-emerald-500" />
+              <span>{t('精准连击', 'STREAK')}</span>
             </div>
             <div className="ga-serif text-[1.35rem] font-bold text-emerald-500 tabular-nums">
-              {streak}🔥
+              {String(streak).padStart(2, '0')}
             </div>
           </div>
-          <div className="col-span-2 bg-[color-mix(in_srgb,var(--ga-cobalt)_8%,transparent)] px-3 py-2 sm:col-span-1">
+          <div className="col-span-2 bg-[color-mix(in_srgb,var(--ga-cobalt)_10%,var(--ga-panel))] px-3 py-2 sm:col-span-1">
             <div className="ga-mono flex items-center gap-1 text-[0.625rem] font-bold tracking-wider text-amber-500 uppercase">
               <Trophy className="h-3 w-3" />
               <span>{t('历史最高', 'BEST')}</span>
@@ -351,7 +348,7 @@ export function GachaGuessMode({
           </div>
         </div>
 
-        {/* Scenario Dossier Strip */}
+        {/* Scenario Dossier (NM / HT / DT + MA Ratio / Huang-Cai Ratio) */}
         {currentCard && featuredDiff && (
           <div className="space-y-2.5 border-l-2 border-[var(--ga-cobalt)] bg-[var(--ga-panel)] p-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -359,50 +356,64 @@ export function GachaGuessMode({
                 <HelpCircle className="h-4 w-4 text-[var(--ga-cobalt)]" />
                 <span>
                   {t(
-                    '根据下方情景 PP、曲风封面与参数，推演真实星数！',
-                    'Estimate the true Star Rating from the scenario PP & chart telemetry!',
+                    '依据下方情景 PP、速率 (NM/HT/DT) 与黄彩比线索，推演真实星数！',
+                    'Estimate true Star Rating from PP, NM/HT/DT rate & MA ratio clues!',
                   )}
                 </span>
               </span>
-              <span className="ga-mono rounded-[2px] border border-[var(--ga-line)] px-2 py-0.5 text-[0.6875rem] font-semibold text-[var(--ga-cobalt)]">
+              <span className="ga-mono rounded-[2px] border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2 py-0.5 text-[0.6875rem] font-bold text-[var(--ga-cobalt)]">
                 {scenario.detailLabel}
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-[0.78125rem] sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 text-[0.75rem] sm:grid-cols-3 lg:grid-cols-5">
               <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
-                <span className="ga-mono text-[0.65625rem] text-[var(--ga-ink-3)]">
-                  {t('情景 PP', 'SCENARIO PP')}:{' '}
+                <span className="ga-mono block text-[0.59375rem] text-[var(--ga-ink-3)]">
+                  {t('情景 PP', 'SCENARIO PP')}
                 </span>
                 <strong className="ga-mono text-emerald-500 tabular-nums">
                   {formatPp(scenarioPp)}pp
                 </strong>
               </div>
               <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
-                <span className="ga-mono text-[0.65625rem] text-[var(--ga-ink-3)]">BPM: </span>
-                <strong className="ga-mono text-[var(--ga-ink)] tabular-nums">
-                  {Math.round(currentCard.bpm * scenario.input.rate)}
+                <span className="ga-mono block text-[0.59375rem] text-[var(--ga-ink-3)]">
+                  {t('情景速率', 'RATE MOD')}
+                </span>
+                <strong className="ga-mono text-[var(--ga-cobalt)] tabular-nums">
+                  {scenario.rateTag} · {Math.round(currentCard.bpm * scenario.input.rate)} BPM
                 </strong>
               </div>
               <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
-                <span className="ga-mono text-[0.65625rem] text-[var(--ga-ink-3)]">LN%: </span>
-                <strong className="ga-mono text-[var(--ga-ink)] tabular-nums">
-                  {featuredDiff.lnRatio !== null ? `${featuredDiff.lnRatio}%` : '—'}
-                </strong>
-              </div>
-              <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
-                <span className="ga-mono text-[0.65625rem] text-[var(--ga-ink-3)]">
-                  {t('键数', 'KEYS')}:{' '}
+                <span className="ga-mono block text-[0.59375rem] text-[var(--ga-ink-3)]">
+                  {t('黄彩比 (MA)', 'MA RATIO')}
                 </span>
                 <strong className="ga-mono text-[var(--ga-ink)] tabular-nums">
-                  {featuredDiff.modeInt === 3 ? `${Math.round(featuredDiff.cs)}K` : featuredDiff.mode}
+                  {scenario.maRatioLabel}
+                </strong>
+              </div>
+              <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
+                <span className="ga-mono block text-[0.59375rem] text-[var(--ga-ink-3)]">
+                  {t('长条 / Miss', 'LN% / MISS')}
+                </span>
+                <strong className="ga-mono text-[var(--ga-ink)] tabular-nums">
+                  {featuredDiff.lnRatio !== null ? `${featuredDiff.lnRatio}%` : '—'} ·{' '}
+                  {scenario.input.misses}M
+                </strong>
+              </div>
+              <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
+                <span className="ga-mono block text-[0.59375rem] text-[var(--ga-ink-3)]">
+                  {t('键数 / 准度', 'KEYS / ACC')}
+                </span>
+                <strong className="ga-mono text-[var(--ga-ink)] tabular-nums">
+                  {featuredDiff.modeInt === 3 ? `${Math.round(featuredDiff.cs)}K` : featuredDiff.mode}{' '}
+                  · {scenario.input.accuracy}%
                 </strong>
               </div>
             </div>
           </div>
         )}
 
-        {/* Guess Optical Calibration Ruler OR Analytical Scorecard */}
+        {/* Guess Optical Calibration Ruler OR Analytical Scorecard (no Details button) */}
         {!revealed ? (
           <div className="space-y-4 border border-[var(--ga-line)] bg-[var(--ga-panel)] p-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -440,7 +451,6 @@ export function GachaGuessMode({
               </div>
             </div>
 
-            {/* Spectrum Track + Architectural Graduated Calibration Ruler */}
             <div className="space-y-1.5">
               <div className="relative">
                 <input
@@ -451,14 +461,14 @@ export function GachaGuessMode({
                   value={guessStars}
                   onChange={(e) => setGuessStars(Number(e.target.value))}
                   style={{
-                    background: `linear-gradient(90deg, #4290fb 0%, #4fffd5 18%, #7cff4f 34%, #f6f05c 48%, #ff4e6f 64%, #c645b8 80%, #18158e 100%)`,
+                    background:
+                      'linear-gradient(90deg, #4290fb 0%, #4fffd5 18%, #7cff4f 34%, #f6f05c 48%, #ff4e6f 64%, #c645b8 80%, #18158e 100%)',
                   }}
                   className="h-3 w-full cursor-pointer appearance-none rounded-[2px] outline-none"
                   aria-label={t('猜测星数滑块', 'Guess star rating slider')}
                 />
               </div>
 
-              {/* Calibrated Ruler Ticks */}
               <div className="relative h-5 border-t border-[var(--ga-line)]">
                 <div
                   aria-hidden="true"
@@ -539,26 +549,15 @@ export function GachaGuessMode({
 
               <div className="flex items-center gap-2">
                 {currentCard && (
-                  <>
-                    <button
-                      type="button"
-                      data-ga-cursor="DOWNLOAD"
-                      onClick={() => onDownload(currentCard, target)}
-                      className="ga-line-btn h-9 px-3 text-[0.78125rem]"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      <span>{t('下载谱面', 'Download')}</span>
-                    </button>
-                    <button
-                      type="button"
-                      data-ga-cursor="DETAILS"
-                      onClick={() => onOpenDetail(currentCard, featuredDiff?.id ?? null)}
-                      className="ga-line-btn h-9 px-3 text-[0.78125rem]"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      <span>{t('详情', 'Details')}</span>
-                    </button>
-                  </>
+                  <button
+                    type="button"
+                    data-ga-cursor="DOWNLOAD"
+                    onClick={() => onDownload(currentCard, target)}
+                    className="ga-line-btn h-9 px-3 text-[0.78125rem]"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    <span>{t('下载谱面', 'Download')}</span>
+                  </button>
                 )}
                 <button
                   type="button"
@@ -572,7 +571,6 @@ export function GachaGuessMode({
               </div>
             </div>
 
-            {/* Visual Guess vs Actual Comparison Ruler */}
             <div className="space-y-1.5 border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] p-2.5">
               <div className="ga-mono flex justify-between text-[0.625rem] text-[var(--ga-ink-3)] uppercase">
                 <span>DELTA SPECTRUM COMPARISON</span>
@@ -582,7 +580,6 @@ export function GachaGuessMode({
                 </span>
               </div>
               <div className="relative h-3 w-full rounded-[2px] bg-[var(--ga-line)]">
-                {/* Error Span Highlight */}
                 <div
                   className="absolute top-0 bottom-0 bg-[var(--ga-cobalt)]/35"
                   style={{
@@ -590,13 +587,11 @@ export function GachaGuessMode({
                     width: `${Math.max(1.5, Math.abs(actualPct - sliderPct))}%`,
                   }}
                 />
-                {/* Guess Pin */}
                 <div
                   title={`Guess: ${guessStars.toFixed(2)}★`}
                   className="absolute -top-1 -bottom-1 w-[3px] -translate-x-1/2 bg-[var(--ga-ink)]"
                   style={{ left: `${sliderPct}%` }}
                 />
-                {/* Actual Pin */}
                 <div
                   title={`Actual: ${actualStars.toFixed(2)}★`}
                   className="absolute -top-1 -bottom-1 w-[3px] -translate-x-1/2 bg-amber-400 shadow-[0_0_8px_#fbbf24]"
@@ -640,7 +635,6 @@ export function GachaGuessMode({
           </div>
         )}
 
-        {/* Footnote Rules Legend */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--ga-line)] pt-2 text-[0.71875rem] text-[var(--ga-ink-3)]">
           <span className="inline-flex items-center gap-1.5">
             <Award className="h-3.5 w-3.5 text-amber-500" />

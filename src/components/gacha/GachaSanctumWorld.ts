@@ -344,48 +344,65 @@ export class GachaSanctumWorld {
     this.root.add(this.floorGroup);
   }
 
-  setTheme(isDark: boolean, accentHex = '#3a5bc2') {
+  setTheme(isDark: boolean, accentHex = '#3a5bc2', canvasHex?: string) {
     this.isDark = isDark;
-    this.accentColor.set(accentHex || (isDark ? '#6c8eff' : '#3a5bc2'));
+    try {
+      this.accentColor.set(accentHex || (isDark ? '#6c8eff' : '#3a5bc2'));
+    } catch {
+      this.accentColor.set(isDark ? '#6c8eff' : '#3a5bc2');
+    }
 
-    const bgHex = isDark ? '#090c14' : '#e6ebeb';
-    this.scene.background = new THREE.Color(bgHex);
-    this.scene.fog = new THREE.Fog(bgHex, 20, 90);
+    const fallbackBg = isDark ? '#0b0c12' : '#eef1f5';
+    const bgColor = new THREE.Color(fallbackBg);
+    if (canvasHex) {
+      try {
+        bgColor.set(canvasHex);
+      } catch {
+        bgColor.set(fallbackBg);
+      }
+    }
+
+    this.scene.background = bgColor.clone();
+    this.scene.fog = new THREE.Fog(bgColor.clone(), 20, 88);
 
     if (isDark) {
-      this.stoneMat.color.set('#161c2c');
-      this.stoneMat.roughness = 0.62;
-      this.floorMat.color.set('#0b0f1b');
-      this.wingMat.color.set('#b8c8ff');
-      this.hemiLight.color.set('#9cb8ff');
-      this.hemiLight.groundColor.set('#0b1020');
-      this.hemiLight.intensity = 1.9;
-      this.keyLight.intensity = 2.1;
+      const pierColor = bgColor.clone().lerp(new THREE.Color('#344166'), 0.36);
+      const floorColor = bgColor.clone().lerp(new THREE.Color('#13192b'), 0.45);
+      this.stoneMat.color.copy(pierColor);
+      this.stoneMat.roughness = 0.56;
+      this.floorMat.color.copy(floorColor);
+      this.wingMat.color.copy(this.accentColor).lerp(new THREE.Color('#ffffff'), 0.45);
+      this.hemiLight.color.set('#b8ccff');
+      this.hemiLight.groundColor.copy(bgColor);
+      this.hemiLight.intensity = 2.05;
+      this.keyLight.intensity = 2.35;
       this.cobaltMat.color.copy(this.accentColor);
       this.cobaltMat.emissive.copy(this.accentColor);
-      this.cobaltMat.emissiveIntensity = 0.55;
-      this.glassMat.color.set('#304378');
+      this.cobaltMat.emissiveIntensity = 0.62;
+      this.glassMat.color.copy(this.accentColor).lerp(new THREE.Color('#1a2442'), 0.45);
       this.glassMat.emissive.copy(this.accentColor);
-      this.glassMat.emissiveIntensity = 0.28;
+      this.glassMat.emissiveIntensity = 0.34;
       this.wireGridMat.color.copy(this.accentColor);
-      this.wireGridMat.opacity = 0.24;
+      this.wireGridMat.opacity = 0.32;
     } else {
-      this.stoneMat.color.set('#f2f5f4');
-      this.stoneMat.roughness = 0.72;
-      this.floorMat.color.set('#dde5e4');
-      this.wingMat.color.set('#20262b');
-      this.hemiLight.color.set('#f5fbff');
-      this.hemiLight.groundColor.set('#748a91');
-      this.hemiLight.intensity = 2.4;
-      this.keyLight.intensity = 2.9;
-      this.cobaltMat.color.set('#3a5bc2');
-      this.cobaltMat.emissive.set('#223ca0');
-      this.cobaltMat.emissiveIntensity = 0.34;
-      this.glassMat.color.set('#dbe6f8');
-      this.glassMat.emissive.set('#3a5bc2');
-      this.glassMat.emissiveIntensity = 0.14;
-      this.wireGridMat.color.set('#3a5bc2');
-      this.wireGridMat.opacity = 0.22;
+      const pierColor = bgColor.clone().lerp(new THREE.Color('#ffffff'), 0.55);
+      const floorColor = bgColor.clone().lerp(new THREE.Color('#d2dce0'), 0.35);
+      this.stoneMat.color.copy(pierColor);
+      this.stoneMat.roughness = 0.68;
+      this.floorMat.color.copy(floorColor);
+      this.wingMat.color.set('#1f262e');
+      this.hemiLight.color.set('#ffffff');
+      this.hemiLight.groundColor.set('#7a8f96');
+      this.hemiLight.intensity = 2.35;
+      this.keyLight.intensity = 2.85;
+      this.cobaltMat.color.copy(this.accentColor);
+      this.cobaltMat.emissive.copy(this.accentColor);
+      this.cobaltMat.emissiveIntensity = 0.28;
+      this.glassMat.color.copy(this.accentColor).lerp(new THREE.Color('#eef4ff'), 0.68);
+      this.glassMat.emissive.copy(this.accentColor);
+      this.glassMat.emissiveIntensity = 0.16;
+      this.wireGridMat.color.copy(this.accentColor);
+      this.wireGridMat.opacity = 0.28;
     }
     this.rimLight.color.copy(this.accentColor);
   }

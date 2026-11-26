@@ -25,6 +25,7 @@ interface BeatmapGachaCardProps {
   target: DownloadTarget;
   className?: string;
   onFlip?: () => void;
+  onInspect?: () => void;
   onHoverBack?: (tier: StarRarityTier) => void;
   onTogglePlay?: (set: NormalizedBeatmapset) => void;
   onDownload?: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
@@ -59,6 +60,7 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
   target,
   className = '',
   onFlip,
+  onInspect,
   onHoverBack,
   onTogglePlay,
   onDownload,
@@ -281,7 +283,14 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
 
         {/* FRONT FACE: Borderless Full-Bleed Rectangular Beatmap Plate */}
         <div
-          className="gacha-card-face gacha-card-face-front overflow-hidden rounded-[3px] border-0 bg-[#0b0e17] text-white"
+          onClick={() => {
+            if (!faceDown && onInspect) onInspect();
+          }}
+          data-ga-target={!faceDown && onInspect ? 'true' : undefined}
+          data-ga-cursor={!faceDown && onInspect ? '360° INSPECT' : undefined}
+          className={`gacha-card-face gacha-card-face-front overflow-hidden rounded-[3px] border-0 bg-[#0b0e17] text-white ${
+            !faceDown && onInspect ? 'cursor-pointer' : ''
+          }`}
           style={{
             boxShadow:
               '0 26px 56px -18px rgba(0, 0, 0, 0.65), 0 10px 24px -12px rgba(0, 0, 0, 0.45)',
@@ -329,6 +338,13 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
               compact ? 'p-2.5' : 'p-4'
             }`}
           >
+            {!faceDown && onInspect && (
+              <div className="pointer-events-none absolute top-11 left-1/2 z-20 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                <span className="rounded-[2px] bg-black/75 px-2 py-0.5 font-mono text-[0.5625rem] font-bold tracking-[0.16em] text-white/95 uppercase backdrop-blur-md">
+                  {t('点击 360° 检视', '360° INSPECT')}
+                </span>
+              </div>
+            )}
             {/* Top Editorial Index & Audio Trigger */}
             <div className="flex items-start justify-between gap-1.5">
               <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
@@ -520,8 +536,8 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
                       installed
                         ? 'bg-emerald-500/30 text-emerald-200 hover:bg-emerald-500/45'
                         : isBusy
-                          ? 'bg-[#3a5bc2] text-white'
-                          : 'bg-osu text-white shadow-md hover:bg-[#3a5bc2]'
+                          ? 'bg-[var(--ga-cobalt)] text-white'
+                          : 'bg-osu text-white shadow-md hover:brightness-110'
                     }`}
                   >
                     {isBusy ? (

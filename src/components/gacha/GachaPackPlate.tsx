@@ -93,12 +93,12 @@ export const GachaPackPlate = memo(function GachaPackPlate({
         tearing ? 'scale-[1.04]' : 'scale-100'
       }`}
     >
-      {/* Far Depth Layer: Halftone Disc */}
+      {/* Far Depth Layer: Halftone Disc (unified theme accent) */}
       <div
         className="ga-halftone absolute -translate-y-3 h-[340px] w-[340px] rounded-full transition-transform duration-300"
         style={{
-          color: pack.accentHex,
-          opacity: blueprint ? 0.08 : 0.14,
+          color: 'var(--ga-cobalt)',
+          opacity: blueprint ? 0.08 : 0.13,
           transform: `translate3d(${(-mx * 10).toFixed(1)}px, ${(-my * 7 - 12).toFixed(1)}px, 0)`,
         }}
       />
@@ -161,7 +161,7 @@ export const GachaPackPlate = memo(function GachaPackPlate({
           <path
             d={plate.innerCircle}
             fill="none"
-            stroke={pack.accentHex}
+            stroke="var(--ga-cobalt)"
             strokeOpacity={blueprint ? 0.65 : 0.36}
             strokeWidth="1.15"
           />
@@ -180,7 +180,7 @@ export const GachaPackPlate = memo(function GachaPackPlate({
             d={plate.haloRing}
             transform="translate(1.6 1.2)"
             fill="none"
-            stroke={pack.accentHex}
+            stroke="var(--ga-cobalt)"
             strokeOpacity="0.42"
             strokeWidth="1.3"
           />
@@ -211,15 +211,15 @@ export const GachaPackPlate = memo(function GachaPackPlate({
         {/* Diagonal Calligraphic Brush & Flying Light Shards */}
         <path
           d={plate.diagSweep}
-          fill={pack.accentHex}
-          fillOpacity={blueprint ? 0.16 : 0.24}
+          fill="var(--ga-cobalt)"
+          fillOpacity={blueprint ? 0.14 : 0.20}
         />
         {plate.shards.map((sd, idx) => (
           <path
             key={idx}
             d={sd}
-            fill={idx === 0 ? 'var(--ga-cobalt)' : pack.accentHex}
-            fillOpacity="0.58"
+            fill={idx === 0 ? 'var(--ga-cobalt)' : 'var(--ga-ink)'}
+            fillOpacity={idx === 0 ? '0.58' : '0.32'}
           />
         ))}
         {plate.sparks.map((sp, idx) => (
@@ -253,8 +253,8 @@ export const GachaPackPlate = memo(function GachaPackPlate({
               cx={n.x}
               cy={n.y}
               r={n.size}
-              fill={idx % 2 === 0 ? 'var(--ga-cobalt)' : pack.accentHex}
-              fillOpacity="0.55"
+              fill={idx % 2 === 0 ? 'var(--ga-cobalt)' : 'var(--ga-ink)'}
+              fillOpacity={idx % 2 === 0 ? '0.55' : '0.32'}
             />
           ),
         )}
@@ -322,7 +322,7 @@ export const GachaPackPlate = memo(function GachaPackPlate({
             </text>
             <rect x="8" y="25" width="76" height="4" fill="var(--ga-ink)" fillOpacity="0.18" />
             <rect x="8" y="34" width="54" height="4" fill="var(--ga-ink)" fillOpacity="0.14" />
-            <rect x="8" y="45" width="92" height="4" fill={pack.accentHex} fillOpacity="0.65" />
+            <rect x="8" y="45" width="92" height="4" fill="var(--ga-cobalt)" fillOpacity="0.65" />
           </g>
 
           <g transform="translate(442, 386) rotate(4)">
