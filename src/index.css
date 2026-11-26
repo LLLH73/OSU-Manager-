@@ -2680,7 +2680,412 @@
   .paimon-orbit,
   .gacha-pack-float,
   .gacha-pack-shake,
-  .gacha-stage-shake {
+  .gacha-stage-shake,
+  .ga-glyph,
+  .ga-blade-burst,
+  .ga-eq-bar {
     animation: none !important;
+    transition: none !important;
   }
+}
+
+/* ---------- The Masses' Travels Atelier Design System (v1.13.0) ---------- */
+.gacha-atelier {
+  --ga-bg: #e8eceb;
+  --ga-paper: #eff2f0;
+  --ga-panel: rgba(244, 247, 245, 0.80);
+  --ga-panel-strong: rgba(247, 249, 248, 0.92);
+  --ga-ink: #1b2125;
+  --ga-ink-2: #485258;
+  --ga-ink-3: #707b80;
+  --ga-cobalt: #3a5bc2;
+  --ga-vivid: #2a3fff;
+  --ga-crimson: #c84264;
+  --ga-line: rgba(26, 34, 38, 0.16);
+  --ga-line-strong: rgba(26, 34, 38, 0.34);
+  --ga-cta-bg: #1b2125;
+  --ga-cta-fg: #f3f6f4;
+  --ga-cta-border: #1b2125;
+  --ga-cta-hover-bg: #3a5bc2;
+  --ga-cta-hover-border: #3a5bc2;
+  --ga-veil:
+    linear-gradient(
+      95deg,
+      rgba(236, 240, 237, 0.92) 0%,
+      rgba(236, 240, 237, 0.72) 38%,
+      rgba(236, 240, 237, 0.28) 76%,
+      rgba(232, 238, 236, 0.45) 100%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(237, 241, 238, 0.94) 0%,
+      transparent 22%,
+      transparent 82%,
+      rgba(236, 240, 237, 0.85) 100%
+    );
+  --ga-serif: "Bodoni MT", "Bodoni 72", Didot, Georgia, "Noto Serif SC", "Source Han Serif SC", STSong, serif;
+  --ga-cn-serif: "Noto Serif SC", "Source Han Serif SC", STSong, SimSun, Georgia, serif;
+  --ga-mono: "JetBrains Mono", Consolas, "Cascadia Mono", monospace;
+  background-color: var(--ga-bg);
+  color: var(--ga-ink);
+}
+
+.gacha-atelier[data-dark="true"] {
+  --ga-bg: #090c14;
+  --ga-paper: #0e1320;
+  --ga-panel: rgba(13, 18, 30, 0.76);
+  --ga-panel-strong: rgba(16, 22, 36, 0.90);
+  --ga-ink: #eef2f8;
+  --ga-ink-2: #a4b0c8;
+  --ga-ink-3: #6c7894;
+  --ga-cobalt: #6c8eff;
+  --ga-vivid: #5b7bff;
+  --ga-crimson: #f46488;
+  --ga-line: rgba(168, 192, 255, 0.15);
+  --ga-line-strong: rgba(168, 192, 255, 0.32);
+  --ga-cta-bg: #3a5bc2;
+  --ga-cta-fg: #ffffff;
+  --ga-cta-border: #6c8eff;
+  --ga-cta-hover-bg: #4f73ff;
+  --ga-cta-hover-border: #8ab4ff;
+  --ga-veil:
+    linear-gradient(
+      95deg,
+      rgba(9, 12, 20, 0.90) 0%,
+      rgba(9, 12, 20, 0.68) 40%,
+      rgba(9, 12, 20, 0.30) 76%,
+      rgba(9, 12, 20, 0.48) 100%
+    ),
+    linear-gradient(
+      0deg,
+      rgba(9, 12, 20, 0.94) 0%,
+      transparent 24%,
+      transparent 82%,
+      rgba(9, 12, 20, 0.86) 100%
+    );
+}
+
+.ga-serif {
+  font-family: var(--ga-serif);
+}
+
+.ga-cn-serif {
+  font-family: var(--ga-cn-serif);
+}
+
+.ga-mono {
+  font-family: var(--ga-mono);
+}
+
+.ga-world-veil {
+  background: var(--ga-veil);
+  transition: background 480ms ease;
+}
+
+.ga-paper-grain {
+  opacity: 0.12;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' opacity='.26' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.gacha-atelier[data-dark="true"] .ga-paper-grain {
+  opacity: 0.07;
+  mix-blend-mode: screen;
+}
+
+.ga-blueprint-grid {
+  opacity: 0;
+  transition: opacity 320ms ease;
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--ga-cobalt) 14%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--ga-cobalt) 14%, transparent) 1px, transparent 1px),
+    linear-gradient(to right, color-mix(in srgb, var(--ga-cobalt) 26%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--ga-cobalt) 26%, transparent) 1px, transparent 1px);
+  background-size:
+    24px 24px,
+    24px 24px,
+    96px 96px,
+    96px 96px;
+}
+
+.gacha-atelier[data-blueprint="true"] .ga-blueprint-grid {
+  opacity: 1;
+}
+
+.ga-halftone {
+  background-image: radial-gradient(circle, currentColor 1px, transparent 1.1px);
+  background-size: 6px 6px;
+}
+
+.ga-line-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 1px solid var(--ga-line-strong);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--ga-paper) 78%, transparent);
+  color: var(--ga-ink);
+  font-weight: 600;
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    color 200ms ease,
+    border-color 200ms ease,
+    background-color 200ms ease,
+    transform 160ms ease;
+}
+
+.ga-line-btn:hover:not(:disabled) {
+  border-color: var(--ga-cobalt);
+  color: var(--ga-cobalt);
+  background: color-mix(in srgb, var(--ga-cobalt) 9%, var(--ga-paper));
+}
+
+.ga-line-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.ga-line-btn:disabled {
+  opacity: 0.36;
+  cursor: not-allowed;
+}
+
+.ga-line-btn[data-active="true"] {
+  border-color: var(--ga-cobalt);
+  color: var(--ga-cobalt);
+  background: color-mix(in srgb, var(--ga-cobalt) 13%, var(--ga-paper));
+}
+
+.ga-solid-btn {
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--ga-cta-border);
+  border-radius: 2px;
+  background: var(--ga-cta-bg);
+  color: var(--ga-cta-fg);
+  font-weight: 700;
+  white-space: nowrap;
+  user-select: none;
+  transition:
+    background-color 220ms ease,
+    border-color 220ms ease,
+    color 220ms ease,
+    transform 160ms ease;
+}
+
+.ga-solid-btn > * {
+  position: relative;
+  z-index: 1;
+}
+
+.ga-solid-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 28%, rgba(255, 255, 255, 0.28) 50%, transparent 72%);
+  transform: translateX(-125%);
+  transition: transform 620ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.ga-solid-btn:hover:not(:disabled) {
+  background: var(--ga-cta-hover-bg);
+  border-color: var(--ga-cta-hover-border);
+  color: #ffffff;
+}
+
+.ga-solid-btn:hover:not(:disabled)::after {
+  transform: translateX(125%);
+}
+
+.ga-solid-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.ga-solid-btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+}
+
+.ga-edge-ruler {
+  position: absolute;
+  right: 12px;
+  top: 22%;
+  height: 44%;
+  width: 1px;
+  background: color-mix(in srgb, var(--ga-cobalt) 55%, transparent);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.ga-edge-ruler i {
+  display: block;
+  width: 8px;
+  height: 1px;
+  background: color-mix(in srgb, var(--ga-cobalt) 60%, transparent);
+  margin-left: -4px;
+}
+
+.ga-edge-ruler i:nth-child(4n + 1) {
+  width: 14px;
+  margin-left: -7px;
+}
+
+.ga-glyph {
+  position: absolute;
+  font-family: var(--ga-serif);
+  color: var(--ga-ink);
+  opacity: 0.08;
+  user-select: none;
+  pointer-events: none;
+  line-height: 0.9;
+  transition: transform 780ms cubic-bezier(0.2, 0.8, 0.3, 1);
+  will-change: transform;
+}
+
+.gacha-atelier[data-dark="true"] .ga-glyph {
+  opacity: 0.09;
+}
+
+.ga-reticle-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.ga-reticle-box b {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border: 1.5px solid var(--ga-ink);
+  transition: border-color 180ms ease;
+}
+
+.ga-reticle-box[data-locked="true"] b {
+  border-color: var(--ga-cobalt);
+}
+
+.ga-reticle-box b:nth-child(1) {
+  top: 0;
+  left: 0;
+  border-right: 0;
+  border-bottom: 0;
+}
+
+.ga-reticle-box b:nth-child(2) {
+  top: 0;
+  right: 0;
+  border-left: 0;
+  border-bottom: 0;
+}
+
+.ga-reticle-box b:nth-child(3) {
+  bottom: 0;
+  left: 0;
+  border-right: 0;
+  border-top: 0;
+}
+
+.ga-reticle-box b:nth-child(4) {
+  bottom: 0;
+  right: 0;
+  border-left: 0;
+  border-top: 0;
+}
+
+.ga-reticle-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  font-family: var(--ga-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  padding: 3px 6px;
+  border-radius: 1px;
+  background: var(--ga-ink);
+  color: var(--ga-paper);
+  white-space: nowrap;
+  opacity: 0.82;
+}
+
+.ga-reticle-box[data-locked="true"] + .ga-reticle-label {
+  background: var(--ga-cobalt);
+  color: #ffffff;
+  opacity: 0.96;
+}
+
+@keyframes ga-fx-veil {
+  0% {
+    opacity: 0.36;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes ga-fx-step {
+  0% {
+    opacity: 0;
+  }
+  18% {
+    opacity: 0.9;
+  }
+  72% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.ga-fx-veil {
+  animation: ga-fx-veil 620ms ease-out forwards;
+}
+
+.ga-fx-frame {
+  opacity: 0;
+  animation: ga-fx-step 240ms steps(2, end) forwards;
+  animation-delay: calc(var(--ga-f, 0) * 145ms);
+}
+
+@keyframes ga-blade-spin-out {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.45) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.7) rotate(68deg);
+  }
+}
+
+.ga-blade-burst {
+  animation: ga-blade-spin-out 860ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes ga-eq-bounce {
+  0%,
+  100% {
+    transform: scaleY(0.32);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.ga-eq-bar {
+  transform-origin: bottom center;
+  animation: ga-eq-bounce 0.72s ease-in-out infinite;
 }

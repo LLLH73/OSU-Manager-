@@ -18,11 +18,13 @@ export interface GachaPackMeta {
   id: GachaPackId;
   code: string;
   name: string;
+  editorialSub: string;
   tagline: string;
   badge: string;
   foilGradient: string;
   accentHex: string;
   glowHex: string;
+  swatches: [string, string, string];
   starRangeLabel: string;
 }
 
@@ -33,91 +35,105 @@ export function getGachaPacks(lang: UiLanguage = getCurrentLang()): GachaPackMet
       id: 'standard',
       code: '01',
       name: isEn ? 'Starlight Classic' : '星辉经典包',
+      editorialSub: 'CELESTIAL STANDARD',
       tagline: isEn
         ? 'Balanced leaderboard maps across all star ratings'
         : '全分段排行榜热图均衡抽取，惊喜开包首选',
       badge: isEn ? 'ALL-ROUND' : '全分段',
-      foilGradient: 'linear-gradient(145deg, #1b285c 0%, #2d3d8e 42%, #131b46 100%)',
-      accentHex: '#60a5fa',
-      glowHex: '#93c5fd',
+      foilGradient: 'linear-gradient(150deg, #101935 0%, #243e8e 48%, #0a1026 100%)',
+      accentHex: '#3a5bc2',
+      glowHex: '#8ab4ff',
+      swatches: ['#3a5bc2', '#8ab4ff', '#1b2125'],
       starRangeLabel: '1.5★ – 10★+',
     },
     {
       id: 'pp_farm',
       code: '02',
       name: isEn ? 'Ranked PP Boost' : 'PP 冲分补给包',
+      editorialSub: 'RANKED PP TELEMETRY',
       tagline: isEn
         ? 'Ranked maps tuned for sweet-spot 3.5★–7.2★ PP climbing'
         : '聚焦 3.5★–7.2★ Ranked 冲分甜点谱面',
       badge: 'RANKED PP',
-      foilGradient: 'linear-gradient(145deg, #431757 0%, #7c2d96 45%, #230c33 100%)',
-      accentHex: '#e879f9',
-      glowHex: '#f0abfc',
+      foilGradient: 'linear-gradient(150deg, #2d0e28 0%, #7d2553 48%, #180716 100%)',
+      accentHex: '#b83b74',
+      glowHex: '#f08dbb',
+      swatches: ['#b83b74', '#3a5bc2', '#1b2125'],
       starRangeLabel: '3.5★ – 7.2★',
     },
     {
       id: 'high_star',
       code: '03',
       name: isEn ? 'Mythic Overdrive' : '魔王高星秘匣',
+      editorialSub: 'APEX DIFFICULTY',
       tagline: isEn
         ? '6.0★+ high-density & boss charts for brave climbers'
         : '6.0★+ 高星魔王与高强度压迫练习图集',
       badge: '6.0★+ BOSS',
-      foilGradient: 'linear-gradient(145deg, #451524 0%, #8f1d3e 45%, #230913 100%)',
-      accentHex: '#fbbf24',
-      glowHex: '#fde047',
+      foilGradient: 'linear-gradient(150deg, #330d15 0%, #8a1f32 48%, #1a060a 100%)',
+      accentHex: '#c83e4d',
+      glowHex: '#fcd34d',
+      swatches: ['#c83e4d', '#d99b26', '#1b2125'],
       starRangeLabel: '6.0★+',
     },
     {
       id: 'rice_stream',
       code: '04',
       name: isEn ? 'Pure Rice & Stream' : '单键切菜军火库',
+      editorialSub: 'RICE PRECISION',
       tagline: isEn
         ? 'Crisp Rice, Jumpstream & Handstream focus (LN <= 18%)'
         : '专注于高手感单键交互、跳串与手串 (LN <= 18%)',
       badge: 'RICE <=18%',
-      foilGradient: 'linear-gradient(145deg, #0b3c49 0%, #0e7490 46%, #07222b 100%)',
-      accentHex: '#22d3ee',
+      foilGradient: 'linear-gradient(150deg, #072834 0%, #0d5d73 48%, #04171f 100%)',
+      accentHex: '#0e7490',
       glowHex: '#67e8f9',
+      swatches: ['#0e7490', '#3a5bc2', '#1b2125'],
       starRangeLabel: 'LN <= 18%',
     },
     {
       id: 'ln_tech',
       code: '05',
       name: isEn ? 'Long-Note Weaver' : '长条技巧秘典',
+      editorialSub: 'LONG-NOTE WEAVE',
       tagline: isEn
         ? 'Technical LN & Inverse challenge charts (LN >= 42%)'
         : '专攻松手时机与长条读谱技巧 (LN >= 42%)',
       badge: 'LN >=42%',
-      foilGradient: 'linear-gradient(145deg, #0d3b2e 0%, #059669 45%, #062119 100%)',
-      accentHex: '#34d399',
-      glowHex: '#6ee7b7',
+      foilGradient: 'linear-gradient(150deg, #072a25 0%, #0f6b5f 48%, #041815 100%)',
+      accentHex: '#0f766e',
+      glowHex: '#5eead4',
+      swatches: ['#0f766e', '#3a5bc2', '#1b2125'],
       starRangeLabel: 'LN >= 42%',
     },
     {
       id: 'loved_chaos',
       code: '06',
       name: isEn ? 'Loved Gems Sanctuary' : 'Loved 社区遗珠',
+      editorialSub: 'COMMUNITY SANCTUARY',
       tagline: isEn
         ? 'Unranked community favorites with iconic gimmick charts'
         : '玩家票选精华 Loved 名曲与演出佳作',
       badge: 'LOVED',
-      foilGradient: 'linear-gradient(145deg, #4f173c 0%, #be185d 45%, #280a1e 100%)',
-      accentHex: '#f472b6',
+      foilGradient: 'linear-gradient(150deg, #360c27 0%, #981b55 48%, #1c0514 100%)',
+      accentHex: '#be185d',
       glowHex: '#f9a8d4',
+      swatches: ['#be185d', '#6c8eff', '#1b2125'],
       starRangeLabel: 'Loved',
     },
     {
       id: 'current_filter',
       code: '07',
       name: isEn ? 'Custom Filter Pack' : '当前筛选定制包',
+      editorialSub: 'ACTIVE FILTER POOL',
       tagline: isEn
         ? 'Draws strictly from your active Browse search & filter rules'
         : '严格继承你当前搜图页的筛选与场景条件随机抽选',
       badge: isEn ? 'CUSTOM' : '当前筛选',
-      foilGradient: 'linear-gradient(145deg, #27272a 0%, #4b5563 45%, #18181b 100%)',
-      accentHex: '#f59e0b',
-      glowHex: '#fcd34d',
+      foilGradient: 'linear-gradient(150deg, #1b2029 0%, #374357 48%, #0f131a 100%)',
+      accentHex: '#475569',
+      glowHex: '#93c5fd',
+      swatches: ['#334155', '#3a5bc2', '#d97706'],
       starRangeLabel: isEn ? 'Active Filters' : '跟随筛选',
     },
   ];

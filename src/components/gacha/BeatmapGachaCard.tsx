@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { memo, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Check, Download, ExternalLink, Loader2, Pause, Play, Sparkles, Star } from 'lucide-react';
 import { formatDuration, getLnCategory, getStarColor, getStatusBadge } from '../../constants';
 import { useI18n } from '../../i18n';
@@ -6,13 +6,14 @@ import type { DownloadTarget, DownloadTask, NormalizedBeatmapset } from '../../t
 import type { PpScenarioInput } from '../../utils/pp';
 import { MarqueeText } from '../MarqueeText';
 import { PaimonStarfieldBack } from './PaimonStarfieldBack';
+import { blade, ring, rng } from './gachaSketch';
 import { getCardSummaryStats, getStarRarityMeta, type StarRarityTier } from './gachaUtils';
 
 interface BeatmapGachaCardProps {
   beatmapset: NormalizedBeatmapset;
   ppScenario?: Partial<PpScenarioInput>;
   faceDown?: boolean;
-  /** Increment to trigger Hearthstone flip reveal explosion */
+  /** Increment to trigger Hearthstone + architectural light-blade reveal burst */
   revealTrigger?: number;
   /** Mask exact star rating in Guess mode */
   maskStars?: boolean;
@@ -73,6 +74,17 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
   const starColor = getStarColor(summary.repStars);
   const lnInfo = getLnCategory(summary.featuredDiff?.lnRatio ?? null, lang);
 
+  // Architectural burst geometry (light-blades + hand-drawn double shock ring)
+  const burstSvg = useMemo(() => {
+    const r = rng(beatmapset.id * 43 + 7);
+    const ringPath = ring(100, 100, 56, r, 2.2);
+    const bladePaths = Array.from({ length: 6 }, (_, i) => {
+      const ang = (i / 6) * Math.PI * 2 + 0.25;
+      return blade(100 + Math.cos(ang) * 44, 100 + Math.sin(ang) * 44, 48, 8, ang, r);
+    });
+    return { ringPath, bladePaths };
+  }, [beatmapset.id]);
+
   useEffect(() => {
     if (revealTrigger > prevRevealRef.current) {
       prevRevealRef.current = revealTrigger;
@@ -110,6 +122,8 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
     <div
       className={`gacha-perspective gacha-card-shell group relative select-none ${className}`}
       style={auraStyle}
+      data-ga-target={faceDown ? 'true' : undefined}
+      data-ga-cursor={faceDown ? t('翻开卡牌', 'UNSEAL') : undefined}
       onMouseEnter={() => {
         if (faceDown) onHoverBack?.(rarity.tier);
       }}
@@ -118,14 +132,39 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
       {showStarHover && (
         <div
           aria-hidden="true"
-          className="gacha-hover-aura pointer-events-none -inset-[8px] absolute rounded-[24px] blur-[14px]"
+          className="gacha-hover-aura pointer-events-none absolute -inset-[8px] rounded-[6px] blur-[14px]"
           style={{
             background: `radial-gradient(circle at 50% 50%, ${rarity.glow}, ${rarity.glowSecondary} 62%, transparent 78%)`,
           }}
         />
       )}
 
-      {/* Hearthstone Reveal Explosion FX (triggers on flip to front) */}
+      {/* Corner Registration Crop-Brackets snapping in on face-down hover */}
+      {showStarHover && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -inset-[5px] z-20 opacity-0 transition-opacity duration-200 group-hover:opacity-100"
+        >
+          <span
+            className="absolute top-0 left-0 h-3 w-3 border-t-2 border-l-2"
+            style={{ borderColor: rarity.glow }}
+          />
+          <span
+            className="absolute top-0 right-0 h-3 w-3 border-t-2 border-r-2"
+            style={{ borderColor: rarity.glow }}
+          />
+          <span
+            className="absolute bottom-0 left-0 h-3 w-3 border-b-2 border-l-2"
+            style={{ borderColor: rarity.glow }}
+          />
+          <span
+            className="absolute right-0 bottom-0 h-3 w-3 border-r-2 border-b-2"
+            style={{ borderColor: rarity.glow }}
+          />
+        </div>
+      )}
+
+      {/* Hearthstone + Architectural Light-Blade Reveal Burst FX (triggers on flip to front) */}
       {burstTier && (
         <div
           aria-hidden="true"
@@ -137,6 +176,34 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
               boxShadow: `0 0 36px 8px ${rarity.glow}, inset 0 0 24px 4px ${rarity.glowSecondary}`,
             }}
           />
+          <svg
+            viewBox="0 0 200 200"
+            className="ga-blade-burst pointer-events-none absolute h-52 w-52 overflow-visible"
+          >
+            <path
+              d={burstSvg.ringPath}
+              fill="none"
+              stroke={rarity.glow}
+              strokeWidth="1.6"
+              strokeOpacity="0.9"
+            />
+            <path
+              d={burstSvg.ringPath}
+              transform="translate(2 1.5)"
+              fill="none"
+              stroke={rarity.glowSecondary}
+              strokeWidth="1.4"
+              strokeOpacity="0.45"
+            />
+            {burstSvg.bladePaths.map((bp, bIdx) => (
+              <path
+                key={bIdx}
+                d={bp}
+                fill={bIdx % 2 === 0 ? rarity.glow : rarity.glowSecondary}
+                fillOpacity="0.88"
+              />
+            ))}
+          </svg>
           {(burstTier === 'epic' || burstTier === 'legendary' || burstTier === 'mythic') && (
             <div
               className="gacha-beam-sweep absolute -inset-y-12 w-24 rounded-full blur-md"
@@ -165,7 +232,7 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
         </div>
       )}
 
-      {/* Borderless 3D Card Body */}
+      {/* Borderless 3D Architectural Card Body (sharp 3px editorial collector silhouette) */}
       <div
         onClick={() => {
           if (faceDown && onFlip) onFlip();
@@ -176,9 +243,7 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
       >
         {/* BACK FACE: Paimon Starfield Cloak + Minimalist Thin-Stroke `osu!` */}
         <div
-          className={`gacha-card-face gacha-card-face-back overflow-hidden border-0 ${
-            compact ? 'rounded-[14px]' : 'rounded-[20px]'
-          }`}
+          className="gacha-card-face gacha-card-face-back overflow-hidden rounded-[3px] border-0"
           style={{
             boxShadow: faceDown
               ? '0 22px 48px -18px rgba(4, 6, 20, 0.72), 0 8px 20px -10px rgba(0, 0, 0, 0.5)'
@@ -198,30 +263,28 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
             />
           )}
 
-          {/* Hover Click-to-Flip Prompt */}
-          <div className="pointer-events-none absolute right-0 bottom-3 left-0 flex flex-col items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+          {/* Hover Click-to-Unseal Strip */}
+          <div className="pointer-events-none absolute right-0 bottom-3.5 left-0 flex flex-col items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
             <span
-              className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.6875rem] font-bold tracking-wider uppercase backdrop-blur-md"
+              className="inline-flex items-center gap-1.5 rounded-[2px] px-2.5 py-1 font-mono text-[0.65625rem] font-bold tracking-[0.14em] uppercase backdrop-blur-md"
               style={{
-                background: 'rgba(6, 10, 32, 0.78)',
+                background: 'rgba(6, 10, 32, 0.84)',
                 color: rarity.glow,
-                boxShadow: `0 0 14px ${rarity.glow}55`,
+                boxShadow: `0 0 16px ${rarity.glow}55`,
               }}
             >
               <Sparkles className="h-3 w-3" />
-              <span>{t('点击翻牌', 'Flip Card')}</span>
+              <span>{t('点击翻牌', 'UNSEAL CARD')}</span>
             </span>
           </div>
         </div>
 
-        {/* FRONT FACE: Borderless Full-Bleed Rectangular Beatmap Card */}
+        {/* FRONT FACE: Borderless Full-Bleed Rectangular Beatmap Plate */}
         <div
-          className={`gacha-card-face gacha-card-face-front overflow-hidden border-0 bg-[#0b0e17] text-white ${
-            compact ? 'rounded-[14px]' : 'rounded-[20px]'
-          }`}
+          className="gacha-card-face gacha-card-face-front overflow-hidden rounded-[3px] border-0 bg-[#0b0e17] text-white"
           style={{
             boxShadow:
-              '0 26px 56px -18px rgba(0, 0, 0, 0.62), 0 10px 24px -12px rgba(0, 0, 0, 0.45)',
+              '0 26px 56px -18px rgba(0, 0, 0, 0.65), 0 10px 24px -12px rgba(0, 0, 0, 0.45)',
           }}
         >
           {/* Full-bleed Cover Art */}
@@ -232,21 +295,28 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
             className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
           />
 
-          {/* Cinematic Gradient Scrim (zero borders, high text legibility) */}
+          {/* Subtle Graphic Halftone Accent Corner */}
+          <div
+            aria-hidden="true"
+            className="ga-halftone pointer-events-none absolute top-0 right-0 h-28 w-28 text-white opacity-[0.09]"
+            style={{ maskImage: 'radial-gradient(circle at top right, black 10%, transparent 72%)' }}
+          />
+
+          {/* Cinematic Gradient Scrim (zero borders, effortless contrast) */}
           <div
             aria-hidden="true"
             className="absolute inset-0"
             style={{
               background:
-                'linear-gradient(180deg, rgba(6,8,16,0.52) 0%, rgba(6,8,16,0.10) 34%, rgba(6,8,16,0.68) 62%, rgba(6,8,16,0.96) 100%)',
+                'linear-gradient(180deg, rgba(6,8,16,0.58) 0%, rgba(6,8,16,0.12) 34%, rgba(6,8,16,0.72) 60%, rgba(6,8,16,0.97) 100%)',
             }}
           />
 
-          {/* Subtle Rarity Crown Accent Wash at Top Edge on Epic+ Reveal */}
+          {/* Top Editorial Rarity Accent Wash on Uncommon+ */}
           {!maskStars && rarity.tier !== 'common' && (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute top-0 right-0 left-0 h-1.5 opacity-90"
+              className="pointer-events-none absolute top-0 right-0 left-0 h-[3px] opacity-95"
               style={{
                 background: `linear-gradient(90deg, transparent, ${rarity.glow}, ${rarity.glowSecondary}, transparent)`,
               }}
@@ -256,57 +326,56 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
           {/* Front Content Layer */}
           <div
             className={`relative z-10 flex h-full flex-col justify-between ${
-              compact ? 'p-2.5' : 'p-4 sm:p-5'
+              compact ? 'p-2.5' : 'p-4'
             }`}
           >
-            {/* Top Meta & Audio Preview Bar */}
+            {/* Top Editorial Index & Audio Trigger */}
             <div className="flex items-start justify-between gap-1.5">
               <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
                 <div className="flex max-w-full flex-wrap items-center gap-1">
                   <span
-                    className={`rounded-full px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-wide uppercase shadow-sm ${statusMeta.cls}`}
+                    className={`rounded-[2px] px-1.5 py-0.5 font-mono text-[0.59375rem] font-extrabold tracking-wider uppercase shadow-sm ${statusMeta.cls}`}
                   >
                     {statusMeta.label}
                   </span>
                   {summary.keysTag && (
-                    <span className="rounded-full bg-black/55 px-1.5 py-0.5 text-[0.625rem] font-bold text-white/95 backdrop-blur-md">
+                    <span className="rounded-[2px] bg-black/60 px-1.5 py-0.5 font-mono text-[0.59375rem] font-bold text-white/95 backdrop-blur-md">
                       {summary.keysTag}
                     </span>
                   )}
                   {lnInfo && !compact && (
-                    <span className="rounded-full bg-black/55 px-1.5 py-0.5 text-[0.625rem] font-semibold text-white/90 backdrop-blur-md">
+                    <span className="rounded-[2px] bg-black/60 px-1.5 py-0.5 font-mono text-[0.59375rem] font-semibold text-white/90 backdrop-blur-md">
                       {lnInfo.label}
                     </span>
                   )}
                 </div>
 
-                {compact && (
-                  maskStars ? (
-                    <span className="font-stat inline-flex items-center gap-1 rounded-full bg-black/70 px-2 py-0.5 text-[0.6875rem] font-extrabold text-amber-300 backdrop-blur-md">
+                {compact &&
+                  (maskStars ? (
+                    <span className="font-stat inline-flex items-center gap-1 rounded-[2px] bg-black/75 px-2 py-0.5 text-[0.6875rem] font-extrabold text-amber-300 backdrop-blur-md">
                       <Star className="h-2.5 w-2.5 fill-current" />
                       <span>?.??★</span>
                     </span>
                   ) : (
                     <span
-                      className="font-stat inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] font-extrabold shadow-sm"
+                      className="font-stat inline-flex items-center gap-1 rounded-[2px] px-2 py-0.5 text-[0.6875rem] font-extrabold shadow-sm"
                       style={{ backgroundColor: starColor.bg, color: starColor.text }}
                     >
                       <span>★ {summary.repStars.toFixed(2)}</span>
                     </span>
-                  )
-                )}
+                  ))}
               </div>
 
               <div className="flex shrink-0 items-center gap-1.5">
                 {!compact &&
                   (maskStars ? (
-                    <span className="font-stat inline-flex items-center gap-1 rounded-full bg-black/70 px-2.5 py-0.5 text-[0.78125rem] font-extrabold text-amber-300 backdrop-blur-md">
+                    <span className="font-stat inline-flex items-center gap-1 rounded-[2px] bg-black/75 px-2.5 py-0.5 text-[0.75rem] font-extrabold text-amber-300 backdrop-blur-md">
                       <Star className="h-3 w-3 fill-current" />
                       <span>?.??★</span>
                     </span>
                   ) : (
                     <span
-                      className="font-stat inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[0.75rem] font-extrabold shadow-sm"
+                      className="font-stat inline-flex items-center gap-1 rounded-[2px] px-2.5 py-0.5 text-[0.75rem] font-extrabold shadow-sm"
                       style={{ backgroundColor: starColor.bg, color: starColor.text }}
                     >
                       <span>★ {summary.repStars.toFixed(2)}</span>
@@ -316,6 +385,7 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
                 {onTogglePlay && (
                   <button
                     type="button"
+                    data-ga-cursor={isPlaying ? t('暂停试听', 'PAUSE') : t('试听音频', 'PREVIEW')}
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => {
                       e.stopPropagation();
@@ -326,8 +396,8 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
                       compact ? 'h-7 w-7' : 'h-8 w-8'
                     } ${
                       isPlaying
-                        ? 'bg-osu text-white'
-                        : 'bg-black/60 text-white hover:bg-black/80 backdrop-blur-md'
+                        ? 'bg-[#3a5bc2] text-white'
+                        : 'bg-black/65 text-white backdrop-blur-md hover:bg-[#3a5bc2]'
                     }`}
                   >
                     {isPlaying ? (
@@ -340,21 +410,19 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
               </div>
             </div>
 
-            {/* Bottom Info + Clue + Actions */}
-            <div className={compact ? 'space-y-2' : 'space-y-2.5'}>
+            {/* Bottom Dossier Telemetry + Borderless Actions */}
+            <div className={compact ? 'space-y-1.5' : 'space-y-2.5'}>
               {clueBanner}
 
               {/* Title & Artist */}
               <div className="min-w-0 space-y-0.5">
-                <div className="flex items-center justify-between gap-2">
-                  <MarqueeText
-                    text={beatmapset.titleUnicode || beatmapset.title}
-                    mode="always"
-                    className={`font-display leading-tight font-extrabold tracking-tight text-white drop-shadow ${
-                      compact ? 'text-[0.875rem]' : 'text-[1.25rem] sm:text-[1.375rem]'
-                    }`}
-                  />
-                </div>
+                <MarqueeText
+                  text={beatmapset.titleUnicode || beatmapset.title}
+                  mode="always"
+                  className={`font-display leading-tight font-extrabold tracking-tight text-white drop-shadow ${
+                    compact ? 'text-[0.875rem]' : 'text-[1.25rem] sm:text-[1.375rem]'
+                  }`}
+                />
                 <p
                   className={`truncate font-medium text-white/75 ${
                     compact ? 'text-[0.6875rem]' : 'text-[0.8125rem]'
@@ -364,20 +432,20 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
                 </p>
               </div>
 
-              {/* Telemetry Stats Row (BPM, Star Rating, Est. PP, Length/Diffs) */}
+              {/* Crisp Hairline-Separated Telemetry Row */}
               <div
-                className={`grid rounded-xl bg-white/10 backdrop-blur-md ${
+                className={`grid border-t border-white/20 pt-1.5 ${
                   compact
-                    ? 'grid-cols-[0.75fr_0.95fr_1.3fr] gap-1 px-1.5 py-1.5'
-                    : 'grid-cols-4 gap-1.5 px-2.5 py-2'
+                    ? 'grid-cols-[0.75fr_0.95fr_1.3fr] gap-1'
+                    : 'grid-cols-4 gap-2'
                 }`}
               >
                 <div className="min-w-0">
-                  <div className="whitespace-nowrap text-[0.5625rem] font-semibold tracking-wider text-white/55 uppercase">
+                  <div className="font-mono text-[0.5625rem] font-semibold tracking-wider text-white/55 uppercase">
                     BPM
                   </div>
                   <div
-                    className={`font-stat font-bold whitespace-nowrap text-white tabular-nums ${
+                    className={`font-mono font-bold whitespace-nowrap text-white tabular-nums ${
                       compact ? 'text-[0.6875rem]' : 'text-[0.8125rem]'
                     }`}
                   >
@@ -386,14 +454,20 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
                 </div>
 
                 <div className="min-w-0">
-                  <div className="whitespace-nowrap text-[0.5625rem] font-semibold tracking-wider text-white/55 uppercase">
+                  <div className="font-mono text-[0.5625rem] font-semibold tracking-wider text-white/55 uppercase">
                     {t('星数', 'SR')}
                   </div>
                   <div
-                    className={`font-stat font-bold whitespace-nowrap tabular-nums ${
+                    className={`font-mono font-bold whitespace-nowrap tabular-nums ${
                       compact ? 'text-[0.6875rem]' : 'text-[0.8125rem]'
                     }`}
-                    style={{ color: maskStars ? '#fcd34d' : starColor.bg === '#000000' ? '#fde047' : '#ffffff' }}
+                    style={{
+                      color: maskStars
+                        ? '#fcd34d'
+                        : starColor.bg === '#000000'
+                          ? '#fde047'
+                          : '#ffffff',
+                    }}
                   >
                     {maskStars
                       ? '?.??★'
@@ -404,11 +478,11 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
                 </div>
 
                 <div className="min-w-0">
-                  <div className="whitespace-nowrap text-[0.5625rem] font-semibold tracking-wider text-white/55 uppercase">
+                  <div className="font-mono text-[0.5625rem] font-semibold tracking-wider text-white/55 uppercase">
                     {compact ? t('参考 PP', '~PP') : t('大致 PP', 'Est. PP')}
                   </div>
                   <div
-                    className={`font-stat font-bold whitespace-nowrap text-emerald-300 tabular-nums ${
+                    className={`font-mono font-bold whitespace-nowrap text-emerald-300 tabular-nums ${
                       compact ? 'text-[0.6875rem]' : 'text-[0.8125rem]'
                     }`}
                   >
@@ -418,19 +492,19 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
 
                 {!compact && (
                   <div className="min-w-0">
-                    <div className="whitespace-nowrap text-[0.5625rem] font-semibold tracking-wider text-white/55 uppercase">
-                      {t('时长 / 难度', 'Len / Diff')}
+                    <div className="font-mono text-[0.5625rem] font-semibold tracking-wider text-white/55 uppercase">
+                      {t('时长 / 难度', 'LEN / DIFF')}
                     </div>
-                    <div className="font-stat truncate text-[0.8125rem] font-bold text-white/95 tabular-nums">
+                    <div className="font-mono truncate text-[0.8125rem] font-bold text-white/95 tabular-nums">
                       {formatDuration(summary.lengthSec)} · {beatmapset.beatmaps.length}
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Bottom Action Buttons (Download + Details Page) */}
+              {/* Architectural Action Strip (Download + Details) */}
               <div
-                className="flex items-center gap-1.5"
+                className="flex items-center gap-1.5 pt-0.5"
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -438,21 +512,22 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
                   <button
                     type="button"
                     disabled={isBusy}
+                    data-ga-cursor={t('下载谱面', 'DOWNLOAD')}
                     onClick={() => onDownload(beatmapset, target)}
-                    className={`flex flex-1 items-center justify-center gap-1 rounded-xl font-semibold whitespace-nowrap transition-all ${
+                    className={`flex flex-1 items-center justify-center gap-1 rounded-[2px] font-semibold whitespace-nowrap transition-all ${
                       compact ? 'h-8 px-2 text-[0.71875rem]' : 'h-9 px-3 text-[0.8125rem]'
                     } ${
                       installed
-                        ? 'bg-emerald-500/25 text-emerald-200 hover:bg-emerald-500/35'
+                        ? 'bg-emerald-500/30 text-emerald-200 hover:bg-emerald-500/45'
                         : isBusy
-                          ? 'bg-osu/85 text-white'
-                          : 'bg-osu text-white shadow-md hover:brightness-110'
+                          ? 'bg-[#3a5bc2] text-white'
+                          : 'bg-osu text-white shadow-md hover:bg-[#3a5bc2]'
                     }`}
                   >
                     {isBusy ? (
                       <>
                         <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
-                        <span className="tabular-nums">{activeTask?.progress ?? 0}%</span>
+                        <span className="font-mono tabular-nums">{activeTask?.progress ?? 0}%</span>
                       </>
                     ) : installed ? (
                       <>
@@ -471,9 +546,10 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
                 {onOpenDetail && (
                   <button
                     type="button"
+                    data-ga-cursor={t('谱面详情', 'DETAILS')}
                     onClick={() => onOpenDetail(beatmapset, summary.featuredDiff?.id ?? null)}
                     title={t('查看谱面详细页面', 'Open beatmap detail page')}
-                    className={`flex shrink-0 items-center justify-center gap-1 rounded-xl bg-white/15 font-semibold whitespace-nowrap text-white backdrop-blur-md transition-colors hover:bg-white/25 ${
+                    className={`flex shrink-0 items-center justify-center gap-1 rounded-[2px] bg-white/14 font-semibold whitespace-nowrap text-white backdrop-blur-md transition-colors hover:bg-white/26 ${
                       compact ? 'h-8 px-2.5 text-[0.71875rem]' : 'h-9 px-3 text-[0.8125rem]'
                     }`}
                   >

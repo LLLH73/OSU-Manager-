@@ -488,6 +488,13 @@ function AppWorkspace({
     setIsPlaying(false);
     setPlayingSet(null);
     setNavOpen(false);
+    setSidebarCollapsed(true);
+    setArchiveRailCollapsed(true);
+    try {
+      localStorage.setItem('osu4k-archive-rail-collapsed', 'true');
+    } catch {
+      // Ignore storage error
+    }
     setWorkspaceMode('browse');
     setGachaOpen(true);
   }, [pauseMusic]);

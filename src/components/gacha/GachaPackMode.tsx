@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from 'react';
 import {
+  ArrowRight,
   Download,
   Eye,
   Layers,
@@ -19,6 +20,8 @@ import type {
   SearchFilters,
 } from '../../types';
 import { BeatmapGachaCard } from './BeatmapGachaCard';
+import { ScrambleText } from './GachaAtmosphere';
+import { GachaPackPlate } from './GachaPackPlate';
 import { playCardFlipSound, playCardHoverTick, playPackTearSound } from './gachaSound';
 import {
   getCardSummaryStats,
@@ -30,6 +33,7 @@ import {
 interface GachaPackModeProps {
   baseFilters: SearchFilters;
   target: DownloadTarget;
+  blueprint: boolean;
   activeTaskBySet: Map<number, DownloadTask>;
   playingSetId: number | null;
   isPlaying: boolean;
@@ -37,6 +41,7 @@ interface GachaPackModeProps {
   onDownload: (set: NormalizedBeatmapset, target: DownloadTarget) => void;
   onBatchDownload: (sets: NormalizedBeatmapset[]) => void;
   onOpenDetail: (set: NormalizedBeatmapset, diffId?: number | null) => void;
+  onTriggerEffect: (intensity?: number, hexColor?: string) => void;
   onNotify: (msg: string) => void;
 }
 
@@ -47,6 +52,7 @@ const CARD_COUNT_PRESETS = [1, 5, 10, 15, 20] as const;
 export function GachaPackMode({
   baseFilters,
   target,
+  blueprint,
   activeTaskBySet,
   playingSetId,
   isPlaying,
@@ -54,6 +60,7 @@ export function GachaPackMode({
   onDownload,
   onBatchDownload,
   onOpenDetail,
+  onTriggerEffect,
   onNotify,
 }: GachaPackModeProps) {
   const { lang, t } = useI18n();
@@ -69,8 +76,8 @@ export function GachaPackMode({
   const [flashBurst, setFlashBurst] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Interactive foil 3D tilt + drag-to-tear along top seam
   const [packTilt, setPackTilt] = useState({ rx: 0, ry: 0 });
+  const [platePointer, setPlatePointer] = useState({ x: 0, y: 0 });
   const [tearDragPct, setTearDragPct] = useState(0);
   const tearOriginXRef = useRef<number | null>(null);
   const seenIdsRef = useRef<Set<number>>(new Set());
@@ -83,11 +90,13 @@ export function GachaPackMode({
       if (stage === 'tearing') return;
       const targetPack = overridePackId ?? packId;
       const targetCount = Math.min(20, Math.max(1, overrideCount ?? cardCount));
+      const activeMeta = packs.find((p) => p.id === targetPack) ?? selectedPack;
 
       setError(null);
       setStage('tearing');
       setTearDragPct(100);
       playPackTearSound();
+      onTriggerEffect(1.0, activeMeta.accentHex);
 
       const fetchPromise = drawGachaBeatmapsets({
         count: targetCount,
@@ -122,7 +131,7 @@ export function GachaPackMode({
         setTearDragPct(0);
       }
     },
-    [stage, packId, cardCount, baseFilters, t],
+    [stage, packId, cardCount, packs, selectedPack, onTriggerEffect, baseFilters, t],
   );
 
   const flipSingleCard = useCallback(
@@ -144,10 +153,11 @@ export function GachaPackMode({
 
       if (rarity.tier === 'legendary' || rarity.tier === 'mythic') {
         setStageShake(true);
+        onTriggerEffect(0.85, rarity.glow);
         window.setTimeout(() => setStageShake(false), 380);
       }
     },
-    [flippedIds, lang],
+    [flippedIds, lang, onTriggerEffect],
   );
 
   const handleRevealAll = () => {
@@ -168,6 +178,7 @@ export function GachaPackMode({
         }));
         if (rarity.tier === 'mythic' || rarity.tier === 'legendary') {
           setStageShake(true);
+          onTriggerEffect(0.75, rarity.glow);
           window.setTimeout(() => setStageShake(false), 360);
         }
       }, i * 115);
@@ -205,7 +216,6 @@ export function GachaPackMode({
   const flippedCount = cards.filter((c) => flippedIds.has(c.id)).length;
   const allFlipped = cards.length > 0 && flippedCount === cards.length;
 
-  // Determine grid sizing dynamically across 1..20 cards
   const gridColsClass =
     cards.length <= 1
       ? 'grid-cols-1 max-w-[310px] mx-auto'
@@ -214,17 +224,16 @@ export function GachaPackMode({
         : cards.length <= 3
           ? 'grid-cols-1 sm:grid-cols-3 max-w-[980px] mx-auto'
           : cards.length <= 5
-            ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5'
-            : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5';
+            ? 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 max-w-[1440px] mx-auto w-full'
+            : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 max-w-[1440px] mx-auto w-full';
 
   const cardHeightClass =
     cards.length <= 1
       ? 'h-[430px]'
       : cards.length <= 5
-        ? 'h-[375px] sm:h-[395px]'
-        : 'h-[310px] sm:h-[325px]';
+        ? 'h-[375px] sm:h-[400px]'
+        : 'h-[315px] sm:h-[330px]';
 
-  // Count highest rarity revealed in current pack
   const tierCounts = cards.reduce<Record<StarRarityTier, number>>(
     (acc, c) => {
       if (!flippedIds.has(c.id)) return acc;
@@ -237,7 +246,7 @@ export function GachaPackMode({
 
   return (
     <div
-      className={`relative flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4 ${
+      className={`relative flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-5 ${
         stageShake ? 'gacha-stage-shake' : ''
       }`}
     >
@@ -257,20 +266,41 @@ export function GachaPackMode({
       )}
 
       {stage === 'sealed' || stage === 'tearing' ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto lg:flex-row lg:overflow-hidden">
-          {/* Left: Pack Catalog & Card Count Configurator */}
-          <div className="flex shrink-0 flex-col gap-3 rounded-2xl border border-hairline bg-surface-1/85 p-4 lg:w-[390px] xl:w-[430px]">
-            <div>
-              <div className="font-mono text-[0.6875rem] font-bold tracking-[0.12em] text-osu uppercase">
-                CARD PACK SELECTION
+        <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-y-auto lg:flex-row lg:items-stretch lg:overflow-hidden">
+          {/* Left: Editorial Pack Dossier (`the-masses-travels` operator archive layout) */}
+          <aside className="flex shrink-0 flex-col justify-between gap-3 rounded-[3px] border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] p-4 backdrop-blur-md lg:w-[410px] xl:w-[445px]">
+            {/* Eyebrow & 3-Color Palette Swatches */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2 border-b border-[var(--ga-line)] pb-2">
+                <span className="ga-mono text-[0.65625rem] font-bold tracking-[0.18em] text-[var(--ga-cobalt)] uppercase">
+                  SERIES {selectedPack.code} // NON-LOCAL POOL
+                </span>
+                <div className="flex items-center gap-1" title="Editorial Palette Swatches">
+                  {selectedPack.swatches.map((hex, sIdx) => (
+                    <span
+                      key={sIdx}
+                      className="h-3 w-3 border border-black/15"
+                      style={{ backgroundColor: hex }}
+                    />
+                  ))}
+                </div>
               </div>
-              <h3 className="font-display text-[1.0625rem] font-extrabold text-ink">
-                {t('选择卡包与单包卡牌数量', 'Choose Booster Pack & Card Count')}
-              </h3>
+
+              <div>
+                <div className="ga-serif text-[0.6875rem] tracking-[0.22em] text-[var(--ga-ink-3)] uppercase">
+                  {selectedPack.editorialSub}
+                </div>
+                <h3 className="ga-cn-serif text-[1.45rem] leading-tight font-bold text-[var(--ga-ink)]">
+                  <ScrambleText text={selectedPack.name} triggerKey={packId} />
+                </h3>
+                <p className="mt-1 text-[0.78125rem] text-[var(--ga-ink-2)]">
+                  {selectedPack.tagline}
+                </p>
+              </div>
             </div>
 
-            {/* 7 Pack Kinds */}
-            <div className="grid max-h-[310px] grid-cols-1 gap-1.5 overflow-y-auto pr-0.5 sm:grid-cols-2 lg:grid-cols-1">
+            {/* Clean Hairline-Divided Pack Index (01 - 07) */}
+            <div className="min-h-0 flex-1 overflow-y-auto border-y border-[var(--ga-line)] divide-y divide-[var(--ga-line)]">
               {packs.map((p) => {
                 const active = p.id === packId;
                 return (
@@ -278,98 +308,152 @@ export function GachaPackMode({
                     key={p.id}
                     type="button"
                     disabled={stage === 'tearing'}
-                    onClick={() => setPackId(p.id)}
-                    className={`flex items-center justify-between gap-2.5 rounded-xl border px-3 py-2 text-left transition-all ${
+                    data-ga-cursor={`PACK ${p.code}`}
+                    onClick={() => {
+                      setPackId(p.id);
+                      onTriggerEffect(0.35, p.accentHex);
+                    }}
+                    className={`relative flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition-colors ${
                       active
-                        ? 'border-osu/60 bg-osu/10 shadow-[inset_0_0_0_1px_color-mix(in_srgb,var(--t-osu)_35%,transparent)]'
-                        : 'border-hairline bg-surface-2/60 hover:border-hairline-strong hover:bg-surface-2'
+                        ? 'bg-[color-mix(in_srgb,var(--ga-cobalt)_11%,transparent)]'
+                        : 'hover:bg-[color-mix(in_srgb,var(--ga-ink)_4%,transparent)]'
                     }`}
                   >
+                    {active && (
+                      <span
+                        aria-hidden="true"
+                        className="absolute top-0 bottom-0 left-0 w-[3px]"
+                        style={{ backgroundColor: p.accentHex }}
+                      />
+                    )}
                     <div className="flex min-w-0 items-center gap-2.5">
                       <span
-                        className="h-7 w-5 shrink-0 rounded-[4px] shadow"
-                        style={{ background: p.foilGradient }}
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-display truncate text-[0.84375rem] font-bold text-ink">
-                            {p.name}
-                          </span>
-                          <span
-                            className="shrink-0 rounded px-1.5 py-px font-mono text-[0.625rem] font-bold"
-                            style={{
-                              backgroundColor: `${p.accentHex}22`,
-                              color: p.accentHex,
-                            }}
-                          >
-                            {p.badge}
-                          </span>
-                        </div>
-                        <div className="truncate text-[0.71875rem] text-ink-3">{p.tagline}</div>
-                      </div>
+                        className={`ga-mono text-[0.6875rem] font-bold ${
+                          active ? 'text-[var(--ga-cobalt)]' : 'text-[var(--ga-ink-3)]'
+                        }`}
+                      >
+                        {p.code}
+                      </span>
+                      <span className="h-3.5 w-2.5 shrink-0" style={{ background: p.foilGradient }} />
+                      <span className="truncate text-[0.84375rem] font-bold text-[var(--ga-ink)]">
+                        {p.name}
+                      </span>
                     </div>
+                    <span
+                      className="ga-mono shrink-0 rounded-[2px] px-1.5 py-0.5 text-[0.625rem] font-bold"
+                      style={{
+                        backgroundColor: `${p.accentHex}1c`,
+                        color: active ? p.accentHex : 'var(--ga-ink-2)',
+                      }}
+                    >
+                      {p.badge}
+                    </span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Card Count Customizer (1..20, Default 5) */}
-            <div className="space-y-2 rounded-xl border border-hairline bg-surface-2/75 p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1.5 text-[0.8125rem] font-bold text-ink">
-                  <Layers className="h-3.5 w-3.5 text-osu" />
-                  <span>{t('单包爆出卡牌数 (1–20)', 'Cards per Pack (1–20)')}</span>
-                </span>
-                <span className="font-stat rounded-md bg-osu/15 px-2 py-0.5 text-[0.875rem] font-extrabold text-osu tabular-nums">
-                  {cardCount} {t('张', 'cards')}
-                </span>
+            {/* Card Count Calibration Strip (1..20) + Primary Solid Obsidian CTA */}
+            <div className="space-y-2.5">
+              <div className="space-y-2 border border-[var(--ga-line)] bg-[var(--ga-panel)] p-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-[0.78125rem] font-bold text-[var(--ga-ink)]">
+                    <Layers className="h-3.5 w-3.5 text-[var(--ga-cobalt)]" />
+                    <span>{t('单包爆出卡牌数 (1–20)', 'Cards per Pack (1–20)')}</span>
+                  </span>
+                  <span className="ga-serif text-[1.125rem] font-bold text-[var(--ga-cobalt)] tabular-nums">
+                    {String(cardCount).padStart(2, '0')}{' '}
+                    <span className="ga-mono text-[0.6875rem] font-bold uppercase">
+                      {t('张', 'CARDS')}
+                    </span>
+                  </span>
+                </div>
+
+                <input
+                  type="range"
+                  min={1}
+                  max={20}
+                  step={1}
+                  disabled={stage === 'tearing'}
+                  value={cardCount}
+                  onChange={(e) => setCardCount(Number(e.target.value))}
+                  className="impeccable-range w-full"
+                  aria-label={t('单包卡牌数量', 'Cards per pack')}
+                />
+
+                <div className="flex items-center gap-1.5">
+                  {CARD_COUNT_PRESETS.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      disabled={stage === 'tearing'}
+                      data-active={cardCount === n ? 'true' : 'false'}
+                      data-ga-cursor={`QTY ${n}`}
+                      onClick={() => setCardCount(n)}
+                      className="ga-line-btn h-7 flex-1 font-mono text-[0.71875rem]"
+                    >
+                      {String(n).padStart(2, '0')}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <input
-                type="range"
-                min={1}
-                max={20}
-                step={1}
+              {error && (
+                <div className="border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-[0.78125rem] text-rose-500">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="button"
                 disabled={stage === 'tearing'}
-                value={cardCount}
-                onChange={(e) => setCardCount(Number(e.target.value))}
-                className="impeccable-range w-full"
-                aria-label={t('单包卡牌数量', 'Cards per pack')}
-              />
-
-              <div className="flex flex-wrap items-center gap-1.5">
-                {CARD_COUNT_PRESETS.map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    disabled={stage === 'tearing'}
-                    onClick={() => setCardCount(n)}
-                    className={`btn btn-sm min-h-[26px] flex-1 font-mono text-[0.75rem] ${
-                      cardCount === n ? 'border-osu/50 bg-osu/15 font-bold text-osu' : ''
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
+                data-ga-cursor={t('开启卡包', 'UNSEAL')}
+                onClick={() => void handleRipOpen()}
+                className="ga-solid-btn h-11 w-full justify-between px-4 text-[0.875rem]"
+              >
+                {stage === 'tearing' ? (
+                  <>
+                    <span className="inline-flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span>{t('正在撕开封条…', 'Unsealing Pack…')}</span>
+                    </span>
+                    <span className="ga-mono text-[0.6875rem] opacity-75">TEARING</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="ga-cn-serif tracking-wide">
+                      {t(`撕开卡包 · 爆出 ${cardCount} 张卡`, `UNSEAL PACK · ${cardCount} CARDS`)}
+                    </span>
+                    <span className="inline-flex items-center gap-2">
+                      <span className="ga-mono text-[0.65625rem] opacity-65">
+                        PACK {selectedPack.code}
+                      </span>
+                      <ArrowRight className="h-4 w-4" />
+                    </span>
+                  </>
+                )}
+              </button>
             </div>
+          </aside>
 
-            {error && (
-              <div className="rounded-xl border border-bad/40 bg-bad/10 px-3 py-2 text-[0.78125rem] text-bad">
-                {error}
-              </div>
-            )}
-          </div>
-
-          {/* Right: Interactive Hearthstone 3D Foil Pack Stage */}
-          <div className="relative flex min-h-[380px] flex-1 flex-col items-center justify-center overflow-hidden rounded-2xl bg-surface-0/55 p-6">
-            {/* Ambient Altar Glow */}
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute h-80 w-80 rounded-full opacity-35 blur-3xl transition-all duration-500"
-              style={{
-                background: `radial-gradient(circle, ${selectedPack.glowHex} 0%, transparent 70%)`,
-              }}
+          {/* Right: Multi-layered Graphic Plate Altar + 3D Foil Pack */}
+          <div
+            onMouseMove={(e) => {
+              const r = e.currentTarget.getBoundingClientRect();
+              const nx = ((e.clientX - r.left) / Math.max(1, r.width) - 0.5) * 2;
+              const ny = ((e.clientY - r.top) / Math.max(1, r.height) - 0.5) * 2;
+              setPlatePointer({ x: nx, y: ny });
+            }}
+            onMouseLeave={() => setPlatePointer({ x: 0, y: 0 })}
+            className="relative flex min-h-[410px] flex-1 flex-col items-center justify-center overflow-hidden rounded-[3px] border border-[var(--ga-line)] bg-[var(--ga-panel)] p-6 backdrop-blur-sm"
+          >
+            {/* Procedural `the-masses-travels` Graphic Plate Layer */}
+            <GachaPackPlate
+              pack={selectedPack}
+              cardCount={cardCount}
+              blueprint={blueprint}
+              tearing={stage === 'tearing'}
+              pointer={platePointer}
             />
 
             {/* Foil Booster Packet */}
@@ -386,48 +470,56 @@ export function GachaPackMode({
                 transform: `perspective(1000px) rotateX(${packTilt.rx}deg) rotateY(${packTilt.ry}deg)`,
                 transition: 'transform 160ms ease-out',
               }}
-              className={`relative z-10 w-[238px] sm:w-[258px] ${
+              className={`relative z-10 -mt-5 w-[238px] sm:w-[254px] ${
                 stage === 'tearing' ? 'gacha-pack-shake' : 'gacha-pack-float'
               }`}
             >
-              {/* Top Tear Flap */}
+              {/* Top Tear Seam */}
               <div
+                data-ga-target="true"
+                data-ga-cursor={t('沿虚线划开', 'DRAG TEAR')}
                 onPointerDown={handlePackSeamPointerDown}
                 onPointerMove={handlePackSeamPointerMove}
                 onPointerUp={handlePackSeamPointerUp}
                 onPointerCancel={handlePackSeamPointerUp}
-                title={t('沿此虚线左右划动或直接点击撕开按钮', 'Drag across top seam or click Rip Open Pack')}
-                className={`relative cursor-ew-resize overflow-hidden rounded-t-[14px] px-4 py-3 text-center select-none ${
+                title={t('沿此虚线左右划动或直接点击下方卡包撕开', 'Drag across seam or click pack body to open')}
+                className={`relative cursor-ew-resize overflow-hidden rounded-t-[3px] px-4 py-3 text-center select-none ${
                   stage === 'tearing' ? 'gacha-pack-rip-top' : ''
                 }`}
                 style={{
                   background: selectedPack.foilGradient,
-                  boxShadow: `0 -4px 20px -4px ${selectedPack.glowHex}55`,
-                  borderBottom: '2px dashed rgba(255, 255, 255, 0.55)',
+                  boxShadow: `0 -4px 22px -4px ${selectedPack.glowHex}55`,
+                  borderBottom: '2px dashed rgba(255, 255, 255, 0.58)',
                 }}
               >
-                <div className="flex items-center justify-center gap-1.5 font-mono text-[0.65625rem] font-bold tracking-[0.18em] text-white/85 uppercase">
+                <div className="ga-mono flex items-center justify-center gap-1.5 text-[0.65625rem] font-bold tracking-[0.2em] text-white/90 uppercase">
                   <Scissors className="h-3 w-3 text-amber-300" />
                   <span>{t('沿虚线划开', 'DRAG TO TEAR')}</span>
                 </div>
                 {tearDragPct > 0 && (
                   <div
-                    className="mt-1 h-1 rounded-full bg-amber-300 shadow-[0_0_12px_#fde047]"
+                    className="mt-1 h-1 bg-amber-300 shadow-[0_0_12px_#fde047]"
                     style={{ width: `${tearDragPct}%` }}
                   />
                 )}
               </div>
 
-              {/* Lower Main Booster Body */}
+              {/* Main Architectural Booster Foil Body */}
               <div
+                data-ga-target="true"
+                data-ga-cursor={t('点击撕开', 'RIP PACK')}
                 onClick={() => void handleRipOpen()}
-                className="relative flex h-[286px] cursor-pointer flex-col items-center justify-between overflow-hidden rounded-b-[18px] px-5 py-6 text-white shadow-[0_28px_60px_-14px_rgba(0,0,0,0.72)] select-none"
+                className="relative flex h-[284px] cursor-pointer flex-col items-center justify-between overflow-hidden rounded-b-[4px] px-5 py-6 text-white select-none"
                 style={{
                   background: selectedPack.foilGradient,
-                  boxShadow: `0 24px 56px -14px rgba(0,0,0,0.75), 0 0 36px -8px ${selectedPack.glowHex}66`,
+                  boxShadow: `0 28px 60px -14px rgba(0,0,0,0.72), 0 0 38px -8px ${selectedPack.glowHex}55`,
                 }}
               >
-                {/* Foil Shimmer */}
+                {/* Hairline Technical Inner Framing */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-2.5 border border-white/15"
+                />
                 <div
                   aria-hidden="true"
                   className="paimon-nebula pointer-events-none absolute -inset-8 opacity-45"
@@ -436,97 +528,82 @@ export function GachaPackMode({
                   }}
                 />
 
-                <div className="relative z-10 flex w-full items-center justify-between font-mono text-[0.65625rem] font-bold tracking-widest text-white/75 uppercase">
+                <div className="ga-mono relative z-10 flex w-full items-center justify-between text-[0.625rem] font-bold tracking-[0.16em] text-white/80 uppercase">
                   <span>PACK {selectedPack.code}</span>
                   <span>{selectedPack.starRangeLabel}</span>
                 </div>
 
-                {/* Central Emblem */}
+                {/* Central Minimalist Astrolabe Seal */}
                 <div className="relative z-10 flex flex-col items-center text-center">
                   <div
-                    className="flex h-20 w-20 items-center justify-center rounded-full backdrop-blur-md"
+                    className="flex h-20 w-20 items-center justify-center rounded-full border border-white/25 backdrop-blur-md"
                     style={{
-                      background: `radial-gradient(circle, ${selectedPack.glowHex}44 0%, rgba(0,0,0,0.35) 75%)`,
-                      boxShadow: `0 0 30px ${selectedPack.glowHex}66`,
+                      background: `radial-gradient(circle, ${selectedPack.glowHex}44 0%, rgba(0,0,0,0.38) 76%)`,
+                      boxShadow: `0 0 28px ${selectedPack.glowHex}55`,
                     }}
                   >
                     <span
-                      className="font-display text-[1.625rem] tracking-[0.14em]"
-                      style={{ fontWeight: 200, color: '#fef3c7', paddingLeft: '0.14em' }}
+                      className="font-display text-[1.55rem] tracking-[0.16em]"
+                      style={{ fontWeight: 200, color: '#fef3c7', paddingLeft: '0.16em' }}
                     >
                       osu!
                     </span>
                   </div>
-                  <div className="mt-3 font-display text-[1.125rem] font-extrabold tracking-tight drop-shadow">
+                  <div className="ga-cn-serif mt-3 text-[1.125rem] font-bold tracking-wide drop-shadow">
                     {selectedPack.name}
                   </div>
-                  <div className="mt-0.5 text-[0.71875rem] font-medium text-white/75">
-                    {selectedPack.badge}
+                  <div className="ga-mono mt-0.5 text-[0.625rem] tracking-[0.18em] text-white/70 uppercase">
+                    {selectedPack.editorialSub}
                   </div>
                 </div>
 
-                <div className="relative z-10 rounded-full bg-black/45 px-3.5 py-1 font-mono text-[0.75rem] font-bold tracking-wider text-amber-300 backdrop-blur-md">
-                  × {cardCount} {t('张未装谱面卡', 'BEATMAP CARDS')}
+                <div className="ga-mono relative z-10 rounded-[2px] border border-amber-300/35 bg-black/50 px-3 py-1 text-[0.6875rem] font-bold tracking-[0.14em] text-amber-300 backdrop-blur-md">
+                  × {String(cardCount).padStart(2, '0')} {t('张未装谱面', 'UNOWNED MAPS')}
                 </div>
               </div>
             </div>
 
-            {/* Rip Open Action Button */}
-            <div className="relative z-10 mt-6 flex flex-col items-center gap-2">
-              <button
-                type="button"
-                disabled={stage === 'tearing'}
-                onClick={() => void handleRipOpen()}
-                className="btn btn-primary min-h-[42px] gap-2 rounded-full px-7 text-[0.9375rem] font-bold shadow-xl"
-              >
-                {stage === 'tearing' ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>{t('正在撕开卡包…', 'Ripping Pack Open…')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4" />
-                    <span>
-                      {t(`撕开卡包 · 爆出 ${cardCount} 张卡`, `Rip Open Pack (${cardCount} Cards)`)}
-                    </span>
-                  </>
-                )}
-              </button>
-              <p className="text-[0.71875rem] text-ink-3">
-                {t(
-                  '开包后鼠标悬停卡背可窥视星数光晕，点击翻牌触发特效',
-                  'Hover face-down cards to peek Star Rating aura, then click to flip!',
-                )}
-              </p>
-            </div>
+            <p className="ga-mono absolute bottom-3 left-1/2 z-10 -translate-x-1/2 whitespace-nowrap rounded-[2px] border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-3 py-1 text-[0.6875rem] text-[var(--ga-ink-2)] backdrop-blur-sm">
+              {t(
+                '开包后鼠标悬停卡背亮起星数光谱光晕 · 点击翻牌触发特效',
+                'HOVER SEALED CARDS FOR STAR-RATING AURA · CLICK TO UNSEAL',
+              )}
+            </p>
           </div>
         </div>
       ) : (
-        /* Opened Hearthstone Reveal Grid */
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
-          {/* Reveal Control Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-hairline bg-surface-1/85 px-3.5 py-2.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-display text-[0.875rem] font-extrabold text-ink">
-                {selectedPack.name}
-              </span>
-              <span className="chip font-mono text-[0.71875rem]">
-                {t(`已翻开 ${flippedCount} / ${cards.length}`, `Revealed ${flippedCount} / ${cards.length}`)}
+        /* Opened Exhibition Grid */
+        <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-3 overflow-hidden">
+          {/* Architectural Command Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-[3px] border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-4 py-2.5 backdrop-blur-md">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-baseline gap-2">
+                <span className="ga-mono text-[0.6875rem] font-bold text-[var(--ga-cobalt)]">
+                  PACK {selectedPack.code}
+                </span>
+                <span className="ga-cn-serif text-[0.9375rem] font-bold text-[var(--ga-ink)]">
+                  <ScrambleText text={selectedPack.name} triggerKey={`${packId}-${cards.length}`} />
+                </span>
+              </div>
+
+              <span className="h-4 w-px bg-[var(--ga-line)]" />
+
+              <span className="ga-mono text-[0.71875rem] font-semibold text-[var(--ga-ink-2)]">
+                {t(`已翻开 ${flippedCount} / ${cards.length}`, `REVEALED ${flippedCount} / ${cards.length}`)}
               </span>
 
               {tierCounts.mythic > 0 && (
-                <span className="rounded-full bg-amber-400/20 px-2 py-0.5 font-mono text-[0.6875rem] font-bold text-amber-400">
+                <span className="ga-mono rounded-[2px] bg-amber-500/20 px-2 py-0.5 text-[0.65625rem] font-bold text-amber-500">
                   ✦ MYTHIC ×{tierCounts.mythic}
                 </span>
               )}
               {tierCounts.legendary > 0 && (
-                <span className="rounded-full bg-orange-400/20 px-2 py-0.5 font-mono text-[0.6875rem] font-bold text-orange-400">
+                <span className="ga-mono rounded-[2px] bg-orange-500/20 px-2 py-0.5 text-[0.65625rem] font-bold text-orange-500">
                   ★ LEGENDARY ×{tierCounts.legendary}
                 </span>
               )}
               {tierCounts.epic > 0 && (
-                <span className="rounded-full bg-rose-400/20 px-2 py-0.5 font-mono text-[0.6875rem] font-bold text-rose-400">
+                <span className="ga-mono rounded-[2px] bg-rose-500/20 px-2 py-0.5 text-[0.65625rem] font-bold text-rose-500">
                   ★ EPIC ×{tierCounts.epic}
                 </span>
               )}
@@ -536,8 +613,9 @@ export function GachaPackMode({
               {!allFlipped && (
                 <button
                   type="button"
+                  data-ga-cursor={t('全部翻开', 'REVEAL ALL')}
                   onClick={handleRevealAll}
-                  className="btn btn-primary btn-sm gap-1.5 text-[0.78125rem]"
+                  className="ga-solid-btn h-8 px-3 text-[0.75rem]"
                 >
                   <Eye className="h-3.5 w-3.5" />
                   <span>{t('全部翻开', 'Reveal All')}</span>
@@ -546,6 +624,7 @@ export function GachaPackMode({
 
               <button
                 type="button"
+                data-ga-cursor={t('下载整包', 'QUEUE ALL')}
                 onClick={() => {
                   onBatchDownload(cards);
                   onNotify(
@@ -555,29 +634,31 @@ export function GachaPackMode({
                     ),
                   );
                 }}
-                className="btn btn-sm gap-1.5 text-[0.78125rem]"
+                className="ga-line-btn h-8 px-3 text-[0.75rem]"
               >
-                <Download className="h-3.5 w-3.5 text-osu" />
+                <Download className="h-3.5 w-3.5 text-[var(--ga-cobalt)]" />
                 <span>{t(`下载整包 (${cards.length})`, `Download All (${cards.length})`)}</span>
               </button>
 
               <button
                 type="button"
+                data-ga-cursor={t('再开一包', 'OPEN AGAIN')}
                 onClick={() => void handleRipOpen()}
-                className="btn btn-sm gap-1.5 text-[0.78125rem]"
+                className="ga-line-btn h-8 px-3 text-[0.75rem]"
               >
-                <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" />
                 <span>{t('再开一包', 'Open Another')}</span>
               </button>
 
               <button
                 type="button"
+                data-ga-cursor={t('换卡包', 'PACK LIST')}
                 onClick={() => {
                   setStage('sealed');
                   setCards([]);
                   setFlippedIds(new Set());
                 }}
-                className="btn btn-sm gap-1 text-[0.78125rem]"
+                className="ga-line-btn h-8 px-3 text-[0.75rem]"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>{t('换卡包', 'Change Pack')}</span>
@@ -585,19 +666,20 @@ export function GachaPackMode({
             </div>
           </div>
 
-          {/* Scrollable Card Grid */}
+          {/* Spacious Full-Width Card Exhibition Grid */}
           <div className="min-h-0 flex-1 overflow-y-auto px-1 py-2">
-            <div className={`grid gap-3.5 sm:gap-4 ${gridColsClass}`}>
+            <div className={`grid gap-4 sm:gap-5 ${gridColsClass}`}>
               {cards.map((card, idx) => {
                 const isFaceDown = !flippedIds.has(card.id);
                 const stats = getCardSummaryStats(card);
                 const rarity = getStarRarityMeta(stats.repStars, lang);
+                const serial = String(idx + 1).padStart(2, '0');
 
                 return (
                   <div
                     key={card.id}
                     style={{ animationDelay: `${Math.min(idx, 12) * 55}ms` }}
-                    className={`gacha-pack-deal flex flex-col gap-1.5 ${cardHeightClass}`}
+                    className={`gacha-pack-deal flex flex-col gap-2 ${cardHeightClass}`}
                   >
                     <BeatmapGachaCard
                       beatmapset={card}
@@ -620,19 +702,22 @@ export function GachaPackMode({
                       onOpenDetail={(s, diffId) => onOpenDetail(s, diffId)}
                     />
 
-                    {/* Subtle rarity stamp underneath once flipped */}
-                    <div className="flex h-5 items-center justify-center">
+                    {/* Crisp Index & Rarity Footnote */}
+                    <div className="flex h-5 items-center justify-between border-t border-[var(--ga-line)] px-0.5 pt-1">
+                      <span className="ga-mono text-[0.625rem] font-semibold text-[var(--ga-ink-3)]">
+                        #{serial}
+                      </span>
                       {!isFaceDown ? (
                         <span
-                          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-[0.625rem] font-extrabold tracking-wider uppercase shadow-sm"
+                          className="ga-mono inline-flex items-center gap-1 rounded-[2px] px-1.5 py-0.5 text-[0.625rem] font-extrabold tracking-wider uppercase"
                           style={{ background: rarity.badgeBg, color: rarity.badgeText }}
                         >
                           <Star className="h-2.5 w-2.5 fill-current" />
                           <span>{rarity.label}</span>
                         </span>
                       ) : (
-                        <span className="font-mono text-[0.625rem] text-ink-4">
-                          #{idx + 1} · {t('悬停感应星光', 'Hover to sense SR')}
+                        <span className="ga-mono text-[0.625rem] text-[var(--ga-ink-3)]">
+                          {t('悬停感应星光', 'HOVER TO SENSE SR')}
                         </span>
                       )}
                     </div>
