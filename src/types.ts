@@ -742,3 +742,29 @@ export interface MusicPlaylist {
   createdAt: number;
   updatedAt: number;
 }
+
+export type GachaPackId =
+  | 'standard'
+  | 'pp_farm'
+  | 'high_star'
+  | 'rice_stream'
+  | 'ln_tech'
+  | 'loved_chaos'
+  | 'current_filter';
+
+export interface GachaDrawRequest {
+  count?: number;
+  packId?: GachaPackId;
+  baseFilters?: Partial<SearchFilters>;
+  excludeIds?: number[];
+  requireRankedPp?: boolean;
+}
+
+export interface GachaDrawResult {
+  cards: NormalizedBeatmapset[];
+  provider: 'osudirect' | 'sayobot';
+  fallbackUsed: boolean;
+  fallbackReason?: string;
+  packId: GachaPackId;
+  totalCandidates: number;
+}

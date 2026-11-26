@@ -11,6 +11,8 @@ import {
   FastBatchStartOptions,
   FilterArchive,
   FilterArchiveBrowsePosition,
+  GachaDrawRequest,
+  GachaDrawResult,
   LibraryDiffResult,
   LocalLibraryStatus,
   MusicPlaylist,
@@ -101,6 +103,13 @@ export function searchBeatmapsets(filters: SearchFilters): Promise<SearchResult>
 
 export function fetchBeatmapsetDetail(id: number): Promise<NormalizedBeatmapset> {
   return apiJson<NormalizedBeatmapset>(`/api/beatmapset/${id}`);
+}
+
+export function drawGachaBeatmapsets(payload: GachaDrawRequest): Promise<GachaDrawResult> {
+  return apiJson<GachaDrawResult>('/api/gacha/draw', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }
 
 export function fetchLibraryStatus(refresh = false): Promise<LocalLibraryStatus> {

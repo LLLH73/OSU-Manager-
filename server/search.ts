@@ -10,6 +10,9 @@ import {
   shouldAllowUnrankedForPpFilter,
 } from './pp.js';
 import {
+  GachaDrawRequest,
+  GachaDrawResult,
+  GachaPackId,
   LocalBeatmapsetStatus,
   NormalizedBeatmap,
   NormalizedBeatmapset,
@@ -835,4 +838,249 @@ export async function searchBeatmaps(filters: SearchFilters): Promise<SearchResu
 export async function getBeatmapsetDetail(setId: number): Promise<NormalizedBeatmapset | null> {
   const res = await fetchDirectById({ type: 'set', id: setId }, { mode: 'any' });
   return res?.beatmapsets[0] ?? null;
+}
+
+const GACHA_SORTS = [
+  'ranked_date:desc',
+  'play_count:desc',
+  'favourite_count:desc',
+  'submitted_date:desc',
+  'bpm:desc',
+] as const;
+
+function shuffleInPlace<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function buildGachaPackFilters(
+  packId: GachaPackId,
+  base: Partial<SearchFilters> | undefined,
+  requireRankedPp: boolean,
+): { filters: SearchFilters; maxOffset: number } {
+  const mode = base?.mode || '3';
+  const keys = base?.keys || '4';
+  const includeConverts = Boolean(base?.includeConverts);
+  const source = base?.source || 'auto';
+
+  if (packId === 'current_filter') {
+    const status = requireRankedPp ? 'ranked' : base?.status || 'leaderboard';
+    const hasNarrowQuery = Boolean(
+      (base?.q && base.q.trim()) ||
+        base?.minPp != null ||
+        base?.maxPp != null ||
+        base?.minStars != null ||
+        base?.maxStars != null ||
+        base?.creator,
+    );
+    return {
+      filters: {
+        ...base,
+        mode,
+        keys,
+        status,
+        includeConverts,
+        source,
+        installedFilter: 'hide_any',
+      },
+      maxOffset: hasNarrowQuery ? 48 : 220,
+    };
+  }
+
+  switch (packId) {
+    case 'pp_farm':
+      return {
+        filters: {
+          mode,
+          keys,
+          includeConverts,
+          source,
+          status: 'ranked',
+          minStars: 3.5,
+          maxStars: 7.2,
+          nsfw: base?.nsfw ?? false,
+          installedFilter: 'hide_any',
+        },
+        maxOffset: 280,
+      };
+    case 'high_star':
+      return {
+        filters: {
+          mode,
+          keys,
+          includeConverts,
+          source,
+          status: requireRankedPp ? 'ranked' : 'leaderboard',
+          minStars: 6.0,
+          nsfw: base?.nsfw ?? false,
+          installedFilter: 'hide_any',
+        },
+        maxOffset: 120,
+      };
+    case 'rice_stream':
+      return {
+        filters: {
+          mode,
+          keys,
+          includeConverts,
+          source,
+          status: requireRankedPp ? 'ranked' : 'leaderboard',
+          minStars: 2.0,
+          maxLn: 18,
+          nsfw: base?.nsfw ?? false,
+          installedFilter: 'hide_any',
+        },
+        maxOffset: 240,
+      };
+    case 'ln_tech':
+      return {
+        filters: {
+          mode,
+          keys,
+          includeConverts,
+          source,
+          status: requireRankedPp ? 'ranked' : 'leaderboard',
+          minStars: 2.2,
+          minLn: 42,
+          nsfw: base?.nsfw ?? false,
+          installedFilter: 'hide_any',
+        },
+        maxOffset: 200,
+      };
+    case 'loved_chaos':
+      return {
+        filters: {
+          mode,
+          keys,
+          includeConverts,
+          source,
+          status: requireRankedPp ? 'ranked' : 'loved',
+          minStars: 2.0,
+          nsfw: base?.nsfw ?? false,
+          installedFilter: 'hide_any',
+        },
+        maxOffset: 110,
+      };
+    case 'standard':
+    default:
+      return {
+        filters: {
+          mode,
+          keys,
+          includeConverts,
+          source,
+          status: requireRankedPp ? 'ranked' : 'leaderboard',
+          minStars: 1.5,
+          nsfw: base?.nsfw ?? false,
+          installedFilter: 'hide_any',
+        },
+        maxOffset: 760,
+      };
+  }
+}
+
+export async function drawRandomBeatmapsets(req: GachaDrawRequest): Promise<GachaDrawResult> {
+  const count = Math.min(20, Math.max(1, Math.round(Number(req.count ?? 5) || 5)));
+  const packId: GachaPackId = req.packId || 'standard';
+  const requireRankedPp = Boolean(req.requireRankedPp);
+  const excludeSet = new Set(
+    Array.isArray(req.excludeIds)
+      ? req.excludeIds.map((n) => Number(n)).filter((n) => Number.isFinite(n) && n > 0)
+      : [],
+  );
+
+  const { filters: packFilters, maxOffset } = buildGachaPackFilters(
+    packId,
+    req.baseFilters,
+    requireRankedPp,
+  );
+
+  const sortOrder = shuffleInPlace([...GACHA_SORTS]);
+  const probes: Array<{ sort: string; offset: number; limit: number }> = [
+    {
+      sort: sortOrder[0],
+      offset: maxOffset > 0 ? Math.floor(Math.random() * maxOffset) : 0,
+      limit: 48,
+    },
+    {
+      sort: sortOrder[1] || 'play_count:desc',
+      offset: maxOffset > 48 ? Math.floor(Math.random() * Math.min(96, maxOffset)) : 0,
+      limit: 48,
+    },
+    {
+      sort: sortOrder[2] || 'ranked_date:desc',
+      offset: 0,
+      limit: 48,
+    },
+  ];
+
+  const pool: NormalizedBeatmapset[] = [];
+  const seenIds = new Set<number>();
+  const fallbackPool: NormalizedBeatmapset[] = [];
+  let provider: 'osudirect' | 'sayobot' = 'osudirect';
+  let fallbackUsed = false;
+  let fallbackReason: string | undefined;
+
+  for (let i = 0; i < probes.length; i += 1) {
+    if (pool.length >= Math.max(count * 2, count + 6)) break;
+    const probe = probes[i];
+    try {
+      const res = await searchBeatmaps({
+        ...packFilters,
+        sort: probe.sort,
+        offset: probe.offset,
+        limit: probe.limit,
+      });
+      provider = res.provider;
+      if (res.fallbackUsed) {
+        fallbackUsed = true;
+        if (!fallbackReason && res.fallbackReason) fallbackReason = res.fallbackReason;
+      }
+      for (const set of res.beatmapsets) {
+        if (set.localStatus.inStable || set.localStatus.inLazer) continue;
+        if (
+          requireRankedPp &&
+          (!isRankedForPp(set.status) ||
+            !set.beatmaps.some((bm) => bm.matchesFilter !== false && bm.difficultyRating >= 0.5))
+        ) {
+          continue;
+        }
+        if (seenIds.has(set.id)) continue;
+        seenIds.add(set.id);
+        if (excludeSet.has(set.id)) {
+          fallbackPool.push(set);
+        } else {
+          pool.push(set);
+        }
+      }
+      if (i === 0 && pool.length >= count && res.beatmapsets.length > 0) {
+        break;
+      }
+    } catch (err) {
+      if (i === probes.length - 1 && pool.length === 0 && fallbackPool.length === 0) {
+        throw err;
+      }
+    }
+  }
+
+  shuffleInPlace(pool);
+  if (pool.length < count && fallbackPool.length > 0) {
+    shuffleInPlace(fallbackPool);
+    for (const item of fallbackPool) {
+      if (pool.length >= count) break;
+      pool.push(item);
+    }
+  }
+
+  return {
+    cards: pool.slice(0, count),
+    provider,
+    fallbackUsed,
+    fallbackReason,
+    packId,
+    totalCandidates: pool.length,
+  };
 }

@@ -69,9 +69,9 @@ import {
   servePreviewAudio,
   servePreviewBackground,
 } from './preview.js';
-import { getBeatmapsetDetail, searchBeatmaps } from './search.js';
+import { drawRandomBeatmapsets, getBeatmapsetDetail, searchBeatmaps } from './search.js';
 import { listSkins, resolveManiaSkin, serveSkinAsset } from './skins.js';
-import { AppConfig, InstalledFilter, SearchFilters, SearchMode, SearchSource, SearchStatus } from './types.js';
+import { AppConfig, GachaDrawRequest, InstalledFilter, SearchFilters, SearchMode, SearchSource, SearchStatus } from './types.js';
 
 const app = express();
 
@@ -348,6 +348,18 @@ app.get('/api/search', async (req: Request, res: Response) => {
     res.status(502).json({
       error: msg,
     });
+  }
+});
+
+app.post('/api/gacha/draw', async (req: Request, res: Response) => {
+  try {
+    const body = (req.body || {}) as GachaDrawRequest;
+    const result = await drawRandomBeatmapsets(body);
+    res.json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : st('随机抽卡请求失败', 'Random card draw failed');
+    logError('gacha', 'Random draw failed', { packId: req.body?.packId, error: msg });
+    res.status(502).json({ error: msg });
   }
 });
 

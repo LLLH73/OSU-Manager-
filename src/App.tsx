@@ -13,6 +13,7 @@ import {
   MapPin,
   Music,
   RotateCcw,
+  Sparkles,
   Square,
   X,
   Zap,
@@ -61,6 +62,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { SideRail } from './components/SideRail';
 import { TitleBar } from './components/TitleBar';
 import { BookArchiveMode } from './components/book/BookArchiveMode';
+import { GachaStudio } from './components/gacha/GachaStudio';
 import { MusicMiniDock } from './components/music/MusicMiniDock';
 import { MusicPlayerProvider, useMusicPlayer } from './components/music/MusicPlayerContext';
 import { MusicPlayerMode } from './components/music/MusicPlayerMode';
@@ -244,6 +246,7 @@ function AppWorkspace({
   } | null>(null);
   const [downloadsOpen, setDownloadsOpen] = useState(false);
   const [fastBatchOpen, setFastBatchOpen] = useState(false);
+  const [gachaOpen, setGachaOpen] = useState(false);
   const [fastBatch, setFastBatch] = useState<FastBatchSnapshot | null>(null);
   const [librarySyncOpen, setLibrarySyncOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -438,6 +441,7 @@ function AppWorkspace({
       const next = !prev;
       if (!next) {
         setWorkspaceMode('browse');
+        setGachaOpen(false);
       }
       try {
         localStorage.setItem('osu4k-archive-rail-collapsed', String(next));
@@ -450,6 +454,7 @@ function AppWorkspace({
 
   const openSaveArchiveRail = useCallback(() => {
     setWorkspaceMode('browse');
+    setGachaOpen(false);
     setArchiveRailCollapsed(false);
     try {
       localStorage.setItem('osu4k-archive-rail-collapsed', 'false');
@@ -461,6 +466,7 @@ function AppWorkspace({
 
   const switchWorkspaceMode = useCallback((nextMode: WorkspaceMode) => {
     setWorkspaceMode(nextMode);
+    setGachaOpen(false);
     setNavOpen(false);
     if (nextMode === 'book' || nextMode === 'music') {
       setIsPlaying(false);
@@ -476,6 +482,15 @@ function AppWorkspace({
       }
     }
   }, []);
+
+  const openGachaStudio = useCallback(() => {
+    pauseMusic();
+    setIsPlaying(false);
+    setPlayingSet(null);
+    setNavOpen(false);
+    setWorkspaceMode('browse');
+    setGachaOpen(true);
+  }, [pauseMusic]);
 
   const handleOpenBookInMusicPlayer = useCallback(
     (book?: BookSummary, contextBooks?: BookSummary[]) => {
@@ -793,6 +808,7 @@ function AppWorkspace({
       else if (detailState) setDetailState(null);
       else if (downloadsOpen) setDownloadsOpen(false);
       else if (navOpen) setNavOpen(false);
+      else if (gachaOpen) setGachaOpen(false);
       else if (!archiveRailCollapsed && window.innerWidth < 1536) {
         setArchiveRailCollapsed(true);
         try {
@@ -816,6 +832,7 @@ function AppWorkspace({
     detailState,
     downloadsOpen,
     navOpen,
+    gachaOpen,
     archiveRailCollapsed,
   ]);
 
@@ -950,6 +967,7 @@ function AppWorkspace({
 
   const handleSelectPreset = (preset: WorkflowPreset) => {
     setWorkspaceMode('browse');
+    setGachaOpen(false);
     setActivePresetId(preset.id);
     setActiveArchiveId(null);
     const next: SearchFilters = { ...DEFAULT_FILTERS, ...preset.filters, offset: 0 };
@@ -1552,6 +1570,24 @@ function AppWorkspace({
     setDownloadsOpen(true);
   };
 
+  const handleGachaBatchDownload = useCallback(
+    async (picked: NormalizedBeatmapset[]) => {
+      if (picked.length === 0) return;
+      await enqueueBatchDownloads({
+        items: picked.map((p) => ({
+          beatmapsetId: p.id,
+          title: p.title,
+          artist: p.artist,
+          creator: p.creator,
+        })),
+        target,
+        variant,
+        preferredMirror: config?.preferredDownloadSource || 'auto',
+      });
+    },
+    [target, variant, config?.preferredDownloadSource],
+  );
+
   const handleImportAllLazer = async () => {
     const res = await importLazerPending();
     notify(res.message);
@@ -1798,7 +1834,7 @@ function AppWorkspace({
         <main
           ref={mainScrollRef}
           className={
-            workspaceMode === 'book' || workspaceMode === 'music'
+            workspaceMode === 'book' || workspaceMode === 'music' || gachaOpen
               ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden p-0'
               : viewMode === 'lazer'
                 ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden px-3.5 pt-3 pb-3 sm:px-5 sm:pt-3.5 sm:pb-3.5'
@@ -1834,6 +1870,19 @@ function AppWorkspace({
                 );
               }}
               onNotify={notify}
+            />
+          ) : gachaOpen ? (
+            <GachaStudio
+              filters={filters}
+              target={target}
+              config={config}
+              theme={theme}
+              activeTaskBySet={activeTaskBySet}
+              onDownload={(s, chosenTarget) => void handleDownload(s, chosenTarget)}
+              onBatchDownload={(sets) => void handleGachaBatchDownload(sets)}
+              onOpenDetail={(s, diffId) => openDetail(s, { diffId: diffId ?? undefined })}
+              onNotify={notify}
+              onClose={() => setGachaOpen(false)}
             />
           ) : (
             <div
@@ -1927,6 +1976,19 @@ function AppWorkspace({
                     );
                   })}
                 </div>
+
+                <button
+                  type="button"
+                  onClick={openGachaStudio}
+                  title={t(
+                    '随机抽取本地未安装谱面（约会划卡 / 猜星数 / 炉石开卡包）',
+                    'Random Card Draw for non-local maps (Dating Swipe / Guess SR / Pack Opening)',
+                  )}
+                  className="btn btn-sm border-amber-500/45 bg-amber-500/12 text-amber-500 hover:border-amber-500/70 hover:bg-amber-500/20"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>{t('随机抽卡', 'Card Draw')}</span>
+                </button>
 
                 <button
                   type="button"
@@ -2371,7 +2433,7 @@ function AppWorkspace({
       )}
 
       {/* Floating Audio Preview Dock */}
-      {workspaceMode === 'browse' && (
+      {workspaceMode === 'browse' && !gachaOpen && (
         <AudioPlayerBar
           beatmapset={playingSet}
           playing={isPlaying}
