@@ -4,6 +4,39 @@
 
 ---
 
+## Session 28 — 对齐 `ppy/osu` (`20241007`) 原谱精确倍速算星、Lazer/Stable 同情景 PP 区分与 Book 左页滚动修复 (`v1.16.2`)
+
+- **日期**：2026-11-26
+- **对话 ID**：`b77055a5-c9a6-48e8-8c6a-ac6acae69e19`
+- **功能代码提交**：`7f01156`
+
+### 需求与根因排查
+1. **HT / DT / 倍速 Mania PP 计算偏差根因**：
+   - 玩家反馈两首 HT 实绩与官服明显偏差：`SEV-26` (`[4K] Deranged Desire // feat. Auros`, Lazer `HT 94.50%`) 官服 `425pp` 误算为 `398.8pp`；`最終鬼畜妹フランドール・S` (`[4K] Calamity at the Scarlet Mansion`, Lazer `HT 95.59%`) 官服 `392pp` 误算为 `400.0pp`。
+   - 核对上游 `ppy/osu` `ManiaDifficultyCalculator.cs` (`Version => 20241007`) 与 `rosu-pp` 源码后确认：此前 `rate^0.72` 幂律近似无法区分不同谱面的长条重叠 (`HoldFactor = 1.25` / `ReleaseThreshold = 30`) 与单柱/综合 Strain 衰减差异（如 `SEV-26` HT 实算 `7.37258★` 而近似低估，`Flandre-S` HT 实算 `6.83096★` 而近似高估）。
+   - 新建零原生依赖模块 `server/maniaDifficulty.ts` 精确移植 `20241007` 算法，并在 `server/realmReader.ts` 读取 SHA-256 `Hash`、在 `server/localLibrary.ts` 按需直读 `.osu` 计算任意 `clockRate` 精确星数，同时暴露 `GET /api/pp/exact-sr` 供前端 `PpCalculatorPanel` 对本地已安装谱面实现同等原谱实算。
+2. **同一谱面、同一情景下 Stable (`Classic`) 与 Lazer PP 未区分**：
+   - `server/pp.ts` 与 `src/utils/pp.ts` 的 `computeManiaCustomAccuracy()` 此前在默认「直算 (`maRatio === null`)」分支直接提前 `return`，完全跳过了 `base = classic ? 300 : 305` 的基准准度与 `320` 上限换算，导致切换 `Lazer (305)` / `Classic (300)` 在直算模式下 PP 完全相同（`0.0pp` 差值）且隐藏折算准度。
+   - 统一直算与黄彩比模式公式，使 `Lazer (305 + LN 头尾双判)` 与 `Classic/Stable (300 + LN 单判)` 在全部情景下（100% 全彩除外，短 LN 谱亦因判定总数影响 `lengthBonus`）精确产生官服机制差异，并在 `PpCalculatorPanel` 新增一键点击切换的对端 PP 对比胶囊（如 `Stable (300): ~605 pp (-2)`）、常显 `320 折算准度` 与有效判定数说明。
+3. **Book 展开页超长曲名导致左侧封面压缩及无法滚动**：
+   - `BookSpreadOverlay.tsx` 双栏网格缺少 `lg:grid-rows-[minmax(0,1fr)]` 约束，且左侧 `flex-col` 直接子元素缺少 `shrink-0`（默认 `flex-shrink: 1`），当 `最終鬼畜妹フランドール・S...` 标题换行至 4 行撑高内容时，Flexbox 优先纵向压缩 `aspect-[16/8.2]` 封面图而非触发 `overflow-y-auto`。补充 `lg:grid-rows-[minmax(0,1fr)]`、`overscroll-contain`、全 5 个子块 `shrink-0` 及标题断词后彻底恢复。
+
+### 关键变更文件
+- **版本号**：`package.json` (`1.16.2`)、`src/constants.ts`
+- **后端核心与 API**：`server/maniaDifficulty.ts`（新增）、`server/realmReader.ts`、`server/localLibrary.ts`、`server/pp.ts`、`server/index.ts`
+- **前端 PP 与 Book UI**：`src/utils/pp.ts`、`src/api.ts`、`src/components/BeatmapDetailModal.tsx`、`src/components/PpCalculatorPanel.tsx`、`src/components/FilterPanel.tsx`、`src/components/book/BookSpreadOverlay.tsx`
+- **文档**：`CHANGELOG.md`、`README.md`、`AGENT.md`、`docs/DEVLOG.md`
+
+### 验证结果
+- **静态检查、构建与官服 Top 50 实绩基准 (`verify-pp-v2.mjs`)**：`npm run typecheck` 与 `npm run build` 均退出码 `0`；冷扫 826 本耗时仅 `~739–944ms`，10 条真实官服成绩全数吻合在 `0.0–0.5 pp` 内（`SEV-26 HT` `425.5` vs `425`、`Flandre-S HT` `392.0` vs `392`、`SEV-26 Memoriae HT` `308.0` vs `308`、`Luminous Memory HT` `328.8` vs `329`、`SEISHUN HT` `269.3` vs `269`、`Galaxy Collapse Cataclysmic HT` `250.0` vs `250`、`Galaxy Collapse Ayase Stable` `294.3` vs `294`、`On And On!! NM` `345.4` vs `345.4`、`Triumph & Regret Stable` `293.3` vs `293.3`、`World's End NC` `205.1` vs `205`）；`calculateBeatmapPp` 验证直算与黄彩比模式下 Lazer 与 Classic 均清晰拉开差距。
+- **浏览器实机验收 (`:3728`, `1280×860`)**：
+  - `Book 档案库` 实显 `SEV-26` HT 为 `425.5 pp`，`最終鬼畜妹フランドール・S` HT 为 `392.0 pp`；
+  - `Flandre-S` 左页封面实测尺寸 `423.33×216.96px`（纵横比 `1.951 = 16/8.2`，零挤压），左 `<section>` (`clientHeight=601.03px`, `scrollHeight≈805.03px`) 平滑向下滚动 `204px` 后底部 `试听本地音源` / `在音乐台中播放` / `Mania 谱面预览` 按钮完整进入视口；
+  - `BeatmapDetailModal → PpCalculatorPanel` (`SEV-26 #2513401`) 默认 `直算 98%` 显示 `Lazer (305): 906 pp (8883 判定 LN 头尾双判)` 对比 `Stable (300): ~902 pp (-4) (6552 判定 LN 单判)`；切换 `HT 0.75x` 后立即触发本地实算显示 `等效 SR: 7.37★ [本地实算]` 与 `607 pp` (`Stable ~605 pp`)。
+- **Electron 打包与隔离冒烟**：执行 `npm run electron:pack` 刷新 `release\win-unpacked\osu-manager.exe`（`FileVersion=1.16.2`），于隔离 `:3729` 验证接口并通过清理，确认无残留监听进程且 `data/config.json` 维持 `898` 字节未改。
+
+---
+
 ## Session 27 — 修复卡包 360° 悬停换行、对齐官方 Mania PP 公式与重构星数推演八要素极简台 (`v1.16.1`)
 
 - **日期**：2026-11-26

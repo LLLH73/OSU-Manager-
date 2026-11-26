@@ -159,7 +159,7 @@
 2. **Ranked 大致 PP 估算、情景筛选与 PP 计算器**
    - 所有列表与难度表直接显示 `ranked` / `approved` 谱面的大致 PP（`~XXXpp`）。
    - 筛选栏配备加粗 **Lazer 光谱星数双滑块（`0.0★–15.0★ / ∞`）** 与 **PP 范围双滑块（`0–2000pp / ∞`）**，以及主从分栏 **PP 情景库**（覆盖 `NM`、`DT 1.5x`、`HT 0.75x`、`变速 Rate` 与持久化 `自定义` 组合）。
-   - 内置交互式 PP 计算器（对齐 `ppy/osu` Mania 准度制公式），支持调整准度（80%–100%）、Miss、倍速、**Lazer (305) / Classic (300)** 计分换算、Mod 与 **自定义黄彩比（320:300）**，并可对未上架练习图模拟计算。
+   - 内置交互式 PP 计算器（对齐 `ppy/osu` `20241007` Mania 官方公式），支持调整准度（80%–100%）、Miss、倍速、**Lazer (`305` + LN 头尾双判) / Classic·Stable (`300` + LN 单判)** 同情景实时差异对比与 **自定义黄彩比（320:300）**，本地已安装 Mania 谱面还可直接读取 `.osu` 原谱精确计算 `HT / DT / 任意倍速` 星数（告别近似拟合）。
 
 3. **双端曲库识别、零流量同步与极速批量下载**
    - 自动扫描 `osu!stable`（`Songs/`、`osu!.db`）与 `osu!lazer`（`client.realm` 只读二进制直读 + `files/`），本地已装谱面在任意视图自动点亮**四边金色框体**。
@@ -254,7 +254,7 @@ No osu! login or session cookie is required. It brings together multi-mirror bea
   - **Lazer Song Select (`lazer`)**: Viewport-locked split layout with rAF-driven curved carousel, staggered difficulty rows, `SR / OD / HP / LN%` bars, quick `HT / NM / DT` PP readout, full keyboard navigation (`↑/↓`, `←/→`, `Space`, `Enter`), and full-window cover-art theming.
   - **Grid (`grid`) & List (`list`) Views**: Dense card/list browsing with infinite scroll loading and gold borders on locally installed beatmaps.
 - **Ranked PP Estimation, Scenario Presets & PP Calculator**
-  - Dual-thumb spectral Star Rating (`0.0★–15.0★ / ∞`) and PP (`0–2000pp / ∞`) sliders plus master-detail scenario presets (`NM`, `DT 1.5x`, `HT 0.75x`, custom `Rate`, and saved presets), **official `ppy/osu` Mania PP accuracy math**, `Lazer (305)` / `Classic (300)` scoring conversion, and a custom `320:300` MA ratio calculator.
+  - Dual-thumb spectral Star Rating (`0.0★–15.0★ / ∞`) and PP (`0–2000pp / ∞`) sliders plus master-detail scenario presets (`NM`, `DT 1.5x`, `HT 0.75x`, custom `Rate`, and saved presets), **official `ppy/osu` (`20241007`) Mania PP math**, live **`Lazer (305 + LN head/tail)` vs `Classic/Stable (300 + 1× LN)`** side-by-side comparison, exact local `.osu` HT/DT/custom-rate Star Rating calculation, and a custom `320:300` MA ratio simulator.
 - **Dual-Client Recognition, Zero-Traffic Sync & Fast Batch**
   - Scans both `osu!stable` (`Songs/`, `osu!.db`) and `osu!lazer` (zero-native-dep read-only `client.realm` + `files/`).
   - Sync maps missing in Lazer directly from Stable without re-downloading, launch/focus either game client from the sidebar, and run `1–500` map text-only Fast Batch downloads across 7 mirrors with IPv6 / proxy (`127.0.0.1:6174` default) smart routing.

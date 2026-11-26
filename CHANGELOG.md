@@ -4,6 +4,19 @@ All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be docum
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.16.2] - 2026-11-26
+
+### Changed & Fixed
+- **对齐 `ppy/osu` (`20241007`) 原谱级 Mania 精确变速率算星（修复 HT / DT / NC / 任意倍速 PP 偏差）**（`server/maniaDifficulty.ts`, `server/realmReader.ts`, `server/localLibrary.ts`, `server/index.ts`, `src/api.ts`, `src/components/PpCalculatorPanel.tsx`, `src/components/BeatmapDetailModal.tsx`）：
+  - 新增纯 TypeScript、零原生依赖的 `server/maniaDifficulty.ts`，完整移植 `ppy/osu` `ManiaDifficultyCalculator`（`Version => 20241007`，`IndividualStrainEvaluator` + `OverallStrainEvaluator` + `Strain`），直接读取本地 `.osu` 原谱按任意 `clockRate` 实时计算官方 Mania 星数并缓存；
+  - `server/realmReader.ts` 读取 `client.realm` 中的 SHA-256 `Hash`，`server/localLibrary.ts` 在 Book 本地曲库成绩评估中优先使用 `.osu` 精确计算 HT/DT/NC 等倍速星数（替换旧有 `rate^0.72` 幂律估算，实测 10 条官服 Top 50 实绩误差收敛至 `0.0–0.5 pp` 内：`SEV-26` HT `425.5 pp` vs 官服 `425 pp`，`Flandre-S` HT `392.0 pp` vs `392 pp`，`Galaxy Collapse` HT `250.0 pp` vs `250 pp`，`World's End` NC `205.1 pp` vs `205 pp`）；
+  - 新增 `GET /api/pp/exact-sr` 与 `fetchExactLocalRateSr()`，本地已安装 Mania 谱面在 `PpCalculatorPanel` 中调整 `HT` / `DT` / 自定义倍率时同样自动使用原谱精确星数并显示 `本地实算` / `Exact` 徽标。
+- **统一 Lazer (`305`) 与 Stable / Classic (`300`) 同一情景 PP 差异化规则**（`server/pp.ts`, `src/utils/pp.ts`, `src/components/PpCalculatorPanel.tsx`, `src/components/FilterPanel.tsx`）：
+  - 修复 `computeManiaCustomAccuracy()` 在默认「直算 (`Direct`)」模式下跳过 `base = classic ? 300 : 305` 的漏洞，使同一首谱面、同一准度与情景下 `Lazer (305 + LN 头尾双判)` 与 `Classic/Stable (300 + LN 单判)` 在全部模式均真实区分计算；
+  - `PpCalculatorPanel.tsx` 新增实时对端对比按钮（如 `Stable (300): ~605 pp (-2)` 点击直切）、常显 `320 折算准度` 与有效判定数说明（`LN 头尾双判` vs `LN 单判`）。
+- **修复 Book 展开页超长曲名导致左侧封面被挤压及无法垂直滚动的问题**（`src/components/book/BookSpreadOverlay.tsx`）：
+  - 为桌面端双栏容器补充行高约束 `lg:grid-rows-[minmax(0,1fr)]`，为左侧滚动栏添加 `overscroll-contain`，并为左侧 5 个直接子块全部补充 `shrink-0`（同时为曲名 `<h2>` 添加 `break-words` / `overflow-wrap: anywhere`），彻底保护 `16:8.2` 封面原始比例并恢复底部音频试听与操作按钮的流畅垂直滚动。
+
 ## [1.16.1] - 2026-11-26
 
 ### Changed & Fixed

@@ -50,7 +50,8 @@
 | `server/sources.ts` | 7 个下载镜像中英双语定义（含 `nameEn`/`shortNameEn`/`descriptionEn` 与 `getLocalizedMirrorInfo()`）：`sayobot-auto`, `sayobot-txy`, `nekoha`, `osudirect`, `beatconnect`, `nerinyan`, `official` |
 | `server/network.ts` | `undici` 多 IP 协议族直连（DNS 缓存 + IPv6 优先/双栈 Happy Eyeballs）/代理路由、`6174` 端口 TCP 探测、并发镜像测速 `benchmarkMirrors()` |
 | `server/search.ts` | `osu.direct` 主搜索 + Sayobot 故障转移、官网 URL/ID 直达、LN% 估算、PP 情景反推星数与精确过滤、本地状态注入及 `drawRandomBeatmapsets()`（Probe 0 加宽抽取 + fallback 探针 `Promise.allSettled` 并发加速） |
-| `server/pp.ts` | 后端 PP 计算引擎（对齐 `ppy/osu` 官方 Mania 准度制公式、区分 `Lazer 305` / `Classic 300` 换算与 LN 双判定）与 `deriveStarBoundsFromPpFilter()` 星数区间反推 |
+| `server/pp.ts` | 后端 PP 计算引擎（对齐 `ppy/osu` 官方 Mania 准度制公式、统一直算与黄彩比模式下 `Lazer 305` / `Classic 300` 换算、LN 双判定计数及可选 `overrideEffectiveSr` 原谱实算星数覆写）与 `deriveStarBoundsFromPpFilter()` 星数区间反推 |
+| `server/maniaDifficulty.ts` | **新增**：零原生依赖精确移植 `ppy/osu` `ManiaDifficultyCalculator` (`Version => 20241007`)，读取 `.osu` 原谱精确计算 `HT` / `DT` / `NC` / 任意 `clockRate` 下的官方 Mania 星数（带 bounded LRU 缓存） |
 | `server/downloader.ts` | 并发下载队列、Magic Bytes (`PK\x03\x04`) 流首检测、自动切源重试、SSE 实时推送 |
 | `server/fastBatch.ts` | 快速跨页批量下载引擎：多镜像并发负载均衡、自动跨页扫描补齐目标数、跳过已装、IPv6/直连分流、Lazer 15 首合并 IPC 导入与节流 SSE 推送 |
 | `server/filterArchives.ts` | Filter 存档持久化管理：原子读写 `data/filter-archives.json`（上限 100 条、置顶排序、筛选条件与可选浏览位置上下文校验） |
@@ -58,8 +59,8 @@
 | `server/gachaCollections.ts` | 抽卡心动曲库与自定义多分组持久化管理：原子读写 `data/gacha-collections.json`（受保护默认分组 `default`、上限 60 分组 / 2000 首收藏，支持创建/重命名/清空/删除与单卡多分组分配） |
 | `server/installer.ts` | `.osz` ZIP 校验 (`adm-zip` 与 `verifyOszFileFast` 尾目录异步速检)、Stable 解压/直投 `.osz`（`fastInstallToStable`）/运行期临时 IPC、Lazer 极速暂存/批量导入/运行加载、`launchGameClient()` 客户端拉起 |
 | `server/library.ts` | Stable `Songs` 扫描、Lazer `client.realm`/`online.db`/`files` 哈希扫描缓存、进程检测（含 `stableExeExists` / `lazerExeExists`）、双端差异比对 |
-| `server/realmReader.ts` | 零原生依赖只读 Realm v24 (`T-DB`) 二进制解析器（带文件锁临时拷贝回退），读取 Lazer `client.realm` 谱面、难度、元数据、文件映射与游玩成绩 |
-| `server/localLibrary.ts` | 双端本地曲库与成绩聚合器（融合 `osu!.db` / `Songs/` / `scores.db` 与 `client.realm` / `files/`），提供成绩去重、全精度 float64 星数 Mania PP 估算、延迟 `.osu` 背景提取与 SVG 回退、`.osu` 红线/Kiai/密度节奏解析及音频流输出 |
+| `server/realmReader.ts` | 零原生依赖只读 Realm v24 (`T-DB`) 二进制解析器（带文件锁临时拷贝回退），读取 Lazer `client.realm` 谱面（含 `Hash` / `MD5Hash`）、难度、元数据、文件映射与游玩成绩 |
+| `server/localLibrary.ts` | 双端本地曲库与成绩聚合器（融合 `osu!.db` / `Songs/` / `scores.db` 与 `client.realm` / `files/`），提供成绩去重、全精度 float64 星数与 `.osu` 精确倍速星数 (`server/maniaDifficulty.ts`) Mania PP 计算、`/api/pp/exact-sr` 查星接口 (`resolveLocalDifficultyRateSr`)、延迟 `.osu` 背景提取与 SVG 回退、`.osu` 红线/Kiai/密度节奏解析及音频流输出 |
 | `server/media.ts` | 封面图（支持 `?hd=1` 原画级 `fullsize.jpg` 优先拉取与独立 `cache/covers-hd/` 磁盘 LRU 缓存）与 MP3 音频试听代理 |
 | `server/preview.ts` | Mania `.osu` 解析（红线 BPM + 绿线 SV + Barline + NPS 密度）、本地/ZIP/`cache/osz` 音源查找、`206 Range` 音频流与背景图输出 |
 | `server/skins.ts` | 扫描 `D:\OSU\Skins` 与 `osu!.<user>.cfg` 激活皮肤、解析 `[Mania]` `skin.ini`、内置 3 套皮肤、PerCy 超长 LN PNG 无损前 2048 行扫描线裁切 (`cropPngTopRows`) |
@@ -69,7 +70,7 @@
 - 配置与网络：`GET /api/config`、`PUT /api/config`、`GET/POST /api/config/detect-env`、`POST /api/config/background`、`DELETE /api/config/background`、`GET /api/network/status`、`POST /api/network/benchmark`
 - Filter 存档：`GET /api/filter-archives`、`POST /api/filter-archives`、`PUT /api/filter-archives/:id`、`DELETE /api/filter-archives/:id`
 - 本地 Book 档案库与音乐台接口：`GET /api/books`、`GET /api/books/:bookKey`、`GET /api/books/:bookKey/cover`、`GET /api/books/:bookKey/audio`、`GET /api/books/:bookKey/rhythm`、`GET/POST/PUT/DELETE /api/playlists`
-- 搜索与媒体：`GET /api/search`（含 `minPp`/`maxPp`/`ppAccuracy`/`ppRate`/`ppMisses`/`ppMaRatio`/`ppClassic`/`ppEz`/`ppNf`/`ppIncludeUnranked`）、`POST /api/gacha/draw`（随机抽取未安装非本地谱面卡池，支持 `1–20` 张与 7 种编号卡池）、`GET/POST/PUT/DELETE /api/gacha/collections*`（心动曲库多分组持久化读写与分组批量操作）、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`、`GET /api/media/custom-bg`
+- 搜索、PP 与媒体：`GET /api/search`（含 `minPp`/`maxPp`/`ppAccuracy`/`ppRate`/`ppMisses`/`ppMaRatio`/`ppClassic`/`ppEz`/`ppNf`/`ppIncludeUnranked`）、`GET /api/pp/exact-sr`（读取本地已安装 Mania `.osu` 计算精确倍速 SR）、`POST /api/gacha/draw`（随机抽取未安装非本地谱面卡池，支持 `1–20` 张与 7 种编号卡池）、`GET/POST/PUT/DELETE /api/gacha/collections*`（心动曲库多分组持久化读写与分组批量操作）、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`、`GET /api/media/custom-bg`
 - 预览与皮肤：`GET /api/preview/beatmapset/:setId`、`GET /api/preview/beatmapset/:setId/chart/:index`、`GET /api/preview/beatmapset/:setId/audio/:index`、`GET /api/preview/beatmapset/:setId/bg/:index`、`GET /api/skins`、`GET /api/skins/:skinId/mania`、`GET /api/skins/:skinId/asset`
 - 本地曲库、Lazer 与游戏加载/启动：`GET /api/library/status`、`POST /api/library/rescan`、`GET /api/library/diff`、`POST /api/library/sync-to-lazer`、`POST /api/library/open-folder`（支持 `subFolder`）、`GET /api/lazer/pending`、`POST /api/lazer/import-pending`、`DELETE /api/lazer/pending`、`POST /api/game/load`、`POST /api/game/launch`
 - 下载、快速批量与实时推送：`GET /api/downloads`、`POST /api/downloads`、`POST /api/downloads/batch`、`POST /api/downloads/:id/cancel`、`POST /api/downloads/:id/retry`、`DELETE /api/downloads/completed`、`GET/POST /api/fast-batch/(status|start|pause|resume|stop|clear)`、SSE `GET /api/events`（事件：`downloads`, `network`, `library`, `fast-batch`）
@@ -107,7 +108,7 @@
 | `src/components/book/rhineMotion.ts` | RhineLabUI 临界阻尼弹簧、插值波形与相邻书脊高斯递减悬停联动数学原语 (`computeHoverWaveLift`) |
 | `src/components/book/BookTextureManager.ts` | Canvas 动态贴图引擎（大号加粗描边书脊字样、纯哑光无封面顶面、双阶段重度缩采样高斯模糊、分帧绘制预算队列 `processPaintQueue`、LRU 保护与分批异步主题重绘 `setDarkModeAsync`） |
 | `src/components/book/BookArchiveScene.ts` | Three.js 3D 循环档案架控制器（纯垂直悬停抽出、前后循环换行、Slot 池化与 `uSlotFade` 着色器远景淡入淡出、中键视角平移与复位、`HeroBookRig` 抽出渐清/翻开/放回与筛选阶梯波动） |
-| `src/components/book/BookSpreadOverlay.tsx` | 打开 Book 后的 `React.memo` 双页展开内页浮层（带封面澄清动效、左页元数据/音频试听/操作，右页 `01 难度一览` / `02 历史成绩` / `03 曲目详档`） |
+| `src/components/book/BookSpreadOverlay.tsx` | 打开 Book 后的 `React.memo` 双页展开内页浮层（带封面澄清动效、`lg:grid-rows-[minmax(0,1fr)]` + `shrink-0` 防超长标题挤压封面与左页独立垂直滚动、左页元数据/音频试听/操作，右页 `01 难度一览` / `02 历史成绩` / `03 曲目详档`） |
 | `src/components/book/BookArchiveMode.tsx` | Book 模式主视图容器（`3D 书脊 \| 平铺毛玻璃` 切换、高级筛选浮层与双向排序、远景雾模糊遮罩、可收起/展开 `ACCESS BOOK` 浮卡、8 刻度导航与加载遮罩调度） |
 | `src/components/FilterArchiveRail.tsx` | 默认收起的 Filter 存档右侧栏（保存当前搜索状态与可选浏览位置、实时锚点预览、置顶/内联重命名/覆盖更新/两步安全删除/搜索过滤） |
 | `src/components/PpScenarioLibrary.tsx` | 左右主从分栏（Master-Detail）PP 情景库共享组件（左侧主模式轨道区分 `NM/DT/HT/Rate/自定义`，右侧展示对应副词条网格与自定义组合） |
@@ -120,13 +121,13 @@
 | `src/components/ManiaPreviewModal.tsx` | Mania 谱面实时预览弹窗（自适应 120%–125% 字号布局、皮肤切换、流速/倍速/方向、Canvas2D 轨道、右侧可滑缩放缩略图、NPS 可拖进度条） |
 | `src/components/MarqueeText.tsx` | 基于全局共享单例 `ResizeObserver` 的单行溢出往返平滑跑马灯组件（右缘渐隐，支持 `always` / `group-hover` 与减少动态偏好） |
 | `src/components/OverlayApp.tsx` | macOS 毛玻璃游戏内浮窗（红黄绿灯折叠、Spotlight 搜索、实时下载/加载、透明度调节） |
-| `src/components/PpCalculatorPanel.tsx` | 交互式 PP 情景估算计算器（准度/倍速/自定义黄彩比滑块+输入窗/Miss/Mod/未上架模拟） |
+| `src/components/PpCalculatorPanel.tsx` | 交互式 PP 情景估算计算器（准度/倍速/自定义黄彩比滑块+输入窗/Miss/Mod/未上架模拟、本地 `.osu` 倍速精确算星、`Lazer (305)` vs `Stable (300)` 实时对比切换） |
 | `src/components/AudioPlayerBar.tsx` | `pbakaus/impeccable` 风格底部浮动胶囊音频试听栏（圆形封面、`2px` 细滑轨与自适应左侧栏折叠居中偏移） |
 | `src/components/BeatmapDetailModal.tsx` | 谱面完整详情（`max-w-[960px]`、`overscroll-contain` + GPU 合成滚层）、全难度表（含 `大致 PP` 列、`Rice · LN XX%`/`Hybrid · LN XX%` 完整展示与单难度预览入口）、内嵌 PP 计算器、标签搜索、单独指定源下载 |
 | `src/components/DownloadDrawer.tsx` | 下载任务队列（含完成态预览/再加载按钮）与 Lazer 待导入队列批量导入抽屉 |
 | `src/components/FastBatchModal.tsx` | 极简纯文本「快速批量下载」工作台（目标数量 1–500、IPv6/直连分流、多镜像高并发与实时传输遥测） |
 | `src/components/LibrarySyncModal.tsx` | 双端曲库比对与 Stable→Lazer 零流量同步弹窗 |
-| `src/components/SettingsModal.tsx` | 客户端路径浏览、动态代理/IPv6 网络协议与镜像测速、`简体中文 / English` 界面语言切换（`segmented-auto` 防截断，即时预览/取消回滚/保存持久化）、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.16.1` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
+| `src/components/SettingsModal.tsx` | 客户端路径浏览、动态代理/IPv6 网络协议与镜像测速、`简体中文 / English` 界面语言切换（`segmented-auto` 防截断，即时预览/取消回滚/保存持久化）、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.16.2` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
 | `src/components/OnboardingModal.tsx` | 首次安装 6 步交互式环境配置与新手引导向导（右上角含 `中文 / EN` 快速切换、调用 `/api/config/detect-env` 探测多盘符客户端路径与本机代理端口，支持代理模式/端口预设、下载策略、实时主题/字号预览、配置摘要保存及防输入框箭头误触） |
 | `src/components/SelectField.tsx` | 统一下拉封装（支持 `<optgroup>` 嵌套匹配，解决 Chromium 原生箭头重叠问题） |
 | `src/components/gacha/gachaSketch.ts` | 参考 `Funkierry/the-masses-travels` 移植的确定性手绘 SVG 几何原语（过头抖动星环 `ring`、拱曲延展标尺 `rule`、毛笔 `brush`、光刃 `blade`、裁切角 `crops` 与星座连接） |
