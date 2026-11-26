@@ -4,6 +4,34 @@
 
 ---
 
+## Session 24 — 随机抽卡工作室 13 项 UX/美学全面升级、3D 圆环与 360° 立体检视 (`v1.14.0`)
+
+- **日期**：2026-11-26
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **版本**：`v1.14.0`
+- **关联代码提交**：`5242f04`
+- **本次需求（13 项优化）**：
+  1. 导航栏移至底部并更纤细，默认模式设为约会试听；
+  2. 卡包配色统一跟随全局主题色与强调色、风格一致；
+  3. 卡包左侧栏更窄并支持收起，修复抽卡数滑动条填充轨道不随滑块移动问题；
+  4. 开包后所有卡牌呈 **3D 椭圆圆环阵列** 排布，翻开后点击可进入 **360° 3D 立体检视**（鼠标拖拽任意旋转查看正反面与实体厚边）；
+  5. 去除卡包右侧开包舞台大块磨砂蒙层；
+  6. 约会模式放大卡牌尺寸（更宽更修长）；
+  7. 约会模式在右侧下面可见扇形叠放下一张预览卡；
+  8. 去除约会模式舞台遮罩层，完整展现 Three.js 背景；
+  9. 约会模式右侧「心动曲库」支持收起且默认收起；
+  10. 猜星模式禁用详情弹窗防泄星，扩充基于 **NM/HT/DT** 倍率与 **黄彩比 (`MA Ratio`)** 的情景线索；
+  11. 去除猜星模式画布与右侧控制台大块磨砂蒙层；
+  12. 精准连击指标移除 `🔥` Emoji；
+  13. 修复切换模式入场构造动画浮压界面元素及按钮卸载后准星标签残留问题。
+- **关键视觉复核与根因修复**：
+  - **360° 检视弹窗层叠遮挡（`inspector_v3 -> inspector_v4 -> inspector_v5`）**：初版弹窗位于 `<main z-10>` 内 `z-50`，被顶栏 `z-40`、底栏 `z-20` 与圆环卡片 `zIndex: 10..90` 反向压盖；改为 `createPortal(..., document.body)` 置于 `z-[48]`（严格高于主界面 `z-10`/底栏 `z-20`/顶栏 `z-40`，且低于 `BeatmapDetailModal` `.modal-backdrop z-50`）并对圆环舞台容器施加 `isolation: isolate`。同时因 `.gacha-atelier { background-color: var(--ga-bg) }` 优先级高于 Tailwind `@layer utilities`，在弹窗根容器显式强制 `data-dark="true"` 与内联 `rgba(7, 10, 18, 0.90)`、`#ffffff`，确保浅色「瓷器白」主题下依然保持清晰暗色画廊背景与高对比 HUD。
+  - **Reticle 残留与全开延迟**：在 `GachaAtmosphere.tsx` 的 rAF 循环内检测 `!targetEl.isConnected` 时立即清零锁框状态并避开 `footer`；在 `GachaPackMode.tsx` 将 `handleRevealAll` 错峰间隔缩紧为 `Math.min(80, Math.round(520 / N))`，避免 5 张牌长时间停在半翻状态。
+- **验证结果**：
+  - `npm run typecheck`、`npm run build`、Gacha 模块双语 AST 扫描（`13` 文件 `0` 处未受控中文）均 0 报错通过；
+  - 独立隔离服务端 (`http://127.0.0.1:3728`，临时 `OSU_DL_DATA_DIR`) 全量浏览器验收：`dating_v3` / `altar_v3` / `pack_ring_settled` / `inspector_v5` (`YAW 000° -> 050° -> 184° -> 280°` 拖拽与 `F`/`R`/`Esc`) / `guess_dark_en_v4` 在 `1440×900` 与 `1280×720` 下 `0` 报错、滑动条 `--fill` 实测 `21% / 58% / 100%`；
+  - `npm run electron:pack` 生成 `release/win-unpacked/osu-manager.exe`（`FileVersion=1.14.0`），`:3729` 隔离冒烟实测 `/api/health => 200`、`/ => 200`、`POST /api/gacha/draw => 5 cards`，测试结束后端口 `0` 残留、`data/config.json` 保持 `898` 字节原样。
+
 ## Session 23 — 打开随机抽卡自动收起左侧栏、参考 `Funkierry/the-masses-travels` 重构抽卡美术/UI/动效与视觉精修 (`v1.13.0`)
 
 - **日期**：2026-11-26

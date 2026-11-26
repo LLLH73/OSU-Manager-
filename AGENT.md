@@ -125,20 +125,21 @@
 | `src/components/DownloadDrawer.tsx` | 下载任务队列（含完成态预览/再加载按钮）与 Lazer 待导入队列批量导入抽屉 |
 | `src/components/FastBatchModal.tsx` | 极简纯文本「快速批量下载」工作台（目标数量 1–500、IPv6/直连分流、多镜像高并发与实时传输遥测） |
 | `src/components/LibrarySyncModal.tsx` | 双端曲库比对与 Stable→Lazer 零流量同步弹窗 |
-| `src/components/SettingsModal.tsx` | 客户端路径浏览、动态代理/IPv6 网络协议与镜像测速、`简体中文 / English` 界面语言切换（`segmented-auto` 防截断，即时预览/取消回滚/保存持久化）、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.13.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
+| `src/components/SettingsModal.tsx` | 客户端路径浏览、动态代理/IPv6 网络协议与镜像测速、`简体中文 / English` 界面语言切换（`segmented-auto` 防截断，即时预览/取消回滚/保存持久化）、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.14.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
 | `src/components/OnboardingModal.tsx` | 首次安装 6 步交互式环境配置与新手引导向导（右上角含 `中文 / EN` 快速切换、调用 `/api/config/detect-env` 探测多盘符客户端路径与本机代理端口，支持代理模式/端口预设、下载策略、实时主题/字号预览、配置摘要保存及防输入框箭头误触） |
 | `src/components/SelectField.tsx` | 统一下拉封装（支持 `<optgroup>` 嵌套匹配，解决 Chromium 原生箭头重叠问题） |
 | `src/components/gacha/gachaSketch.ts` | 参考 `Funkierry/the-masses-travels` 移植的确定性手绘 SVG 几何原语（过头抖动星环 `ring`、拱曲延展标尺 `rule`、毛笔 `brush`、光刃 `blade`、裁切角 `crops` 与星座连接） |
-| `src/components/gacha/GachaSanctumWorld.ts` | Three.js 程序化圣堂建筑舞台控制器（对称拱柱廊、玫瑰窗、悬浮旋转星仪、光刃碎片与飞羽、3 模式镜头运镜、`Blueprint` 线框模式与开包/高星炸裂脉冲） |
-| `src/components/gacha/GachaAtmosphere.tsx` | `the-masses-travels` 全屏氛围层（Three.js 挂载、矿石纸感/夜色面纱、纸张噪点、构造网格、指针连线点阵、左侧竖排注记与右侧标尺、四角 Reticle 框、3 帧定格构造脉冲与 `<ScrambleText>` 解码） |
-| `src/components/gacha/GachaPackPlate.tsx` | 封印祭坛多层视差手绘图版（半调网点圆盘、倾斜光环、圆环铭文、`Y1–Y6` 标尺、迷你拼贴 UI 框与构造线尺寸标注） |
-| `src/components/gacha/GachaStudio.tsx` | 随机抽卡工作室总控界面（`01 卡包典藏 / 02 约会试听 / 03 星数推演` 章节切换、`B` 构造线热键、共享音频试听控制与 Three.js/定格爆发调度） |
-| `src/components/gacha/GachaPackMode.tsx` | 卡包典藏模式（`SERIES 01–07` 档案摘要+三色样条、`1–20` 抽卡数刻度、`GachaPackPlate` 撕包祭坛、`Reveal All` / `Download All` 与炉石+光刃爆裂网格） |
-| `src/components/gacha/GachaDatingMode.tsx` | 约会试听模式（实时手绘旋转罗盘与矢量角度读数、左右滑卡与快捷键、撤回、切卡自动试听、右侧心仪档案库批量下载） |
-| `src/components/gacha/GachaGuessMode.tsx` | 星数推演模式（裁切框标本、Ranked 情景 PP 线索、光学光谱校准尺、指数评分、`ScrambleText` 得分、预测/真实误差对比标尺与最高分持久化） |
-| `src/components/gacha/BeatmapGachaCard.tsx` | 无边框 `3px` 收藏级 3D 正反谱面卡（悬停卡背亮起真实星数光谱光晕与裁切角；翻牌触发炉石光环+星芒+旋转手绘光刃；正面封面/BPM/星数/PP/下载/详情） |
+| `src/components/gacha/GachaSanctumWorld.ts` | Three.js 程序化圣堂建筑舞台控制器（响应全局 `--t-canvas` / `--t-osu` 动态换色、对称拱柱廊、玫瑰窗、悬浮旋转星仪、光刃碎片与飞羽、3 模式镜头运镜、`Blueprint` 线框模式与炸裂脉冲） |
+| `src/components/gacha/GachaAtmosphere.tsx` | 全屏氛围层（Three.js 挂载、全局主题色同步、轻量透明面纱、纸张噪点、构造网格、指针连线点阵、左侧竖排注记与右侧标尺、脱离目标即时复位且避开底栏的 Reticle 准星、`z-[4]` 底层定格构造脉冲与 `<ScrambleText>` 解码） |
+| `src/components/gacha/GachaPackPlate.tsx` | 封印祭坛多层视差手绘图版（统一随 `--ga-cobalt` / `--ga-ink` 全局主题调色盘变色的半调网点圆盘、倾斜光环、圆环铭文与 `Y1–Y6` 标尺） |
+| `src/components/gacha/GachaStudio.tsx` | 随机抽卡工作室总控界面（纤细底部导航栏 `01 约会试听 / 02 卡包典藏 / 03 星数推演`、默认 `dating`、同步 `--t-osu`/`--t-canvas`、`B` 构造线热键、音量滑条 `--fill` 与猜星详情隔离） |
+| `src/components/gacha/GachaPackMode.tsx` | 卡包典藏模式（更窄且可收起/展开的 `SERIES 01–07` 档案侧栏、`1–20` `--fill` 跟踪滑动条、通透开包祭坛、统一主题色收藏卡包、`1–20` 张 3D 椭圆圆环阵列旋转舞台与 360° 检视入口） |
+| `src/components/gacha/GachaCardInspectorModal.tsx` | **新增**：Portal 挂载至 `document.body` (`z-[48]`) 的 360° 3D 立体卡片检视弹窗（`data-dark="true"` 独立暗色画廊背板、鼠标惯性 360° yaw/pitch 拖拽、滚轮缩放、10px 星级发光倒角厚边、`F` 翻转、`R` 复位、`←/→` 切卡） |
+| `src/components/gacha/GachaDatingMode.tsx` | 约会试听模式（默认模式：通透无遮罩舞台、放大卡牌尺寸、右侧下方扇形叠放预告下两张卡片、默认收起的可折叠右侧「心动曲库」抽屉与切卡自动试听） |
+| `src/components/gacha/GachaGuessMode.tsx` | 星数推演模式（移除卡片/得分卡 `详情` 入口、通透无面板遮罩舞台、Zap 图标连击计数、24 种 `NM/HT/DT` + 黄彩比 `MA Ratio` / Miss / Mod 情景与预测误差标尺） |
+| `src/components/gacha/BeatmapGachaCard.tsx` | 无边框 `3px` 收藏级 3D 正反谱面卡（悬停卡背星光光晕与裁切角、翻牌粒子+光刃特效、支持可选 `onInspect` 360° 检视触发器与统一主题主按钮色） |
 | `src/components/gacha/PaimonStarfieldBack.tsx` | 派蒙星空斗篷卡背（纯 GPU 合成星云/闪烁星辰叠加 `gachaSketch` 双重套印手绘星盘与极简细体 `osu!` / `CELESTIAL DECK` 标识） |
-| `src/components/gacha/gachaUtils.ts` | 卡包配置（含三色 `swatches` 与 `editorialSub`）、星数光谱光晕分级、代表难度/PP 摘要、猜星情景生成与评分公式工具 |
+| `src/components/gacha/gachaUtils.ts` | 卡包配置（`GachaPackSigil` 徽记、全包统一主题映射）、星数光谱光晕分级、24 种严格 `NM/HT/DT` + 黄彩比 `maRatioLabel` 猜星情景与指数评分公式 |
 | `src/components/gacha/gachaSound.ts` | Web Audio API 合成开包撕裂、悬停律动、分阶翻牌爆裂、滑卡与猜星揭晓音效 |
 
 ---

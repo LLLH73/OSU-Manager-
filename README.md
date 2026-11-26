@@ -96,36 +96,43 @@
       <sub>Auto-detects Stable / Lazer folders &amp; online proxy ports (<code>6174</code> / Clash <code>7890</code> / v2rayN <code>10808</code>) on first launch</sub>
     </td>
     <td width="50%" align="center" valign="top">
-      <a href="docs/screenshots/10-gacha-pack.png"><img src="docs/screenshots/10-gacha-pack.png" alt="Random Card Draw — Pack Opening Mode with Paimon Starfield Back and Star Rating Glow" width="100%" /></a>
+      <a href="docs/screenshots/10-gacha-pack.png"><img src="docs/screenshots/10-gacha-pack.png" alt="Random Card Draw — 3D Circular Ring Pack Opening Mode" width="100%" /></a>
       <br />
-      <strong>10 · 随机抽卡 · 01 卡包典藏（自动收起左侧栏 + 派蒙星图卡背 + 星数光谱悬停光晕）</strong>
+      <strong>10 · 随机抽卡 · 02 卡包典藏（3D 圆环阵列 + 拖拽/滚轮旋转 + 派蒙星图卡背）</strong>
       <br />
-      <sub>Auto-collapsed sidebar, <code>1–20</code> custom cards, Paimon double-inked astrolabe back, SR aura &amp; blade flip VFX</sub>
+      <sub>3D circular card ring (`1–20` cards), drag/wheel orbit, click revealed card for 360° slab inspect</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="docs/screenshots/11-gacha-dating.png"><img src="docs/screenshots/11-gacha-dating.png" alt="Random Card Draw — Dating Swipe Mode with Drafting Compass and Auto Audio Preview" width="100%" /></a>
+      <a href="docs/screenshots/11-gacha-dating.png"><img src="docs/screenshots/11-gacha-dating.png" alt="Random Card Draw — Default Dating Swipe Mode with Right-Fanned Preview Stack" width="100%" /></a>
       <br />
-      <strong>11 · 随机抽卡 · 02 约会试听（手绘草图罗盘背景 + 左右划卡 + 切牌自动试听）</strong>
+      <strong>11 · 随机抽卡 · 01 约会试听（默认模式 · 超大卡牌右向扇形叠放 + 极简底部导航栏）</strong>
       <br />
-      <sub>Live SVG drafting compass backdrop, Tinder-style drag/swipe, Undo, auto-play preview &amp; Liked Archive folio</sub>
+      <sub>Default tab, enlarged cards fanned right, collapsed Liked drawer, open Three.js canvas &amp; auto-play audio</sub>
     </td>
     <td width="50%" align="center" valign="top">
-      <a href="docs/screenshots/12-gacha-guess.png"><img src="docs/screenshots/12-gacha-guess.png" alt="Random Card Draw — Obsidian Dark English Guess SR Mode with Optical Calibration Ruler" width="100%" /></a>
+      <a href="docs/screenshots/12-gacha-guess.png"><img src="docs/screenshots/12-gacha-guess.png" alt="Random Card Draw — Obsidian Dark English Guess SR Mode with NM/HT/DT and MA Ratio" width="100%" /></a>
       <br />
-      <strong>12 · 随机抽卡 · 03 星数推演（暗色英文模式 · 光学刻度尺与误差对照标尺）</strong>
+      <strong>12 · 随机抽卡 · 03 星数推演（暗色英文 · NM/HT/DT 与黄彩比 / MA Ratio · 锁定详情）</strong>
       <br />
-      <sub>Obsidian Dark + English UI: crop-marked specimen, PP scenario clue, optical SR calibration &amp; delta ruler</sub>
+      <sub>Open Three.js backdrop, Details locked, 24 NM/HT/DT scenarios with MA Ratio, Zap streak &amp; delta ruler</sub>
     </td>
   </tr>
   <tr>
-    <td colspan="2" align="center" valign="top">
-      <a href="docs/screenshots/13-gacha-altar.png"><img src="docs/screenshots/13-gacha-altar.png" alt="Random Card Draw — Editorial Graphic Plate Sealed Pack Altar inspired by the-masses-travels" width="76%" /></a>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/screenshots/13-gacha-altar.png"><img src="docs/screenshots/13-gacha-altar.png" alt="Random Card Draw — Unified Global-Theme Collector Sleeve and Collapsible Pack Dossier" width="100%" /></a>
       <br />
-      <strong>13 · 随机抽卡 · 封印祭坛与 Three.js 圣堂建筑舞台（参考 Funkierry/the-masses-travels）</strong>
+      <strong>13 · 随机抽卡 · 封印祭坛与主题同步卡包（可收起窄版侧栏 + 顺滑进度滑动条）</strong>
       <br />
-      <sub>Three.js procedural sanctum, hand-drawn overshooting construction plate, <code>B</code> Blueprint wireframe mode &amp; foil tear pack</sub>
+      <sub>Unified global-theme sleeve on open Three.js Sanctum, collapsible narrow Pack Dossier &amp; calibrated range slider</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/screenshots/14-gacha-inspector.png"><img src="docs/screenshots/14-gacha-inspector.png" alt="Random Card Draw — 360° 3D Collector Slab Inspector Modal" width="100%" /></a>
+      <br />
+      <strong>14 · 随机抽卡 · 360° 3D 立体卡片检视器（鼠标任意拖拽 360° 旋转与实体星级倒角厚边）</strong>
+      <br />
+      <sub>360° inertial drag yaw/pitch, wheel zoom, Flip <code>180° (F)</code>, Reset <code>(R)</code> &amp; star-rarity 10px bevel edges</sub>
     </td>
   </tr>
 </table>
@@ -182,13 +189,12 @@
    - 覆盖搜图选歌、详情/PP 计算器、Mania 预览器、3D Book 档案库、OSU! 音乐台、游戏内浮窗、Electron 系统托盘菜单与后端错误/镜像描述的全量中英双语体验。
    - 可在「设置 → 分区 3」或新手引导右上角切换 `简体中文` / `English`（切换立即预览，点保存持久化至 `config.json`，取消/Esc 自动回滚）；右上角测速状态与提示文案严格跟随用户实际配置的 `proxyPort`（不再固定写死 `6174`）与直连/代理模式动态显示。
 
-10. **随机抽卡工作室（自动收起主侧栏 · 参考 [`Funkierry/the-masses-travels`](https://github.com/Funkierry/the-masses-travels) 美术重构）**
-   - 在浏览模式 `Lazer` 按钮右侧提供「随机抽卡」入口，打开后**自动收起主左侧栏**呈现全宽展台；仅抽取本地未拥有的谱面（严格排除 Stable 与 Lazer 本地已存曲目）。
-   - **Three.js 圣堂建筑舞台与手绘平面图版**：内置可随明暗主题与 3 大模式镜头切换的程序化 Three.js 柱廊/星仪舞台、手绘过头笔触星环与套印错位双线（`gachaSketch`）、四角 Reticle 锁定准星、字形解码动效、定格构造脉冲转场，以及按 `B` 键或顶栏按钮实时切换的 **构造线 (Blueprint)** 线框视图。
-   - 无边框 3px 收藏级矩形卡面：正面展示铺满封面、曲名/作者、BPM、官方光谱星数、`~XXXpp` 预估 PP、一键下载与详情弹窗；背面采用原神派蒙星空斗篷动态效果、双线手绘星盘与极简细体 `osu!` 标识。
-   - **01 卡包典藏**：7 种卡包 + 3 色样条摘要与 `1–20` 自定义抽卡数（默认 `5`）；拖拽撕开封条或点击开包，悬停卡背亮起对应真实星数光谱光晕与裁切角框，翻牌触发炉石风星芒与建筑光刃爆裂特效及 Web Audio 合成音效。
-   - **02 约会试听**：后台搭载随拖拽角度联动的草图罗盘，支持左右划卡、键盘快捷键、撤回、切卡自动播放试听，以及右侧心仪列表一键/批量下载。
-   - **03 星数推演**：裁切框标本展台遮罩真实星数（`?.??★`），依据情景 PP 与光学星数刻度尺猜星数，揭晓后绘制预测/真实差值标尺并按指数误差评分（`0–1000` / `SS–D`）持久化最高分。
+10. **随机抽卡工作室（`v1.14.0` — 细长底部导航 Dock · 全局主题同色卡包 · 3D 圆环与 360° 立体检视）**
+   - 在浏览模式 `Lazer` 按钮右侧提供「随机抽卡」入口，打开后**自动收起主左侧栏与存档栏**；模式切换栏下移至纤细的**底部导航 Dock**，**默认直接进入 `01 约会试听`**（顺序为 `01 约会试听 · 02 卡包典藏 · 03 星数推演`）。所有定格构造转场动画沉底于 `z-[4]` 背景层，不再浮压界面元素。
+   - **Three.js 圣堂通透画布与全主题配色联动**：三大模式主舞台全部去除厚重遮罩面板，让实时响应全球 `--t-canvas` 与强调色 `--t-osu` 的 Three.js 圣堂建筑舞台完整透出；支持 `B` 键快速切换构造线框。
+   - **01 约会试听（默认模式）**：放大卡牌展示尺寸并在**右侧下面扇形叠放预览下一张卡片**，支持左右滑卡、快捷键、撤回与切卡自动试听；右侧「心动曲库」改为默认收起的折叠抽屉。
+   - **02 卡包典藏与 360° 3D 检视**：左侧卡包清单更窄且支持自由收起/展开，抽卡数量滑条 (`1–20`) 填充轨道精确跟随滑块；7 种收藏卡包统一映射当前全局主题色；撕开卡包后所有卡牌按 **3D 椭圆圆环阵列** 分布（支持拖拽空白处、滚轮或左右箭头旋转圆环），悬停卡背亮起对应真实星数光谱光晕与裁切角框，点击任意已翻开正面卡片即可进入 **360° 3D 立体检视弹窗**（鼠标惯性 360° 自由旋转、滚轮缩放、10px 星级倒角厚边、`F` 翻转至派蒙星空卡背、`R` 复位）。
+   - **03 星数推演**：移除卡片 `详情` 入口严格防止窥见真实星数，扩充 24 种严格基于 `NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)` 倍率与**黄彩比（`MA Ratio`）**/ Miss / `EZ` / `Classic` 组合的高信息量情景线索，并将连续精准指标图标焕新为干净的闪电连击徽标（移除火苗 Emoji）。
 
 ### 快速开始
 
@@ -264,13 +270,12 @@ No osu! login or session cookie is required. It brings together multi-mirror bea
 - **Full ZH / EN Bilingual Switcher & Dynamic Proxy Diagnostics**
   - Complete Simplified Chinese & English localization across Browse, Beatmap Detail & PP Calculator, Mania Previewer, 3D Book Archive, OSU! AUDIO Music Station, Acrylic Overlay, Electron Tray/Hotkeys, and backend mirror/status responses.
   - Switch live via **Settings → Section 3 (`简体中文 | English`)** or the onboarding header pill (persisted in `config.json`, safely rolls back on Cancel/Esc). Top-bar latency checks and toast notifications dynamically reflect your configured `proxyPort` or `Direct` mode.
-- **Random Card Draw Studio (`v1.13.0` — Redesigned after [`Funkierry/the-masses-travels`](https://github.com/Funkierry/the-masses-travels))**
-  - Accessible directly beside the `Lazer` view button in Browse mode; **automatically collapses the left sidebar** on launch and exclusively draws unowned beatmapsets not present in Stable or Lazer local libraries.
-  - **Architectural & Graphic Engine**: Features a procedural **Three.js Sanctum stage** (`GachaSanctumWorld`), dual mineral-paper Light / nocturnal-obsidian Dark palettes, overshooting hand-drawn SVG rings & misregistered double-ink lines (`gachaSketch`), hovering Reticle corner brackets, scramble title decoding, stop-motion burst transitions, and a live **`B` Blueprint wireframe mode**.
-  - **Borderless Collector Cards**: Sharp borderless cover front (`title`, `artist/mapper`, `BPM`, official-spectrum `SR`, `~XXXpp`, audio preview, Download, Detail modal) paired with an animated Paimon-cloak cosmic starfield & hand-drawn astrolabe `osu!` back.
-  - **01 Pack Opening**: 7 themed packs with editorial color swatches, `1–20` custom count (default `5`), multi-layered Graphic Plate altar, tear-to-open foil pack, Star-Rating hover aura + crop brackets, and Hearthstone + light-blade flip burst VFX with optional Web Audio SFX.
-  - **02 Dating Swipe**: Live SVG drafting compass backdrop, drag/swipe or hotkeys (`←/→/Z/Space`), **auto-playing preview audio**, and Liked Archive batch download tray.
-  - **03 Guess SR**: Crop-framed masked specimen (`?.??★`), randomized PP scenario clue, graduated optical SR calibration slider, `0–1000` (`SS–D`) scoring, and visual guess-vs-actual delta ruler.
+- **Random Card Draw Studio (`v1.14.0` — Slim Bottom Dock, Theme-Synced Sleeves, 3D Ring & 360° Inspector)**
+  - Accessible beside the `Lazer` view button in Browse mode; **automatically collapses both sidebars** on launch and exclusively draws non-local beatmapsets.
+  - **Slim Bottom Dock & Open Three.js Stage**: Navigation sits in a sleek bottom dock defaulting directly to **`01 Dating Swipe`** (`01 Dating · 02 Packs · 03 Guess`). Frosted enclosing veils are stripped so the live Three.js Sanctum backdrop (synced dynamically to `--t-canvas` & `--t-osu`), `B` Blueprint wireframe toggle, and background-layered (`z-[4]`) transitions remain crystal clear.
+  - **01 Dating Swipe (Default)**: Enlarged rectangular cards (`~405×600px`) fan the next two upcoming cards visibly to the right underneath the active card, with a **collapsible Liked Archive drawer collapsed by default** and instant auto-playing audio previews.
+  - **02 Pack Opening & 360° 3D Slab Inspector**: Features a narrower collapsible Pack Dossier rail, synced `--fill` card count range slider (`1–20`), unified global-theme collector pack sleeves, and an interactive **3D circular card ring** (orbit by drag, wheel, or buttons) with star-rarity hover glows and Paimon starfield card backs. Clicking any revealed card launches the full-screen **360° 3D Collector Slab Inspector** with inertial mouse-drag 360° yaw/pitch rotation, zoom, 10px rarity bevel edges, `Flip 180° (F)`, and `Reset (R)`.
+  - **03 Guess SR**: Removes the card `Details` modal button so stars stay hidden, provides 24 richer randomized scenarios strictly using **`NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)`** rates with **MA Ratio** (`黄彩比`), misses, and mod clues, uses a crisp Zap streak counter without fire emojis, and renders over the open Three.js canvas.
 
 ### Quick Start
 

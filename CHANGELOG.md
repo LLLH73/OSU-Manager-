@@ -4,6 +4,18 @@ All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be docum
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.14.0] - 2026-11-26
+
+### Added & Changed
+- **随机抽卡工作室 13 项美学、排版、3D 圆环与 360° 立体检视全面升级**：
+  - **纤细底部导航 Dock 与约会模式默认直达**（`src/components/gacha/GachaStudio.tsx`）：将顶部模式切换条重构为更纤细的底部导航 Dock，默认模式设为 `01 约会试听`（顺序 `01 约会试听 · 02 卡包典藏 · 03 星数推演`）；实时读取 `--t-canvas` 与 `--t-osu` 同步到 Three.js 圣堂舞台与滑条填充 (`--fill`)。
+  - **全主题统一卡包与可收起窄版卡包档案栏**（`src/components/gacha/GachaPackMode.tsx`, `GachaPackPlate.tsx`, `gachaUtils.ts`）：统一 `SERIES 01–07` 卡包封面、光环、半调圆盘与图版点缀至全局主题主色（保留 `GachaPackSigil` 独立符号），左侧档案栏收窄至 `272–292px` 并支持折叠/展开；修复 `--fill` 滑动条填充轨道随滑块 (`1–20`) 实时跟踪。
+  - **通透 Three.js 圣堂舞台、3D 椭圆圆环阵列与 360° 3D 立体检视器**（`src/components/gacha/GachaPackMode.tsx`, `GachaCardInspectorModal.tsx`, `BeatmapGachaCard.tsx`, `src/index.css`）：去除开包与封印祭坛整块磨砂遮罩直接透出 Three.js 舞台；翻包舞台升级为支持拖拽空白处、滚轮与左右箭头旋转的 `1–20` 张 **3D 椭圆圆环阵列**（`isolate` 隔离层叠）；新增 Portal 挂载 (`document.body` `z-[48]`, `data-dark="true"` 独立暗色画廊背板) 的 **360° 3D 立体卡片检视弹窗**，支持鼠标惯性 360° yaw/pitch 拖拽、滚轮缩放、`10px` 星级倒角厚边、`F` 翻转至派蒙星空卡背、`R` 复位与 `←/→` 切卡。
+  - **约会模式扩幅扇形叠牌与折叠心动曲库**（`src/components/gacha/GachaDatingMode.tsx`）：去除桌面舞台遮罩，放大卡片至 `~405×600px`，并在右侧下方可见扇形叠放预览接下来两张卡片（含 `NEXT` 标识）；右侧「心动曲库」改为默认收起的滑出抽屉。
+  - **猜星模式锁定详情、扩充 NM/HT/DT + 黄彩比情景与连击图标焕新**（`src/components/gacha/GachaGuessMode.tsx`, `gachaUtils.ts`）：禁止打开 `BeatmapDetailModal` 详情弹窗防止泄星，扩充 24 组严格采用 `NM (1.0x)` / `HT (0.75x)` / `DT (1.5x)` 倍率（移除 `1.2x`）并展示**黄彩比 (`MA Ratio`)**、Miss 与 Mod 组合的真实情景，去除左右面板遮罩并移除 `🔥` 改用 `Zap` 闪电连击徽标。
+  - **修复定格转场压盖与脱离按钮准星残留**（`src/components/gacha/GachaAtmosphere.tsx`, `src/index.css`）：移除 `.ga-fx-veil` 闪烁蒙层并将转场爆发沉底至 `z-[4]` 背景层；Reticle 在悬浮按钮卸载或进入 `footer` 时立即复位脱离目标。
+- 版本号同步更新至 `v1.14.0`（`package.json`, `src/constants.ts`, `AGENT.md`, `README.md`），归档 `10..14` 五张实机截图（含新增 [14-gacha-inspector.png](docs/screenshots/14-gacha-inspector.png)），完成双主题/双语/双分辨率浏览验收、360° 拖拽实测与 `npm run electron:pack`（`:3729` `osu-manager.exe` 冒烟 `Health 200` / `GET / => 200` / `POST /api/gacha/draw => 5 cards`）。
+
 ## [1.13.0] - 2026-11-26
 
 ### Added & Changed
