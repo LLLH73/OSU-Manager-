@@ -6,8 +6,10 @@ import { fetchSmart, isProxyListening } from './network.js';
 import { RoutePolicy } from './types.js';
 
 const COVERS_DIR = path.join(CACHE_DIR, 'covers');
+const COVERS_HD_DIR = path.join(CACHE_DIR, 'covers-hd');
 const PREVIEWS_DIR = path.join(CACHE_DIR, 'previews');
 const inFlightCovers = new Map<number, Promise<string | null>>();
+const inFlightHdCovers = new Map<number, Promise<string | null>>();
 const inFlightPreviews = new Map<number, Promise<string | null>>();
 
 function trimCacheDir(dir: string, maxFiles: number): void {
@@ -62,36 +64,52 @@ async function fetchMediaToFile(
   return null;
 }
 
-export async function serveCover(setId: number, res: Response): Promise<void> {
-  const filePath = path.join(COVERS_DIR, `${setId}.jpg`);
+export async function serveCover(setId: number, res: Response, hd = false): Promise<void> {
+  const dir = hd ? COVERS_HD_DIR : COVERS_DIR;
+  const inflightMap = hd ? inFlightHdCovers : inFlightCovers;
+  const filePath = path.join(dir, `${setId}.jpg`);
   if (fs.existsSync(filePath)) {
     res.setHeader('Cache-Control', 'public, max-age=604800');
     res.type('image/jpeg').sendFile(filePath);
     return;
   }
 
-  let task = inFlightCovers.get(setId);
+  let task = inflightMap.get(setId);
   if (!task) {
     task = (async () => {
       const proxyOpen = await isProxyListening();
-      const candidates: Array<{ url: string; policy: RoutePolicy }> = proxyOpen
-        ? [
-            { url: `https://assets.ppy.sh/beatmaps/${setId}/covers/card@2x.jpg`, policy: 'global_first' },
-            { url: `https://cdn.sayobot.cn:25225/beatmaps/${setId}/covers/cover.jpg`, policy: 'cn_first' },
-            { url: `https://osu.direct/api/media/background/set/${setId}`, policy: 'global_first' },
-          ]
-        : [
-            { url: `https://cdn.sayobot.cn:25225/beatmaps/${setId}/covers/cover.jpg`, policy: 'cn_first' },
-            { url: `https://assets.ppy.sh/beatmaps/${setId}/covers/card@2x.jpg`, policy: 'direct_only' },
-            { url: `https://osu.direct/api/media/background/set/${setId}`, policy: 'direct_only' },
-          ];
-      const resPath = await fetchMediaToFile(candidates, filePath, 'image/', 512);
-      if (resPath) trimCacheDir(COVERS_DIR, 600);
+      const candidates: Array<{ url: string; policy: RoutePolicy }> = hd
+        ? proxyOpen
+          ? [
+              { url: `https://assets.ppy.sh/beatmaps/${setId}/covers/fullsize.jpg`, policy: 'global_first' },
+              { url: `https://assets.ppy.sh/beatmaps/${setId}/covers/cover@2x.jpg`, policy: 'global_first' },
+              { url: `https://assets.ppy.sh/beatmaps/${setId}/covers/card@2x.jpg`, policy: 'global_first' },
+              { url: `https://cdn.sayobot.cn:25225/beatmaps/${setId}/covers/cover.jpg`, policy: 'cn_first' },
+            ]
+          : [
+              { url: `https://assets.ppy.sh/beatmaps/${setId}/covers/fullsize.jpg`, policy: 'direct_only' },
+              { url: `https://assets.ppy.sh/beatmaps/${setId}/covers/cover@2x.jpg`, policy: 'direct_only' },
+              { url: `https://cdn.sayobot.cn:25225/beatmaps/${setId}/covers/cover.jpg`, policy: 'cn_first' },
+              { url: `https://assets.ppy.sh/beatmaps/${setId}/covers/card@2x.jpg`, policy: 'direct_only' },
+            ]
+        : proxyOpen
+          ? [
+              { url: `https://assets.ppy.sh/beatmaps/${setId}/covers/card@2x.jpg`, policy: 'global_first' },
+              { url: `https://cdn.sayobot.cn:25225/beatmaps/${setId}/covers/cover.jpg`, policy: 'cn_first' },
+              { url: `https://osu.direct/api/media/background/set/${setId}`, policy: 'global_first' },
+            ]
+          : [
+              { url: `https://cdn.sayobot.cn:25225/beatmaps/${setId}/covers/cover.jpg`, policy: 'cn_first' },
+              { url: `https://assets.ppy.sh/beatmaps/${setId}/covers/card@2x.jpg`, policy: 'direct_only' },
+              { url: `https://osu.direct/api/media/background/set/${setId}`, policy: 'direct_only' },
+            ];
+      const resPath = await fetchMediaToFile(candidates, filePath, 'image/', hd ? 2048 : 512);
+      if (resPath) trimCacheDir(dir, hd ? 400 : 600);
       return resPath;
     })().finally(() => {
-      inFlightCovers.delete(setId);
+      inflightMap.delete(setId);
     });
-    inFlightCovers.set(setId, task);
+    inflightMap.set(setId, task);
   }
 
   const saved = await task;

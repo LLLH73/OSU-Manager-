@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
+import { type MouseEvent, type PointerEvent as ReactPointerEvent, useCallback, useEffect, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -11,6 +11,7 @@ import {
   Heart,
   Layers,
   Loader2,
+  Move,
   Orbit,
   PanelLeftClose,
   PanelLeftOpen,
@@ -142,6 +143,45 @@ export function GachaPackMode({
   const seenIdsRef = useRef<Set<number>>(new Set());
   const lastHoveredCardRef = useRef<number | null>(null);
 
+  // Hearthstone-style physical pack stack & Awakening Altar drag physics
+  const packDockRef = useRef<HTMLDivElement | null>(null);
+  const altarWellRef = useRef<HTMLDivElement | null>(null);
+  const [packDrag, setPackDrag] = useState<{
+    active: boolean;
+    returning: boolean;
+    snapping: boolean;
+    originX: number;
+    originY: number;
+    width: number;
+    height: number;
+    dx: number;
+    dy: number;
+    rotX: number;
+    rotY: number;
+    proximity: number;
+    inDropZone: boolean;
+  } | null>(null);
+  const dragMetaRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    lastX: number;
+    lastY: number;
+    originX: number;
+    originY: number;
+    width: number;
+    height: number;
+    movedDist: number;
+    wasInZone: boolean;
+  } | null>(null);
+  const snapTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (snapTimerRef.current) window.clearTimeout(snapTimerRef.current);
+    };
+  }, []);
+
   const selectedPack = packs.find((p) => p.id === packId) ?? packs[0];
   const filterSignature =
     packId === 'current_filter'
@@ -264,15 +304,17 @@ export function GachaPackMode({
         setFlashBurst(true);
         setStage('opened');
         setTearDragPct(0);
+        setPackDrag(null);
         ensurePrefetch(targetPack, targetKey);
         window.setTimeout(() => setFlashBurst(false), 620);
       } catch (err) {
         setError(err instanceof Error ? err.message : t('开包失败，请重试', 'Failed to open card pack'));
         setStage('sealed');
         setTearDragPct(0);
+        setPackDrag(null);
       }
     },
-    [stage, packId, filterSignature, cardCount, onTriggerEffect, baseFilters, ensurePrefetch, t],
+    [stage, packId, filterSignature, cardCount, onTriggerEffect, baseFilters, ensurePrefetch, t, prefetchCacheRef, prefetchInFlightRef],
   );
 
   const flipSingleCard = useCallback(
@@ -332,15 +374,17 @@ export function GachaPackMode({
     setRingAngle((a) => a + step * stepRad);
   };
 
-  const handlePackSeamPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePackSeamPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (stage !== 'sealed') return;
+    e.stopPropagation();
     tearOriginXRef.current = e.clientX;
     setTearDragPct(8);
     e.currentTarget.setPointerCapture(e.pointerId);
   };
 
-  const handlePackSeamPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+  const handlePackSeamPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (stage !== 'sealed' || tearOriginXRef.current === null) return;
+    e.stopPropagation();
     const dx = Math.abs(e.clientX - tearOriginXRef.current);
     const pct = Math.min(100, Math.max(8, Math.round((dx / 92) * 100)));
     setTearDragPct(pct);
@@ -350,14 +394,163 @@ export function GachaPackMode({
     }
   };
 
-  const handlePackSeamPointerUp = () => {
+  const handlePackSeamPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (tearOriginXRef.current === null) return;
+    e.stopPropagation();
     tearOriginXRef.current = null;
     if (tearDragPct >= 75) {
       void handleRipOpen();
     } else {
       setTearDragPct(0);
     }
+  };
+
+  const snapToAltarAndOpen = useCallback(
+    (originRect?: DOMRect) => {
+      if (stage !== 'sealed') return;
+      if (snapTimerRef.current) window.clearTimeout(snapTimerRef.current);
+      const dockRect = originRect ?? packDockRef.current?.getBoundingClientRect();
+      const altarRect = altarWellRef.current?.getBoundingClientRect();
+      if (!dockRect || !altarRect) {
+        void handleRipOpen();
+        return;
+      }
+      const snapDx = altarRect.left + altarRect.width / 2 - (dockRect.left + dockRect.width / 2);
+      const snapDy = altarRect.top + altarRect.height / 2 - (dockRect.top + dockRect.height / 2);
+      setPackDrag({
+        active: false,
+        returning: false,
+        snapping: true,
+        originX: dockRect.left,
+        originY: dockRect.top,
+        width: dockRect.width,
+        height: dockRect.height,
+        dx: snapDx,
+        dy: snapDy,
+        rotX: 0,
+        rotY: 0,
+        proximity: 1,
+        inDropZone: true,
+      });
+      snapTimerRef.current = window.setTimeout(() => {
+        void handleRipOpen();
+      }, 170);
+    },
+    [stage, handleRipOpen],
+  );
+
+  const handlePackPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (stage !== 'sealed' || (e.target as HTMLElement).closest('[data-pack-seam="true"]')) return;
+    const dockEl = packDockRef.current;
+    if (!dockEl) return;
+    const rect = dockEl.getBoundingClientRect();
+    dragMetaRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      lastX: e.clientX,
+      lastY: e.clientY,
+      originX: rect.left,
+      originY: rect.top,
+      width: rect.width,
+      height: rect.height,
+      movedDist: 0,
+      wasInZone: false,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handlePackPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const meta = dragMetaRef.current;
+    if (!meta || meta.pointerId !== e.pointerId || stage !== 'sealed') return;
+    const vx = e.clientX - meta.lastX;
+    const vy = e.clientY - meta.lastY;
+    meta.movedDist += Math.hypot(vx, vy);
+    meta.lastX = e.clientX;
+    meta.lastY = e.clientY;
+
+    if (meta.movedDist < 6) return;
+
+    const dx = e.clientX - meta.startX;
+    const dy = e.clientY - meta.startY;
+    const rotY = Math.max(-22, Math.min(22, vx * 1.15));
+    const rotX = Math.max(-18, Math.min(18, -vy * 0.85));
+
+    let proximity = 0;
+    let inDropZone = false;
+    const altarRect = altarWellRef.current?.getBoundingClientRect();
+    if (altarRect) {
+      const packCx = meta.originX + meta.width / 2 + dx;
+      const packCy = meta.originY + meta.height / 2 + dy;
+      const altarCx = altarRect.left + altarRect.width / 2;
+      const altarCy = altarRect.top + altarRect.height / 2;
+      const dist = Math.hypot(packCx - altarCx, packCy - altarCy);
+      proximity = Math.max(0, Math.min(1, 1 - dist / 460));
+      inDropZone = dist <= Math.max(145, altarRect.width * 0.45);
+    }
+
+    if (inDropZone && !meta.wasInZone) {
+      meta.wasInZone = true;
+      playCardHoverTick('legendary');
+      onTriggerEffect(0.28);
+    } else if (!inDropZone && meta.wasInZone) {
+      meta.wasInZone = false;
+    }
+
+    setPackDrag({
+      active: true,
+      returning: false,
+      snapping: false,
+      originX: meta.originX,
+      originY: meta.originY,
+      width: meta.width,
+      height: meta.height,
+      dx,
+      dy,
+      rotX,
+      rotY,
+      proximity,
+      inDropZone,
+    });
+  };
+
+  const finishPackPointerDrag = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const meta = dragMetaRef.current;
+    if (!meta || meta.pointerId !== e.pointerId) return;
+    dragMetaRef.current = null;
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      }
+    } catch {
+      // Safe fallback
+    }
+
+    if (meta.movedDist < 6 || meta.wasInZone) {
+      snapToAltarAndOpen(new DOMRect(meta.originX, meta.originY, meta.width, meta.height));
+      return;
+    }
+
+    setPackDrag((prev) =>
+      prev
+        ? {
+            ...prev,
+            active: false,
+            returning: true,
+            snapping: false,
+            dx: 0,
+            dy: 0,
+            rotX: 0,
+            rotY: 0,
+            proximity: 0,
+            inDropZone: false,
+          }
+        : null,
+    );
+    if (snapTimerRef.current) window.clearTimeout(snapTimerRef.current);
+    snapTimerRef.current = window.setTimeout(() => {
+      setPackDrag(null);
+    }, 300);
   };
 
   const flippedCount = cards.filter((c) => flippedIds.has(c.id)).length;
@@ -391,6 +584,129 @@ export function GachaPackMode({
   const baseCardH = Math.round(baseCardW * 1.48);
   const rx = N <= 1 ? 0 : Math.min(w * 0.39, Math.max(260, N * 38));
   const ry = N <= 1 ? 0 : Math.min(h * 0.22, 78 + Math.min(N, 8) * 6);
+
+  const renderPackSleeve = (isFloating: boolean) => (
+    <div className="w-full select-none">
+      {/* Top Tear Seam (High-contrast Constructivist ink header + perforated cobalt seam) */}
+      <div
+        data-pack-seam="true"
+        data-ga-target="true"
+        data-ga-cursor={t('沿虚线划开', 'DRAG TEAR')}
+        onPointerDown={isFloating ? undefined : handlePackSeamPointerDown}
+        onPointerMove={isFloating ? undefined : handlePackSeamPointerMove}
+        onPointerUp={isFloating ? undefined : handlePackSeamPointerUp}
+        onPointerCancel={isFloating ? undefined : handlePackSeamPointerUp}
+        title={t('沿此虚线左右划动撕开，或按住卡包拖入右侧祭坛', 'Drag seam to rip or drag pack into right altar')}
+        className={`relative cursor-ew-resize overflow-hidden rounded-t-[3px] border border-b-0 border-[var(--ga-ink)] px-3.5 py-2.5 text-center select-none ${
+          stage === 'tearing' ? 'gacha-pack-rip-top' : ''
+        }`}
+        style={{
+          background: 'var(--ga-ink)',
+          color: 'var(--ga-paper)',
+          borderBottom: '2.5px dashed var(--ga-cobalt)',
+          boxShadow: '0 -8px 24px -6px color-mix(in srgb, var(--ga-cobalt) 40%, transparent)',
+        }}
+      >
+        <div className="ga-mono flex items-center justify-center gap-1.5 text-[0.65625rem] font-bold tracking-[0.2em] uppercase">
+          <Scissors className="h-3.5 w-3.5 text-[var(--ga-cobalt)]" />
+          <span>{t(`沿虚线撕开 · ${selectedPack.code}`, `TEAR // POOL ${selectedPack.code}`)}</span>
+        </div>
+        {tearDragPct > 0 && (
+          <div className="mt-1.5 h-1 bg-[var(--ga-cobalt)]" style={{ width: `${tearDragPct}%` }} />
+        )}
+      </div>
+
+      {/* PROUN Bauhaus Diagonal-Slash Collector Sleeve Body */}
+      <div
+        className={`relative flex h-[clamp(300px,44vh,406px)] flex-col items-center justify-between overflow-hidden rounded-b-[4px] border border-t-0 border-[var(--ga-line-strong)] bg-[var(--ga-paper)] px-5 py-6 text-[var(--ga-ink)] select-none ${
+          isFloating ? 'cursor-grabbing' : 'cursor-grab'
+        }`}
+        style={{
+          boxShadow: isFloating
+            ? '0 44px 86px -18px rgba(0,0,0,0.62), 0 0 56px -6px color-mix(in srgb, var(--ga-cobalt) 60%, transparent)'
+            : '0 28px 60px -18px rgba(0,0,0,0.42), 0 0 36px -10px color-mix(in srgb, var(--ga-cobalt) 36%, transparent)',
+        }}
+      >
+        {/* Bauhaus Diagonal Theme-Accent Block + Constructivist Crimson Corner Wedge */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-90"
+          style={{
+            background: 'var(--ga-cobalt)',
+            clipPath: 'polygon(0 0, 68% 0, 0 44%)',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-88"
+          style={{
+            background: 'var(--ga-crimson)',
+            clipPath: 'polygon(100% 62%, 100% 100%, 48% 100%)',
+          }}
+        />
+
+        {/* Crisp Architectural Inner Frame + Halftone Micro Accent */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-3 border border-[color-mix(in_srgb,var(--ga-ink)_22%,transparent)]"
+        />
+        <div
+          aria-hidden="true"
+          className="ga-halftone pointer-events-none absolute top-0 right-0 h-28 w-28 text-[var(--ga-cobalt)] opacity-15"
+          style={{ maskImage: 'radial-gradient(circle at top right, black 10%, transparent 74%)' }}
+        />
+
+        {/* Top Technical Pool Index */}
+        <div className="ga-mono relative z-10 flex w-full items-center justify-between text-[0.65625rem] font-bold tracking-[0.16em] uppercase">
+          <span className="rounded-[2px] bg-[var(--ga-ink)] px-2 py-0.5 text-[var(--ga-paper)]">
+            POOL {selectedPack.code}
+          </span>
+          <span className="rounded-[2px] border border-[var(--ga-line-strong)] bg-[var(--ga-paper)] px-2 py-0.5 text-[var(--ga-cobalt)]">
+            {selectedPack.starRangeLabel}
+          </span>
+        </div>
+
+        {/* Central Double-Ring osu! Hit Circle + Approach Ring Stamp */}
+        <div className="relative z-10 flex flex-col items-center text-center">
+          <div
+            className="relative flex h-24 w-24 items-center justify-center rounded-full border-2 border-[var(--ga-ink)] bg-[var(--ga-paper)] shadow-lg"
+            style={{
+              boxShadow: '0 0 28px color-mix(in srgb, var(--ga-cobalt) 35%, transparent)',
+            }}
+          >
+            <div className="pointer-events-none absolute inset-2 rounded-full border border-[var(--ga-cobalt)]" />
+            <span
+              className="font-display text-[1.7rem] tracking-[0.16em] text-[var(--ga-ink)]"
+              style={{ fontWeight: 200, paddingLeft: '0.16em' }}
+            >
+              osu!
+            </span>
+            <span className="absolute -right-1.5 -bottom-1.5 flex h-6.5 w-6.5 items-center justify-center rounded-full bg-[var(--ga-cobalt)] text-white shadow">
+              <PackSigilIcon sigil={selectedPack.sigil} className="h-3.5 w-3.5" />
+            </span>
+          </div>
+          <div className="ga-cn-serif mt-3.5 rounded-[2px] bg-[color-mix(in_srgb,var(--ga-paper)_90%,transparent)] px-3 py-0.5 text-[1.15rem] font-bold tracking-wide text-[var(--ga-ink)] backdrop-blur-sm">
+            {selectedPack.name}
+          </div>
+          <div className="ga-mono mt-0.5 text-[0.625rem] font-semibold tracking-[0.18em] text-[var(--ga-ink-2)] uppercase">
+            {selectedPack.editorialSub}
+          </div>
+        </div>
+
+        {/* Constructivist Ink Quantity Stamp */}
+        <div className="ga-mono relative z-10 flex w-full items-center justify-between border border-[var(--ga-ink)] bg-[var(--ga-ink)] px-3 py-1.5 text-[0.6875rem] font-bold tracking-[0.14em] text-[var(--ga-paper)]">
+          <span>{selectedPack.badge}</span>
+          <span>
+            × {String(cardCount).padStart(2, '0')} {t('张', 'CARDS')}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const packIsLifted = Boolean(packDrag);
+  const effectiveProximity = packDrag?.proximity ?? 0;
+  const effectiveDropActive = Boolean(packDrag?.inDropZone);
 
   return (
     <div
@@ -581,7 +897,7 @@ export function GachaPackMode({
                   type="button"
                   disabled={stage === 'tearing'}
                   data-ga-cursor={t('开启卡包', 'UNSEAL')}
-                  onClick={() => void handleRipOpen()}
+                  onClick={() => snapToAltarAndOpen()}
                   className="ga-solid-btn h-10 w-full justify-between px-3.5 text-[0.8125rem]"
                 >
                   {stage === 'tearing' ? (
@@ -622,159 +938,113 @@ export function GachaPackMode({
             </button>
           )}
 
-          {/* Right: Open Transparent Sanctuary Stage + Graphic Plate + Unified Theme Sleeve */}
+          {/* Right: Hearthstone Physical Pack Stack (Left) + Awakening Altar Drop Well (Right) */}
           <div
-            onMouseMove={(e) => {
+            onMouseMove={(e: MouseEvent<HTMLDivElement>) => {
               const r = e.currentTarget.getBoundingClientRect();
               const nx = ((e.clientX - r.left) / Math.max(1, r.width) - 0.5) * 2;
               const ny = ((e.clientY - r.top) / Math.max(1, r.height) - 0.5) * 2;
               setPlatePointer({ x: nx, y: ny });
             }}
             onMouseLeave={() => setPlatePointer({ x: 0, y: 0 })}
-            className="relative flex min-h-[420px] flex-1 flex-col items-center justify-center overflow-hidden border-0 bg-transparent p-4"
+            className="relative flex min-h-[420px] flex-1 flex-col items-center justify-center gap-6 overflow-hidden border-0 bg-transparent px-4 py-4 sm:flex-row sm:gap-8 lg:gap-12"
           >
-            {/* Procedural `the-masses-travels` Graphic Plate */}
-            <GachaPackPlate
-              pack={selectedPack}
-              cardCount={cardCount}
-              blueprint={blueprint}
-              tearing={stage === 'tearing'}
-              pointer={platePointer}
-            />
-
-            {/* Enlarged PROUN Constructivist x osu! Theme-Synced Collector Sleeve */}
-            <div
-              onMouseMove={(e) => {
-                if (stage !== 'sealed') return;
-                const r = e.currentTarget.getBoundingClientRect();
-                const nx = ((e.clientX - r.left) / r.width - 0.5) * 2;
-                const ny = ((e.clientY - r.top) / r.height - 0.5) * 2;
-                setPackTilt({ rx: -ny * 9, ry: nx * 12 });
-              }}
-              onMouseLeave={() => setPackTilt({ rx: 0, ry: 0 })}
-              style={{
-                transform: `perspective(1000px) rotateX(${packTilt.rx}deg) rotateY(${packTilt.ry}deg)`,
-                transition: 'transform 160ms ease-out',
-              }}
-              className={`relative z-10 w-[clamp(270px,24vw,356px)] ${
-                stage === 'tearing' ? 'gacha-pack-shake' : 'gacha-pack-float'
-              }`}
-            >
-              {/* Top Tear Seam (High-contrast Constructivist ink header + perforated cobalt seam) */}
+            {/* Left Zone: Physical Reserve Stack + Grab-able Top Booster Pack */}
+            <div className="relative flex shrink-0 flex-col items-center">
               <div
+                ref={packDockRef}
                 data-ga-target="true"
-                data-ga-cursor={t('沿虚线划开', 'DRAG TEAR')}
-                onPointerDown={handlePackSeamPointerDown}
-                onPointerMove={handlePackSeamPointerMove}
-                onPointerUp={handlePackSeamPointerUp}
-                onPointerCancel={handlePackSeamPointerUp}
-                title={t('沿此虚线左右划动或直接点击下方卡包撕开', 'Drag across seam or click pack body to open')}
-                className={`relative cursor-ew-resize overflow-hidden rounded-t-[3px] border border-b-0 border-[var(--ga-ink)] px-4 py-3 text-center select-none ${
-                  stage === 'tearing' ? 'gacha-pack-rip-top' : ''
-                }`}
-                style={{
-                  background: 'var(--ga-ink)',
-                  color: 'var(--ga-paper)',
-                  borderBottom: '2.5px dashed var(--ga-cobalt)',
-                  boxShadow: '0 -8px 26px -6px color-mix(in srgb, var(--ga-cobalt) 42%, transparent)',
+                data-ga-cursor={t('拖入祭坛', 'DRAG TO ALTAR')}
+                onPointerDown={handlePackPointerDown}
+                onPointerMove={handlePackPointerMove}
+                onPointerUp={finishPackPointerDrag}
+                onPointerCancel={finishPackPointerDrag}
+                onMouseMove={(e) => {
+                  if (stage !== 'sealed' || packIsLifted) return;
+                  const r = e.currentTarget.getBoundingClientRect();
+                  const nx = ((e.clientX - r.left) / r.width - 0.5) * 2;
+                  const ny = ((e.clientY - r.top) / r.height - 0.5) * 2;
+                  setPackTilt({ rx: -ny * 8, ry: nx * 11 });
                 }}
+                onMouseLeave={() => setPackTilt({ rx: 0, ry: 0 })}
+                className="relative z-10 w-[clamp(210px,18vw,286px)] touch-none"
               >
-                <div className="ga-mono flex items-center justify-center gap-1.5 text-[0.6875rem] font-bold tracking-[0.22em] uppercase">
-                  <Scissors className="h-3.5 w-3.5 text-[var(--ga-cobalt)]" />
-                  <span>{t(`沿虚线撕开 · ${selectedPack.code}`, `TEAR // POOL ${selectedPack.code}`)}</span>
-                </div>
-                {tearDragPct > 0 && (
+                {/* Reserve Stack Cards Underneath (visible always & left cleanly behind when top pack is dragged) */}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 translate-x-[10px] translate-y-[10px] rounded-[4px] border border-[var(--ga-line-strong)] bg-[var(--ga-paper)] opacity-60 shadow-lg"
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 translate-x-[5px] translate-y-[5px] rounded-[4px] border border-[var(--ga-line-strong)] bg-[var(--ga-paper)] opacity-82 shadow-lg"
+                />
+                {packIsLifted && (
                   <div
-                    className="mt-1.5 h-1 bg-[var(--ga-cobalt)]"
-                    style={{ width: `${tearDragPct}%` }}
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 rounded-[4px] border-2 border-dashed border-[var(--ga-cobalt)] opacity-45"
                   />
                 )}
+
+                {/* Active Draggable Booster Sleeve */}
+                <div
+                  style={{
+                    transform: `perspective(1000px) rotateX(${packTilt.rx}deg) rotateY(${packTilt.ry}deg)`,
+                    transition: 'transform 160ms ease-out',
+                  }}
+                  className={`relative z-10 ${
+                    packIsLifted
+                      ? 'pointer-events-none opacity-0'
+                      : stage === 'tearing'
+                        ? 'gacha-pack-shake'
+                        : 'gacha-pack-float'
+                  }`}
+                >
+                  {renderPackSleeve(false)}
+                </div>
               </div>
 
-              {/* PROUN Bauhaus Diagonal-Slash Collector Sleeve Body */}
+              <div className="ga-mono mt-4 inline-flex items-center gap-1.5 text-[0.625rem] font-semibold tracking-[0.18em] text-[var(--ga-ink-2)] uppercase">
+                <Move className="h-3 w-3 text-[var(--ga-cobalt)]" />
+                <span>{t('DRAG → ALTAR', 'DRAG → ALTAR')}</span>
+              </div>
+            </div>
+
+            {/* Right Zone: Hearthstone Awakening Drop Well & Graphic Altar Plate */}
+            <div
+              ref={altarWellRef}
+              data-drop-well="true"
+              data-drop-active={effectiveDropActive ? 'true' : 'false'}
+              onClick={() => {
+                if (stage === 'sealed' && !packIsLifted) snapToAltarAndOpen();
+              }}
+              className="relative flex aspect-square w-[clamp(290px,28vw,400px)] shrink-0 cursor-pointer items-center justify-center"
+            >
+              <GachaPackPlate
+                pack={selectedPack}
+                cardCount={cardCount}
+                blueprint={blueprint}
+                tearing={stage === 'tearing'}
+                pointer={platePointer}
+                dragProximity={effectiveProximity}
+                isDropTarget={effectiveDropActive}
+                isDragging={packIsLifted}
+              />
+
+              {/* Subtle Lock-On Status Chip inside Drop Well */}
               <div
-                data-ga-target="true"
-                data-ga-cursor={t('点击开启', 'UNSEAL PACK')}
-                onClick={() => void handleRipOpen()}
-                className="relative flex h-[clamp(350px,50vh,464px)] cursor-pointer flex-col items-center justify-between overflow-hidden rounded-b-[4px] border border-t-0 border-[var(--ga-line-strong)] bg-[var(--ga-paper)] px-6 py-7 text-[var(--ga-ink)] select-none"
-                style={{
-                  boxShadow:
-                    '0 32px 68px -18px rgba(0,0,0,0.44), 0 0 42px -10px color-mix(in srgb, var(--ga-cobalt) 42%, transparent)',
-                }}
+                className={`pointer-events-none relative z-10 rounded-[2px] border px-3 py-1 font-mono text-[0.6875rem] font-bold tracking-[0.18em] uppercase transition-all duration-200 ${
+                  effectiveDropActive
+                    ? 'scale-105 border-[var(--ga-crimson)] bg-[var(--ga-crimson)] text-white shadow-lg'
+                    : packIsLifted
+                      ? 'border-[var(--ga-cobalt)] bg-[var(--ga-panel-strong)] text-[var(--ga-cobalt)]'
+                      : 'border-[var(--ga-line)] bg-[var(--ga-panel)] text-[var(--ga-ink-3)] opacity-75'
+                }`}
               >
-                {/* Bauhaus Diagonal Theme-Accent Block + Constructivist Crimson Corner Wedge */}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 opacity-90"
-                  style={{
-                    background: 'var(--ga-cobalt)',
-                    clipPath: 'polygon(0 0, 68% 0, 0 44%)',
-                  }}
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 opacity-88"
-                  style={{
-                    background: 'var(--ga-crimson)',
-                    clipPath: 'polygon(100% 62%, 100% 100%, 48% 100%)',
-                  }}
-                />
-
-                {/* Crisp Architectural Inner Frame + Halftone Micro Accent */}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-3 border border-[color-mix(in_srgb,var(--ga-ink)_22%,transparent)]"
-                />
-                <div
-                  aria-hidden="true"
-                  className="ga-halftone pointer-events-none absolute top-0 right-0 h-32 w-32 text-[var(--ga-cobalt)] opacity-15"
-                  style={{ maskImage: 'radial-gradient(circle at top right, black 10%, transparent 74%)' }}
-                />
-
-                {/* Top Technical Pool Index */}
-                <div className="ga-mono relative z-10 flex w-full items-center justify-between text-[0.6875rem] font-bold tracking-[0.16em] uppercase">
-                  <span className="rounded-[2px] bg-[var(--ga-ink)] px-2 py-0.5 text-[var(--ga-paper)]">
-                    POOL {selectedPack.code}
-                  </span>
-                  <span className="rounded-[2px] border border-[var(--ga-line-strong)] bg-[var(--ga-paper)] px-2 py-0.5 text-[var(--ga-cobalt)]">
-                    {selectedPack.starRangeLabel}
-                  </span>
-                </div>
-
-                {/* Central Double-Ring osu! Hit Circle + Approach Ring Stamp */}
-                <div className="relative z-10 flex flex-col items-center text-center">
-                  <div
-                    className="relative flex h-26 w-26 items-center justify-center rounded-full border-2 border-[var(--ga-ink)] bg-[var(--ga-paper)] shadow-lg"
-                    style={{
-                      boxShadow: '0 0 32px color-mix(in srgb, var(--ga-cobalt) 35%, transparent)',
-                    }}
-                  >
-                    <div className="pointer-events-none absolute inset-2 rounded-full border border-[var(--ga-cobalt)]" />
-                    <span
-                      className="font-display text-[1.85rem] tracking-[0.16em] text-[var(--ga-ink)]"
-                      style={{ fontWeight: 200, paddingLeft: '0.16em' }}
-                    >
-                      osu!
-                    </span>
-                    <span className="absolute -right-1.5 -bottom-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--ga-cobalt)] text-white shadow">
-                      <PackSigilIcon sigil={selectedPack.sigil} className="h-3.5 w-3.5" />
-                    </span>
-                  </div>
-                  <div className="ga-cn-serif mt-4 rounded-[2px] bg-[color-mix(in_srgb,var(--ga-paper)_90%,transparent)] px-3 py-0.5 text-[1.25rem] font-bold tracking-wide text-[var(--ga-ink)] backdrop-blur-sm">
-                    {selectedPack.name}
-                  </div>
-                  <div className="ga-mono mt-0.5 text-[0.65625rem] font-semibold tracking-[0.18em] text-[var(--ga-ink-2)] uppercase">
-                    {selectedPack.editorialSub}
-                  </div>
-                </div>
-
-                {/* Constructivist Ink Quantity Stamp */}
-                <div className="ga-mono relative z-10 flex w-full items-center justify-between border border-[var(--ga-ink)] bg-[var(--ga-ink)] px-3 py-1.5 text-[0.71875rem] font-bold tracking-[0.14em] text-[var(--ga-paper)]">
-                  <span>{selectedPack.badge}</span>
-                  <span>
-                    × {String(cardCount).padStart(2, '0')} {t('张', 'CARDS')}
-                  </span>
-                </div>
+                {effectiveDropActive
+                  ? t('松手即刻开包', 'RELEASE TO UNSEAL')
+                  : packIsLifted
+                    ? t('拖至此处释放', 'DROP PACK HERE')
+                    : t('OPENING ALTAR', 'OPENING ALTAR')}
               </div>
             </div>
           </div>
@@ -975,7 +1245,7 @@ export function GachaPackMode({
               const depth = N <= 1 ? 1 : Math.cos(theta); // +1 frontmost, -1 farthest
               const x = Math.sin(theta) * rx;
               const y = N <= 1 ? -12 : depth * (ry * 0.62) - 10;
-              const scale = N <= 1 ? 1 : 0.72 + ((depth + 1) / 2) * 0.30;
+              const scale = N <= 1 ? 1 : 0.74 + ((depth + 1) / 2) * 0.26;
               const rotY = N <= 1 ? 0 : -Math.sin(theta) * 14;
               const opacity = N <= 8 ? 1 : 0.58 + ((depth + 1) / 2) * 0.42;
               const zIndex = Math.round(((depth + 1) / 2) * 80) + 10;
@@ -1038,6 +1308,27 @@ export function GachaPackMode({
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Floating Dragged / Snapping Pack Layer */}
+      {packDrag && (stage === 'sealed' || stage === 'tearing') && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'fixed',
+            left: `${packDrag.originX}px`,
+            top: `${packDrag.originY}px`,
+            width: `${packDrag.width}px`,
+            zIndex: 42,
+            pointerEvents: 'none',
+            transform: `perspective(1200px) translate3d(${packDrag.dx.toFixed(1)}px, ${packDrag.dy.toFixed(1)}px, 0) scale(${packDrag.snapping ? 1.03 : 1.06}) rotateX(${packDrag.rotX.toFixed(2)}deg) rotateY(${packDrag.rotY.toFixed(2)}deg)`,
+            transition: packDrag.active
+              ? 'none'
+              : 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1)',
+          }}
+        >
+          {renderPackSleeve(true)}
         </div>
       )}
 

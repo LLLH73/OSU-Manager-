@@ -20,12 +20,15 @@ interface GachaPackPlateProps {
   blueprint: boolean;
   tearing: boolean;
   pointer: { x: number; y: number };
+  dragProximity?: number;
+  isDropTarget?: boolean;
+  isDragging?: boolean;
 }
 
 /**
- * Multi-layered graphic archive plate inspired by `the-masses-travels` (people/home plates):
- * halftone disc, overshooting inked construction rings, tilted halo oval, dial ticks,
- * calligraphic sweep + light blades, miniature UI windows, Y-ruler & blueprint callouts.
+ * Multi-layered Swiss / Constructivist Altar Drop Well plate:
+ * - Centered circular registration dial & dotted pack drop silhouette
+ * - Smoothly intensifies glow, halo scale, and lock-on chevrons as the pack approaches
  */
 export const GachaPackPlate = memo(function GachaPackPlate({
   pack,
@@ -33,6 +36,9 @@ export const GachaPackPlate = memo(function GachaPackPlate({
   blueprint,
   tearing,
   pointer,
+  dragProximity = 0,
+  isDropTarget = false,
+  isDragging = false,
 }: GachaPackPlateProps) {
   const plate = useMemo(() => {
     const seedNum = pack.id.split('').reduce((acc, ch) => acc * 31 + ch.charCodeAt(0), 407);
@@ -85,30 +91,43 @@ export const GachaPackPlate = memo(function GachaPackPlate({
 
   const mx = pointer.x;
   const my = pointer.y;
+  const activeScale = tearing ? 1.05 : isDropTarget ? 1.04 : 1 + dragProximity * 0.025;
+  const ringOpacity = Math.min(0.95, 0.28 + dragProximity * 0.45 + (isDropTarget ? 0.22 : 0));
 
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden transition-transform duration-500 ${
-        tearing ? 'scale-[1.04]' : 'scale-100'
-      }`}
+      className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-visible transition-transform duration-300"
+      style={{ transform: `scale(${activeScale.toFixed(3)})` }}
     >
-      {/* Far Depth Layer: Halftone Disc (unified theme accent) */}
+      {/* Awakening Radial Altar Aura driven by drag proximity / drop-zone lock */}
       <div
-        className="ga-halftone absolute -translate-y-3 h-[340px] w-[340px] rounded-full transition-transform duration-300"
+        className={`pointer-events-none absolute h-[360px] w-[360px] rounded-full transition-opacity duration-200 ${
+          isDragging ? 'ga-altar-pulse' : ''
+        }`}
         style={{
-          color: 'var(--ga-cobalt)',
-          opacity: blueprint ? 0.08 : 0.13,
-          transform: `translate3d(${(-mx * 10).toFixed(1)}px, ${(-my * 7 - 12).toFixed(1)}px, 0)`,
+          opacity: isDropTarget ? 0.92 : isDragging ? 0.28 + dragProximity * 0.45 : 0.14,
+          background:
+            'radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--ga-cobalt) 42%, transparent) 0%, color-mix(in srgb, var(--ga-crimson) 18%, transparent) 44%, transparent 72%)',
         }}
       />
 
-      {/* Graphic Vector Plate */}
+      {/* Far Depth Layer: Halftone Disc (unified theme accent) */}
+      <div
+        className="ga-halftone absolute h-[320px] w-[320px] rounded-full transition-transform duration-300"
+        style={{
+          color: 'var(--ga-cobalt)',
+          opacity: blueprint ? 0.09 : isDropTarget ? 0.24 : 0.14 + dragProximity * 0.08,
+          transform: `translate3d(${(-mx * 8).toFixed(1)}px, ${(-my * 6).toFixed(1)}px, 0)`,
+        }}
+      />
+
+      {/* Graphic Vector Altar Plate */}
       <svg
         viewBox="0 0 680 560"
-        className="h-full max-h-[510px] w-full max-w-[740px] -translate-y-3 transition-transform duration-300"
+        className="h-full w-full transition-transform duration-300"
         style={{
-          transform: `translate3d(${(-mx * 16).toFixed(1)}px, ${(-my * 12 - 12).toFixed(1)}px, 0)`,
+          transform: `translate3d(${(-mx * 10).toFixed(1)}px, ${(-my * 8).toFixed(1)}px, 0)`,
         }}
       >
         <defs>
@@ -133,37 +152,51 @@ export const GachaPackPlate = memo(function GachaPackPlate({
           strokeWidth="0.9"
         />
 
-        {/* Overshooting Double-Inked Construction Rings */}
+        {/* Overshooting Double-Inked Construction Rings (brighten on pack approach) */}
         <g style={{ color: 'var(--ga-cobalt)' }}>
           <path
             d={plate.outerCircleA}
             fill="none"
             stroke="currentColor"
-            strokeOpacity="0.48"
-            strokeWidth="1.2"
+            strokeOpacity={ringOpacity}
+            strokeWidth={isDropTarget ? '2.2' : '1.3'}
           />
           <path
             d={plate.outerCircleA}
             transform="translate(1.8 1.2)"
             fill="none"
             stroke="currentColor"
-            strokeOpacity="0.2"
+            strokeOpacity={ringOpacity * 0.45}
             strokeWidth="1.2"
           />
           <path
             d={plate.outerCircleB}
             fill="none"
-            stroke="var(--ga-ink)"
-            strokeOpacity="0.18"
-            strokeWidth="0.85"
-            strokeDasharray="4 6"
+            stroke={isDropTarget ? 'var(--ga-crimson)' : 'var(--ga-ink)'}
+            strokeOpacity={isDropTarget ? 0.65 : 0.2 + dragProximity * 0.25}
+            strokeWidth={isDropTarget ? '1.5' : '0.9'}
+            strokeDasharray="6 6"
           />
           <path
             d={plate.innerCircle}
             fill="none"
             stroke="var(--ga-cobalt)"
-            strokeOpacity={blueprint ? 0.65 : 0.36}
-            strokeWidth="1.15"
+            strokeOpacity={blueprint ? 0.65 : 0.36 + dragProximity * 0.4}
+            strokeWidth={isDropTarget ? '2' : '1.2'}
+          />
+          {/* Altar Pack Drop Silhouette Rect inside Center Well */}
+          <rect
+            x="266"
+            y="188"
+            width="148"
+            height="204"
+            rx="3"
+            fill="color-mix(in srgb, var(--ga-cobalt) 6%, transparent)"
+            fillOpacity={isDragging || isDropTarget ? 1 : 0.35}
+            stroke={isDropTarget ? 'var(--ga-crimson)' : 'var(--ga-cobalt)'}
+            strokeOpacity={isDropTarget ? 0.92 : 0.28 + dragProximity * 0.45}
+            strokeWidth={isDropTarget ? '2.2' : '1.2'}
+            strokeDasharray={isDropTarget ? 'none' : '7 5'}
           />
         </g>
 

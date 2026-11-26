@@ -5,7 +5,7 @@ import { useI18n } from '../../i18n';
 import type { DownloadTarget, DownloadTask, NormalizedBeatmapset } from '../../types';
 import type { PpScenarioInput } from '../../utils/pp';
 import { MarqueeText } from '../MarqueeText';
-import { PaimonStarfieldBack } from './PaimonStarfieldBack';
+import { GachaCardBack } from './GachaCardBack';
 import { blade, ring, rng } from './gachaSketch';
 import { getCardSummaryStats, getStarRarityMeta, type StarRarityTier } from './gachaUtils';
 
@@ -79,6 +79,16 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
   const statusMeta = getStatusBadge(beatmapset.status);
   const starColor = getStarColor(summary.repStars);
   const lnInfo = getLnCategory(summary.featuredDiff?.lnRatio ?? null, lang);
+
+  const hdCoverUrl = useMemo(() => {
+    const raw = beatmapset.coverUrl || '';
+    if (!raw || !raw.startsWith('/api/media/cover/')) return raw;
+    return raw.includes('?') ? `${raw}&hd=1` : `${raw}?hd=1`;
+  }, [beatmapset.coverUrl]);
+  const [coverSrc, setCoverSrc] = useState(hdCoverUrl);
+  useEffect(() => {
+    setCoverSrc(hdCoverUrl);
+  }, [hdCoverUrl]);
 
   // Architectural burst geometry (light-blades + hand-drawn double shock ring)
   const burstSvg = useMemo(() => {
@@ -256,7 +266,7 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
               : 'none',
           }}
         >
-          <PaimonStarfieldBack seed={beatmapset.id} compact={compact} />
+          <GachaCardBack seed={beatmapset.id} compact={compact} />
 
           {/* Subtle Inner Edge Star-Aura Wash on Hover */}
           {showStarHover && (
@@ -300,11 +310,16 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
               '0 26px 56px -18px rgba(0, 0, 0, 0.65), 0 10px 24px -12px rgba(0, 0, 0, 0.45)',
           }}
         >
-          {/* Full-bleed Cover Art */}
+          {/* Full-bleed High-Resolution Cover Art (`fullsize.jpg` via `?hd=1`) */}
           <img
-            src={beatmapset.coverUrl}
+            src={coverSrc}
             alt={beatmapset.title}
             draggable={false}
+            onError={() => {
+              if (coverSrc !== beatmapset.coverUrl) {
+                setCoverSrc(beatmapset.coverUrl);
+              }
+            }}
             className="absolute inset-0 h-full w-full object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
           />
 

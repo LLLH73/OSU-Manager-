@@ -463,7 +463,8 @@ app.get('/api/media/cover/:id', async (req: Request, res: Response) => {
     res.status(400).end();
     return;
   }
-  await serveCover(id, res);
+  const hd = req.query.hd === '1' || req.query.hd === 'true';
+  await serveCover(id, res, hd);
 });
 
 app.get('/api/media/preview/:id', async (req: Request, res: Response) => {

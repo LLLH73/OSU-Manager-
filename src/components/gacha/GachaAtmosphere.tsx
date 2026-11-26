@@ -6,7 +6,8 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
-import { GachaSanctumWorld, type SanctumCameraMode } from './GachaSanctumWorld';
+
+export type GachaBackdropMode = 'dating' | 'pack' | 'guess';
 
 const SCRAMBLE_LATIN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#/+<>*';
 const SCRAMBLE_WIDE = '▚▞▙▟■□▪◆◇▤▥';
@@ -72,7 +73,7 @@ export interface GachaAtmosphereHandle {
 interface GachaAtmosphereProps {
   containerRef: React.RefObject<HTMLDivElement | null>;
   isDark: boolean;
-  mode: SanctumCameraMode;
+  mode: GachaBackdropMode;
   blueprint: boolean;
   accentHex?: string;
   canvasHex?: string;
@@ -148,6 +149,21 @@ interface FieldNode {
   seed: number;
 }
 
+const MARGIN_LANE_BLOCKS = [
+  { lane: 0, y: 8, h: 12, accent: true },
+  { lane: 2, y: 26, h: 28, accent: false },
+  { lane: 1, y: 66, h: 10, accent: false },
+  { lane: 3, y: 88, h: 34, accent: true },
+  { lane: 0, y: 136, h: 10, accent: false },
+  { lane: 2, y: 158, h: 24, accent: false },
+  { lane: 1, y: 196, h: 10, accent: true },
+  { lane: 3, y: 222, h: 30, accent: false },
+  { lane: 0, y: 268, h: 12, accent: true },
+  { lane: 2, y: 294, h: 18, accent: false },
+  { lane: 1, y: 326, h: 10, accent: false },
+  { lane: 3, y: 350, h: 28, accent: true },
+];
+
 const GHOST_GLYPHS = [
   { char: 'O', left: '4%', top: '14%', size: 'clamp(42px, 5vw, 76px)', depth: 0.35 },
   { char: 'S', left: '92%', top: '18%', size: 'clamp(40px, 4.5vw, 68px)', depth: 0.55 },
@@ -159,39 +175,40 @@ const GHOST_GLYPHS = [
 const RETICLE_SELECTOR = 'button:not(:disabled), a, select, input[type="range"], [data-ga-target]';
 
 /**
- * Full-bleed atmospheric backdrop & motion choreography inspired by `the-masses-travels`:
- * - Procedural Three.js Sanctum architecture
- * - Mineral paper / Nocturnal slate veil + subtle grain + optional Blueprint grid
- * - Edge vertical label & graduated cobalt ruler
- * - Pointer node-field lines
- * - Non-intrusive Reticle corner brackets around hovered controls (native cursor preserved)
- * - Stop-motion construction burst transitions
+ * Full-bleed flat 2D Swiss / Constructivist PROUN × osu! graphic design backdrop:
+ * - Zero WebGL / 3D meshes (crisp vector poster geometry + subtle parallax)
+ * - Mode-responsive flat geometric compositions (dating / pack / guess)
+ * - Far-margin 2D osu!mania 4K editorial rhythm strips
+ * - Light NodeField Canvas2D + ghost glyphs + vertical marginalia + Reticle brackets
  */
 export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphereProps>(
-  function GachaAtmosphere({ containerRef, isDark, mode, blueprint, accentHex, canvasHex }, ref) {
-    const worldMountRef = useRef<HTMLDivElement | null>(null);
-    const worldRef = useRef<GachaSanctumWorld | null>(null);
+  function GachaAtmosphere({ containerRef, isDark, mode, blueprint, accentHex }, ref) {
     const nodeCanvasRef = useRef<HTMLCanvasElement | null>(null);
     const reticleBoxRef = useRef<HTMLDivElement | null>(null);
     const reticleLabelRef = useRef<HTMLSpanElement | null>(null);
 
     const [pointerShift, setPointerShift] = useState({ x: 0, y: 0 });
     const [burst, setBurst] = useState<BurstState | null>(null);
+    const [pulseRing, setPulseRing] = useState<{ id: number; color: string } | null>(null);
     const burstNonceRef = useRef(0);
     const burstTimerRef = useRef<number | null>(null);
+    const pulseTimerRef = useRef<number | null>(null);
 
     useImperativeHandle(
       ref,
       () => ({
-        triggerEffect: (intensity = 1, hexColor?: string) => {
-          worldRef.current?.triggerPulse(intensity, hexColor || accentHex);
+        triggerEffect: (_intensity = 1, hexColor?: string) => {
           const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
           if (reduced) return;
           burstNonceRef.current += 1;
+          const id = burstNonceRef.current;
           const color = hexColor || accentHex || (isDark ? '#6c8eff' : '#3a5bc2');
-          setBurst(buildStopMotionBurst(burstNonceRef.current, color));
+          setBurst(buildStopMotionBurst(id, color));
+          setPulseRing({ id, color });
           if (burstTimerRef.current) window.clearTimeout(burstTimerRef.current);
+          if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current);
           burstTimerRef.current = window.setTimeout(() => setBurst(null), 640);
+          pulseTimerRef.current = window.setTimeout(() => setPulseRing(null), 600);
         },
       }),
       [isDark, accentHex],
@@ -200,35 +217,9 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
     useEffect(() => {
       return () => {
         if (burstTimerRef.current) window.clearTimeout(burstTimerRef.current);
+        if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current);
       };
     }, []);
-
-    // Initialize and sync Three.js Sanctum World
-    useEffect(() => {
-      const mount = worldMountRef.current;
-      if (!mount) return undefined;
-      const world = new GachaSanctumWorld(mount);
-      worldRef.current = world;
-      world.setTheme(isDark, accentHex, canvasHex);
-      world.setMode(mode);
-      world.setBlueprint(blueprint);
-      return () => {
-        world.dispose();
-        worldRef.current = null;
-      };
-    }, []);
-
-    useEffect(() => {
-      worldRef.current?.setTheme(isDark, accentHex, canvasHex);
-    }, [isDark, accentHex, canvasHex]);
-
-    useEffect(() => {
-      worldRef.current?.setMode(mode);
-    }, [mode]);
-
-    useEffect(() => {
-      worldRef.current?.setBlueprint(blueprint);
-    }, [blueprint]);
 
     // Reticle bracket tracker + subtle drifting architectural NodeField canvas
     useEffect(() => {
@@ -285,7 +276,6 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
 
         const nx = (lx / Math.max(1, rect.width) - 0.5) * 2;
         const ny = (ly / Math.max(1, rect.height) - 0.5) * 2;
-        worldRef.current?.setPointer(nx, ny);
         setPointerShift({ x: nx, y: ny });
 
         if (!finePointer) return;
@@ -425,12 +415,287 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
 
     return (
       <>
-        {/* 1. Three.js Procedural Architectural Stage */}
+        {/* 1. Pure 2D Flat Swiss / Constructivist PROUN × osu! Poster Composition */}
         <div
-          ref={worldMountRef}
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 z-0"
-        />
+          className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+          style={{
+            background:
+              mode === 'pack'
+                ? 'radial-gradient(ellipse at 64% 48%, color-mix(in srgb, var(--ga-cobalt) 10%, transparent) 0%, transparent 56%)'
+                : mode === 'guess'
+                  ? 'radial-gradient(ellipse at 50% 42%, color-mix(in srgb, var(--ga-cobalt) 8%, transparent) 0%, transparent 60%)'
+                  : 'radial-gradient(ellipse at 38% 48%, color-mix(in srgb, var(--ga-cobalt) 9%, transparent) 0%, transparent 58%)',
+          }}
+        >
+          {/* Subtle Architectural Halftone Field */}
+          <div
+            className="ga-halftone pointer-events-none absolute right-[8%] top-[10%] h-[360px] w-[360px] rounded-full transition-transform duration-500"
+            style={{
+              color: 'var(--ga-cobalt)',
+              opacity: isDark ? 0.065 : 0.085,
+              maskImage: 'radial-gradient(circle, black 12%, transparent 72%)',
+              transform: `translate3d(${(-pointerShift.x * 12).toFixed(1)}px, ${(-pointerShift.y * 8).toFixed(1)}px, 0)`,
+            }}
+          />
+
+          <svg
+            viewBox="0 0 1440 900"
+            preserveAspectRatio="xMidYMid slice"
+            className="pointer-events-none absolute inset-0 h-full w-full transition-transform duration-500"
+            style={{
+              transform: `translate3d(${(-pointerShift.x * 8).toFixed(1)}px, ${(-pointerShift.y * 5).toFixed(1)}px, 0)`,
+            }}
+          >
+            {/* Outer Editorial Margin Rules */}
+            <rect
+              x="24"
+              y="22"
+              width="1392"
+              height="856"
+              fill="none"
+              stroke="var(--ga-ink)"
+              strokeOpacity="0.06"
+              strokeWidth="1"
+            />
+            <line
+              x1="24"
+              y1="450"
+              x2="1416"
+              y2="450"
+              stroke="var(--ga-ink)"
+              strokeOpacity="0.045"
+              strokeWidth="0.9"
+              strokeDasharray="6 8"
+            />
+            <line
+              x1="720"
+              y1="22"
+              x2="720"
+              y2="878"
+              stroke="var(--ga-ink)"
+              strokeOpacity="0.045"
+              strokeWidth="0.9"
+              strokeDasharray="6 8"
+            />
+
+            {/* Mode-Specific 2D Flat Geometric Forms */}
+            {mode === 'dating' && (
+              <g>
+                <circle
+                  cx="360"
+                  cy="450"
+                  r="270"
+                  fill="color-mix(in srgb, var(--ga-cobalt) 4%, transparent)"
+                  stroke="var(--ga-cobalt)"
+                  strokeOpacity="0.16"
+                  strokeWidth="1.5"
+                />
+                <circle
+                  cx="360"
+                  cy="450"
+                  r="310"
+                  fill="none"
+                  stroke="var(--ga-ink)"
+                  strokeOpacity="0.08"
+                  strokeWidth="1"
+                  strokeDasharray="12 10"
+                />
+                <polygon
+                  points="620,860 1420,160 1420,235 695,860"
+                  fill="var(--ga-crimson)"
+                  fillOpacity={isDark ? '0.09' : '0.07'}
+                />
+              </g>
+            )}
+
+            {mode === 'pack' && (
+              <g>
+                <circle
+                  cx="920"
+                  cy="440"
+                  r="290"
+                  fill="color-mix(in srgb, var(--ga-cobalt) 3.5%, transparent)"
+                  stroke="var(--ga-cobalt)"
+                  strokeOpacity="0.15"
+                  strokeWidth="1.4"
+                />
+                <circle
+                  cx="920"
+                  cy="440"
+                  r="340"
+                  fill="none"
+                  stroke="var(--ga-ink)"
+                  strokeOpacity="0.08"
+                  strokeWidth="0.9"
+                  strokeDasharray="6 8"
+                />
+                <polygon
+                  points="90,820 1280,105 1315,138 135,855"
+                  fill="var(--ga-cobalt)"
+                  fillOpacity={isDark ? '0.08' : '0.065'}
+                />
+              </g>
+            )}
+
+            {mode === 'guess' && (
+              <g>
+                <circle
+                  cx="720"
+                  cy="450"
+                  r="296"
+                  fill="color-mix(in srgb, var(--ga-cobalt) 3.5%, transparent)"
+                  stroke="var(--ga-cobalt)"
+                  strokeOpacity="0.15"
+                  strokeWidth="1.4"
+                />
+                {/* Horizontal SR Calibration Hairlines */}
+                {Array.from({ length: 19 }, (_, idx) => {
+                  const x = 180 + idx * 60;
+                  const major = idx % 3 === 0;
+                  return (
+                    <line
+                      key={idx}
+                      x1={x}
+                      y1={major ? 78 : 84}
+                      x2={x}
+                      y2={94}
+                      stroke={major ? 'var(--ga-cobalt)' : 'var(--ga-ink)'}
+                      strokeOpacity={major ? '0.32' : '0.14'}
+                      strokeWidth={major ? '1.3' : '0.8'}
+                    />
+                  );
+                })}
+                <polygon
+                  points="60,690 790,120 822,148 92,718"
+                  fill="var(--ga-crimson)"
+                  fillOpacity={isDark ? '0.085' : '0.07'}
+                />
+              </g>
+            )}
+
+            {/* Shared Constructivist Diagonal Beam & Crisp Circle Crosshair */}
+            <line
+              x1="-40"
+              y1="790"
+              x2="960"
+              y2="140"
+              stroke="var(--ga-cobalt)"
+              strokeOpacity="0.18"
+              strokeWidth="2.4"
+            />
+            <line
+              x1="40"
+              y1="822"
+              x2="1000"
+              y2="172"
+              stroke="var(--ga-ink)"
+              strokeOpacity="0.09"
+              strokeWidth="0.9"
+            />
+
+            {/* Top-Right Flat osu! Approach Circle & 4K Stamp */}
+            <g transform="translate(1310, 128)" opacity={isDark ? '0.28' : '0.24'}>
+              <circle
+                cx="0"
+                cy="0"
+                r="48"
+                fill="none"
+                stroke="var(--ga-cobalt)"
+                strokeWidth="1.4"
+                strokeDasharray="12 6"
+              />
+              <circle cx="0" cy="0" r="32" fill="none" stroke="var(--ga-ink)" strokeWidth="1.6" />
+              <line x1="-56" y1="0" x2="-38" y2="0" stroke="var(--ga-ink)" strokeWidth="1" />
+              <line x1="38" y1="0" x2="56" y2="0" stroke="var(--ga-ink)" strokeWidth="1" />
+              <text
+                x="0"
+                y="4"
+                textAnchor="middle"
+                fill="var(--ga-ink)"
+                fontSize="11.5"
+                fontFamily="var(--ga-mono)"
+                fontWeight="700"
+                letterSpacing="1.6"
+              >
+                4K
+              </text>
+            </g>
+
+            {/* 2D Blueprint Construction Tangents & Protractor (B key) */}
+            <g
+              style={{
+                opacity: blueprint ? 0.55 : 0,
+                transition: 'opacity 260ms ease',
+              }}
+            >
+              <line x1="0" y1="0" x2="1440" y2="900" stroke="var(--ga-cobalt)" strokeWidth="0.8" strokeDasharray="5 5" />
+              <line x1="1440" y1="0" x2="0" y2="900" stroke="var(--ga-cobalt)" strokeWidth="0.8" strokeDasharray="5 5" />
+              <circle cx="720" cy="450" r="390" fill="none" stroke="var(--ga-cobalt)" strokeWidth="0.9" strokeDasharray="3 6" />
+              <text x="58" y="848" fill="var(--ga-cobalt)" fontSize="10.5" fontWeight="700" fontFamily="var(--ga-mono)">
+                PROUN // 45.0° AXIS · 16:9 ARCHIVE GRID
+              </text>
+            </g>
+          </svg>
+
+          {/* Far-Left & Far-Right Pure 2D osu!mania 4K Graphic Rhythm Strips */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-14 bottom-16 left-5 hidden w-7 overflow-hidden border-x border-[var(--ga-line)] opacity-35 sm:block"
+          >
+            <div className="ga-bg-note-fall relative h-[200%] w-full">
+              {[0, 1].map((dup) => (
+                <svg key={dup} viewBox="0 0 28 384" preserveAspectRatio="none" className="h-1/2 w-full">
+                  {[7, 14, 21].map((lx) => (
+                    <line key={lx} x1={lx} y1="0" x2={lx} y2="384" stroke="var(--ga-ink)" strokeOpacity="0.16" strokeWidth="0.7" />
+                  ))}
+                  {MARGIN_LANE_BLOCKS.map((n, idx) => (
+                    <rect
+                      key={idx}
+                      x={n.lane * 7 + 1.1}
+                      y={n.y}
+                      width="4.8"
+                      height={n.h}
+                      rx="1"
+                      fill={n.accent ? 'var(--ga-crimson)' : 'var(--ga-cobalt)'}
+                      fillOpacity={n.accent ? '0.68' : '0.52'}
+                    />
+                  ))}
+                </svg>
+              ))}
+            </div>
+          </div>
+
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute top-14 right-7 bottom-16 hidden w-7 overflow-hidden border-x border-[var(--ga-line)] opacity-35 sm:block"
+          >
+            <div
+              className="ga-bg-note-fall relative h-[200%] w-full"
+              style={{ animationDuration: '9.5s', animationDirection: 'reverse' }}
+            >
+              {[0, 1].map((dup) => (
+                <svg key={dup} viewBox="0 0 28 384" preserveAspectRatio="none" className="h-1/2 w-full">
+                  {[7, 14, 21].map((lx) => (
+                    <line key={lx} x1={lx} y1="0" x2={lx} y2="384" stroke="var(--ga-ink)" strokeOpacity="0.16" strokeWidth="0.7" />
+                  ))}
+                  {MARGIN_LANE_BLOCKS.map((n, idx) => (
+                    <rect
+                      key={idx}
+                      x={(3 - n.lane) * 7 + 1.1}
+                      y={n.y}
+                      width="4.8"
+                      height={n.h}
+                      rx="1"
+                      fill={n.accent ? 'var(--ga-cobalt)' : 'var(--ga-ink)'}
+                      fillOpacity={n.accent ? '0.62' : '0.32'}
+                    />
+                  ))}
+                </svg>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* 2. Mineral Paper / Obsidian Veil */}
         <div aria-hidden="true" className="ga-world-veil pointer-events-none absolute inset-0 z-[1]" />
@@ -441,55 +706,29 @@ export const GachaAtmosphere = forwardRef<GachaAtmosphereHandle, GachaAtmosphere
           className="ga-blueprint-grid pointer-events-none absolute inset-0 z-[2]"
         />
 
-        {/* 4. Subtle NodeField Canvas + PROUN / osu! Architectural Accents + Floating Ghost Glyphs */}
+        {/* 2D Effect Expanding Pulse Ring */}
+        {pulseRing && (
+          <div
+            key={pulseRing.id}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-[2] flex items-center justify-center overflow-hidden"
+          >
+            <div
+              className="ga-bg-pulse-ring h-64 w-64 rounded-full border-2"
+              style={{
+                borderColor: pulseRing.color,
+                boxShadow: `0 0 32px -4px ${pulseRing.color}`,
+              }}
+            />
+          </div>
+        )}
+
+        {/* 4. Subtle NodeField Canvas2D + Floating Ghost Glyphs */}
         <canvas
           ref={nodeCanvasRef}
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-[3] h-full w-full"
         />
-
-        {/* Constructivist PROUN Diagonal Rule & Top-Right osu! Approach Ring Emblem */}
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 1440 900"
-          preserveAspectRatio="xMidYMid slice"
-          className="pointer-events-none absolute inset-0 z-[2] h-full w-full opacity-55"
-        >
-          <line
-            x1="-40"
-            y1="790"
-            x2="920"
-            y2="160"
-            stroke="var(--ga-cobalt)"
-            strokeOpacity="0.16"
-            strokeWidth="2.4"
-          />
-          <line
-            x1="40"
-            y1="820"
-            x2="960"
-            y2="190"
-            stroke="var(--ga-ink)"
-            strokeOpacity="0.08"
-            strokeWidth="0.9"
-          />
-          <g transform="translate(1310, 128)" opacity="0.22">
-            <circle cx="0" cy="0" r="46" fill="none" stroke="var(--ga-cobalt)" strokeWidth="1.2" strokeDasharray="10 6" />
-            <circle cx="0" cy="0" r="30" fill="none" stroke="var(--ga-ink)" strokeWidth="1.4" />
-            <text
-              x="0"
-              y="4"
-              textAnchor="middle"
-              fill="var(--ga-ink)"
-              fontSize="11"
-              fontFamily="var(--ga-mono)"
-              fontWeight="700"
-              letterSpacing="1.6"
-            >
-              4K
-            </text>
-          </g>
-        </svg>
 
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-[3] overflow-hidden">
           {GHOST_GLYPHS.map((g, i) => (

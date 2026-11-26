@@ -16,7 +16,7 @@ import {
 import { useI18n } from '../../i18n';
 import type { DownloadTarget, DownloadTask, NormalizedBeatmapset } from '../../types';
 import { BeatmapGachaCard } from './BeatmapGachaCard';
-import { PaimonStarfieldBack } from './PaimonStarfieldBack';
+import { GachaCardBack } from './GachaCardBack';
 import { getCardSummaryStats, getStarRarityMeta } from './gachaUtils';
 
 interface GachaCardInspectorModalProps {
@@ -74,7 +74,9 @@ export function GachaCardInspectorModal({
   const applyTransform = useCallback(() => {
     const p = poseRef.current;
     if (slabRef.current) {
-      slabRef.current.style.transform = `scale(${p.zoom.toFixed(3)}) rotateX(${p.pitch.toFixed(2)}deg) rotateY(${p.yaw.toFixed(2)}deg)`;
+      // True-3D perspective Z-dolly zoom keeps cover & vector side spines razor-sharp
+      const zOffset = (p.zoom - 1) * 340;
+      slabRef.current.style.transform = `translateZ(${zOffset.toFixed(1)}px) rotateX(${p.pitch.toFixed(2)}deg) rotateY(${p.yaw.toFixed(2)}deg)`;
     }
     if (sheenRef.current) {
       const normYaw = (((p.yaw % 360) + 540) % 360) - 180;
@@ -307,18 +309,18 @@ export function GachaCardInspectorModal({
           }}
         />
 
-        {/* 3D Solid Collector Slab (front + back + 14px PROUN industrial engraved metallic spine edges) */}
+        {/* 3D Solid Collector Slab (front + back + razor-sharp 20px vector SVG metallic spines) */}
         <div
           ref={slabRef}
           className="ga-inspector-slab h-[min(calc(100%-36px),640px)] w-[min(86vw,430px)]"
         >
-          {/* Left 14px PROUN Industrial Metallic Spine */}
+          {/* Left 20px Anodized Metallic Spine + Non-Distorted Vector Engraving */}
           <div
             aria-hidden="true"
-            className="ga-slab-edge top-0 bottom-0 left-0 flex w-[14px] flex-col items-center justify-between overflow-hidden border-y border-white/15 py-2.5"
+            className="ga-slab-edge top-0 bottom-0 left-0 flex w-[20px] flex-col items-center justify-between overflow-hidden border-y border-white/25 py-3"
             style={{
-              transform: 'translateX(-7px) rotateY(-90deg)',
-              background: 'linear-gradient(90deg, #10141f 0%, #2b3347 50%, #10141f 100%)',
+              transform: 'translateX(-10px) rotateY(-90deg)',
+              background: 'linear-gradient(90deg, #0b0f17 0%, #2b354b 50%, #0b0f17 100%)',
             }}
           >
             <div
@@ -328,23 +330,49 @@ export function GachaCardInspectorModal({
                 boxShadow: `0 0 8px ${rarity.glow}`,
               }}
             />
-            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-white/75" />
-            <span
-              className="relative z-10 rounded-[1px] bg-black/70 px-0.5 py-1 font-mono text-[7px] font-bold tracking-[0.16em] text-white/90"
-              style={{ writingMode: 'vertical-rl' }}
+            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-slate-200/85 shadow-sm" />
+            <svg
+              viewBox="0 0 40 680"
+              preserveAspectRatio="xMidYMid meet"
+              shapeRendering="geometricPrecision"
+              textRendering="geometricPrecision"
+              className="relative z-10 h-[340px] w-[20px] shrink-0"
             >
-              {spineText}
-            </span>
-            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-white/75" />
+              <rect
+                x="5"
+                y="18"
+                width="30"
+                height="644"
+                rx="2"
+                fill="rgba(6,8,14,0.9)"
+                stroke="rgba(255,255,255,0.22)"
+                strokeWidth="1.2"
+              />
+              <text
+                x="20"
+                y="340"
+                textAnchor="middle"
+                dominantBaseline="central"
+                transform="rotate(-90 20 340)"
+                fill="#f8fafc"
+                fontFamily="JetBrains Mono, Consolas, monospace"
+                fontSize="16"
+                fontWeight="700"
+                letterSpacing="3"
+              >
+                {spineText}
+              </text>
+            </svg>
+            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-slate-200/85 shadow-sm" />
           </div>
 
-          {/* Right 14px PROUN Industrial Metallic Spine */}
+          {/* Right 20px Anodized Metallic Spine + Non-Distorted Vector Engraving */}
           <div
             aria-hidden="true"
-            className="ga-slab-edge top-0 right-0 bottom-0 flex w-[14px] flex-col items-center justify-between overflow-hidden border-y border-white/15 py-2.5"
+            className="ga-slab-edge top-0 right-0 bottom-0 flex w-[20px] flex-col items-center justify-between overflow-hidden border-y border-white/25 py-3"
             style={{
-              transform: 'translateX(7px) rotateY(90deg)',
-              background: 'linear-gradient(90deg, #10141f 0%, #2b3347 50%, #10141f 100%)',
+              transform: 'translateX(10px) rotateY(90deg)',
+              background: 'linear-gradient(90deg, #0b0f17 0%, #2b354b 50%, #0b0f17 100%)',
             }}
           >
             <div
@@ -354,54 +382,135 @@ export function GachaCardInspectorModal({
                 boxShadow: `0 0 8px ${rarity.glow}`,
               }}
             />
-            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-white/75" />
-            <span
-              className="relative z-10 rounded-[1px] bg-black/70 px-0.5 py-1 font-mono text-[7px] font-bold tracking-[0.16em] text-white/90"
-              style={{ writingMode: 'vertical-rl' }}
+            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-slate-200/85 shadow-sm" />
+            <svg
+              viewBox="0 0 40 680"
+              preserveAspectRatio="xMidYMid meet"
+              shapeRendering="geometricPrecision"
+              textRendering="geometricPrecision"
+              className="relative z-10 h-[340px] w-[20px] shrink-0"
             >
-              {spineText}
-            </span>
-            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-white/75" />
+              <rect
+                x="5"
+                y="18"
+                width="30"
+                height="644"
+                rx="2"
+                fill="rgba(6,8,14,0.9)"
+                stroke="rgba(255,255,255,0.22)"
+                strokeWidth="1.2"
+              />
+              <text
+                x="20"
+                y="340"
+                textAnchor="middle"
+                dominantBaseline="central"
+                transform="rotate(90 20 340)"
+                fill="#f8fafc"
+                fontFamily="JetBrains Mono, Consolas, monospace"
+                fontSize="16"
+                fontWeight="700"
+                letterSpacing="3"
+              >
+                {spineText}
+              </text>
+            </svg>
+            <span className="relative z-10 h-1.5 w-1.5 rounded-full bg-slate-200/85 shadow-sm" />
           </div>
 
-          {/* Top 14px Brushed Metallic Bevel */}
+          {/* Top 20px Anodized Metallic Bevel */}
           <div
             aria-hidden="true"
-            className="ga-slab-edge top-0 right-0 left-0 flex h-[14px] items-center justify-between overflow-hidden border-x border-white/15 px-3"
+            className="ga-slab-edge top-0 right-0 left-0 flex h-[20px] items-center justify-between overflow-hidden border-x border-white/25 px-3"
             style={{
-              transform: 'translateY(-7px) rotateX(90deg)',
-              background: 'linear-gradient(180deg, #10141f 0%, #2a3145 50%, #10141f 100%)',
+              transform: 'translateY(-10px) rotateX(90deg)',
+              background: 'linear-gradient(180deg, #0b0f17 0%, #2e384e 50%, #0b0f17 100%)',
             }}
           >
             <div
               className="pointer-events-none absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 opacity-90"
               style={{ background: rarity.glow }}
             />
-            <span className="relative z-10 bg-black/75 px-1 font-mono text-[7px] font-bold tracking-[0.18em] text-white/90">
-              PROUN // {rarity.label}
-            </span>
+            <svg
+              viewBox="0 0 420 40"
+              preserveAspectRatio="xMidYMid meet"
+              shapeRendering="geometricPrecision"
+              textRendering="geometricPrecision"
+              className="relative z-10 h-[20px] w-[210px] shrink-0"
+            >
+              <rect
+                x="2"
+                y="6"
+                width="416"
+                height="28"
+                rx="2"
+                fill="rgba(6,8,14,0.9)"
+                stroke="rgba(255,255,255,0.2)"
+                strokeWidth="1.2"
+              />
+              <text
+                x="16"
+                y="21"
+                dominantBaseline="central"
+                fill="#f8fafc"
+                fontFamily="JetBrains Mono, Consolas, monospace"
+                fontSize="15"
+                fontWeight="700"
+                letterSpacing="2.8"
+              >
+                PROUN // {rarity.label}
+              </text>
+            </svg>
           </div>
 
-          {/* Bottom 14px Brushed Metallic Bevel */}
+          {/* Bottom 20px Anodized Metallic Bevel */}
           <div
             aria-hidden="true"
-            className="ga-slab-edge right-0 bottom-0 left-0 flex h-[14px] items-center justify-between overflow-hidden border-x border-white/15 px-3"
+            className="ga-slab-edge right-0 bottom-0 left-0 flex h-[20px] items-center justify-end overflow-hidden border-x border-white/25 px-3"
             style={{
-              transform: 'translateY(7px) rotateX(-90deg)',
-              background: 'linear-gradient(180deg, #10141f 0%, #2a3145 50%, #10141f 100%)',
+              transform: 'translateY(10px) rotateX(-90deg)',
+              background: 'linear-gradient(180deg, #0b0f17 0%, #2e384e 50%, #0b0f17 100%)',
             }}
           >
             <div
               className="pointer-events-none absolute inset-x-0 top-1/2 h-[2px] -translate-y-1/2 opacity-90"
               style={{ background: rarity.glowSecondary }}
             />
-            <span className="relative z-10 ml-auto bg-black/75 px-1 font-mono text-[7px] font-bold tracking-[0.18em] text-white/90">
-              ARCHIVE #{card.id}
-            </span>
+            <svg
+              viewBox="0 0 360 40"
+              preserveAspectRatio="xMidYMid meet"
+              shapeRendering="geometricPrecision"
+              textRendering="geometricPrecision"
+              className="relative z-10 h-[20px] w-[180px] shrink-0"
+            >
+              <rect
+                x="2"
+                y="6"
+                width="356"
+                height="28"
+                rx="2"
+                fill="rgba(6,8,14,0.9)"
+                stroke="rgba(255,255,255,0.2)"
+                strokeWidth="1.2"
+              />
+              <text
+                x="344"
+                y="21"
+                textAnchor="end"
+                dominantBaseline="central"
+                fill="#f8fafc"
+                fontFamily="JetBrains Mono, Consolas, monospace"
+                fontSize="15"
+                fontWeight="700"
+                letterSpacing="2.8"
+              >
+                ARCHIVE #{card.id}
+              </text>
+            </svg>
           </div>
 
-          {/* Front Collector Plate (+7px Z) */}
-          <div className="ga-slab-face" style={{ transform: 'translateZ(7px)' }}>
+          {/* Front Collector Plate (+10px Z) */}
+          <div className="ga-slab-face" style={{ transform: 'translateZ(10px)' }}>
             <BeatmapGachaCard
               beatmapset={card}
               faceDown={false}
@@ -422,12 +531,12 @@ export function GachaCardInspectorModal({
             />
           </div>
 
-          {/* Back Celestial Cloak (+7px Z along rotated back) */}
+          {/* Back Constructivist Kinetic Foil (+10px Z along rotated back) */}
           <div
             className="ga-slab-face overflow-hidden rounded-[3px]"
-            style={{ transform: 'rotateY(180deg) translateZ(7px)' }}
+            style={{ transform: 'rotateY(180deg) translateZ(10px)' }}
           >
-            <PaimonStarfieldBack seed={card.id} className="h-full w-full" />
+            <GachaCardBack seed={card.id} className="h-full w-full" />
           </div>
         </div>
       </div>
