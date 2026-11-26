@@ -88,12 +88,35 @@
     </td>
   </tr>
   <tr>
-    <td colspan="2" align="center" valign="top">
-      <a href="docs/screenshots/08-onboarding-wizard.png"><img src="docs/screenshots/08-onboarding-wizard.png" alt="Cross-PC 6-Step Interactive Onboarding Setup Wizard" width="76%" /></a>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/screenshots/08-onboarding-wizard.png"><img src="docs/screenshots/08-onboarding-wizard.png" alt="Cross-PC 6-Step Interactive Onboarding Setup Wizard" width="100%" /></a>
       <br />
       <strong>09 · 跨电脑 6 步新手配置向导（支持一键探测稳定/Lazer 路径与本地代理端口）</strong>
       <br />
       <sub>Auto-detects Stable / Lazer folders &amp; online proxy ports (<code>6174</code> / Clash <code>7890</code> / v2rayN <code>10808</code>) on first launch</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/screenshots/10-gacha-pack.png"><img src="docs/screenshots/10-gacha-pack.png" alt="Random Card Draw — Pack Opening Mode with Paimon Starfield Back and Star Rating Glow" width="100%" /></a>
+      <br />
+      <strong>10 · 随机抽卡（卡包模式：派蒙星空卡背 + 星数光谱悬停光晕 + 炉石风翻牌爆裂特效）</strong>
+      <br />
+      <sub>7 themed packs (<code>1–20</code> cards), tear-to-open pack, Paimon cloak back, SR hover aura &amp; tiered flip VFX</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/screenshots/11-gacha-dating.png"><img src="docs/screenshots/11-gacha-dating.png" alt="Random Card Draw — Dating Swipe Mode with Auto Audio Preview and Liked Tray" width="100%" /></a>
+      <br />
+      <strong>11 · 随机抽卡（约会模式：左右滑动挑选非本地谱面 + 切卡自动试听 + 心仪批量下载）</strong>
+      <br />
+      <sub>Tinder-style drag/swipe stack, Undo, auto-playing audio preview &amp; Liked songs batch download tray</sub>
+    </td>
+    <td width="50%" align="center" valign="top">
+      <a href="docs/screenshots/12-gacha-guess.png"><img src="docs/screenshots/12-gacha-guess.png" alt="Random Card Draw — Guess Star Rating Mode from PP Scenario Clues" width="100%" /></a>
+      <br />
+      <strong>12 · 随机抽卡（猜测模式：依据情景 PP、BPM 与封面推测隐藏真实星数）</strong>
+      <br />
+      <sub>Masked <code>?.??★</code> Star Rating puzzle with randomized PP scenarios, spectrum slider &amp; 0–1000 scoring</sub>
     </td>
   </tr>
 </table>
@@ -149,6 +172,13 @@
 9. **全量简体中文 / English 双语切换与动态代理测速**
    - 覆盖搜图选歌、详情/PP 计算器、Mania 预览器、3D Book 档案库、OSU! 音乐台、游戏内浮窗、Electron 系统托盘菜单与后端错误/镜像描述的全量中英双语体验。
    - 可在「设置 → 分区 3」或新手引导右上角切换 `简体中文` / `English`（切换立即预览，点保存持久化至 `config.json`，取消/Esc 自动回滚）；右上角测速状态与提示文案严格跟随用户实际配置的 `proxyPort`（不再固定写死 `6174`）与直连/代理模式动态显示。
+
+10. **随机抽卡工作室（约会模式 / 猜测模式 / 炉石风卡包开启）**
+   - 在浏览模式 `Lazer` 按钮右侧提供「随机抽卡」入口；仅抽取本地未拥有的谱面（严格排除 Stable 与 Lazer 本地已存曲目）。
+   - 无边框矩形卡面：正面展示铺满封面、曲名/作者、BPM、官方光谱星数、`~XXXpp` 预估 PP、一键下载与详情弹窗；背面采用原神派蒙星空斗篷动态效果与极简细体 `osu!` 标识。
+   - **约会模式**：支持左滑跳过 / 右滑收藏拖拽手势、键盘快捷键、撤回上一步、切卡自动播放试听，以及右侧心仪列表一键/批量下载。
+   - **猜测模式**：隐藏真实星数（`?.??★`），依据随机情景参数计算的 PP 与封面 / BPM / LN% / OD 线索推测星数，按指数误差评分（`0–1000` / `SS–D` 评级）并持久化最高分。
+   - **卡包模式**：提供 7 种卡包（含「当前筛选」自定义包），支持 `1–20` 张自定义抽卡数（默认 `5`）；支持拖拽撕开顶部封条或点击开包，发牌后悬停卡背亮起对应真实星数光谱光晕，翻牌触发炉石传说风格分阶粒子与光线爆发特效及 Web Audio 合成音效。
 
 ### 快速开始
 
@@ -224,6 +254,12 @@ No osu! login or session cookie is required. It brings together multi-mirror bea
 - **Full ZH / EN Bilingual Switcher & Dynamic Proxy Diagnostics**
   - Complete Simplified Chinese & English localization across Browse, Beatmap Detail & PP Calculator, Mania Previewer, 3D Book Archive, OSU! AUDIO Music Station, Acrylic Overlay, Electron Tray/Hotkeys, and backend mirror/status responses.
   - Switch live via **Settings → Section 3 (`简体中文 | English`)** or the onboarding header pill (persisted in `config.json`, safely rolls back on Cancel/Esc). Top-bar latency checks and toast notifications dynamically reflect your configured `proxyPort` or `Direct` mode.
+- **Random Card Draw Studio (`v1.12.0` — Dating / Guess SR / Booster Pack Modes)**
+  - Accessible directly beside the `Lazer` view button in Browse mode; exclusively draws unowned beatmapsets not present in either Stable or Lazer local libraries.
+  - **Borderless Rectangular Cards**: Front displays full-bleed cover art, title/artist, BPM, official-spectrum Star Rating, estimated `~XXXpp`, audio preview, download, and Detail modal; Back renders an animated Paimon-cloak cosmic starfield with a minimalist thin-stroke `osu!` emblem.
+  - **Dating Mode**: Drag/swipe left or right (plus buttons & hotkeys), Undo, **auto-playing audio preview** per card, and a right-hand Liked tray with one-click & batch download.
+  - **Guess Mode**: Masks Star Rating (`?.??★`), provides a randomized PP scenario clue alongside cover/BPM/LN%/OD, scores guesses (`0–1000`, `SS–D` grade), and persists your personal best score.
+  - **Pack Mode**: 7 themed booster packs (including `Current Filter`) with customizable `1–20` card count (default `5`), interactive tear-to-open metallic foil pack, face-down hover aura glowing in each card's true Star Rating color, and Hearthstone-style tiered flip burst VFX + optional Web Audio chimes.
 
 ### Quick Start
 
@@ -275,12 +311,12 @@ OSU-Manager-/
 ├── README.md                 # 中英文双语说明文档 / Bilingual README
 ├── docs/
 │   ├── DEVLOG.md             # 按会话记录的开发日志 / Session-by-session devlog
-│   └── screenshots/          # README 展示截图 / UI showcase screenshots (01–09)
+│   └── screenshots/          # README 展示截图 / UI showcase screenshots (01–12)
 ├── build/                    # OM 矢量与多分辨率应用图标 (icon.svg / icon.png / icon.ico)
 ├── scripts/                  # 打包后 PE 图标注入 (apply-exe-icon.mjs) 与 GitHub Release 发布脚本 (publish-github-release.mjs)
 ├── electron/                 # Electron 主进程与 preload 桥接
 ├── server/                   # Express v5 后端（搜索、镜像路由、Realm 读取、下载队列、本地曲库/歌单）
-├── src/                      # React 19 + Vite 6 + Tailwind CSS v4 前端（含 book/ 与 music/ 模块）
+├── src/                      # React 19 + Vite 6 + Tailwind CSS v4 前端（含 book/、gacha/ 与 music/ 模块）
 ├── package.json              # 脚本与 Electron Builder 配置
 ├── start-desktop.bat         # 桌面版快捷启动脚本
 └── start.bat                 # 通用启动脚本

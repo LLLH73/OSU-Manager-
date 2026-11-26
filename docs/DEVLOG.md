@@ -4,6 +4,35 @@
 
 ---
 
+## Session 22 — 随机抽卡工作室（约会模式 / 猜测星数 / 派蒙星空与炉石风卡包）、双端非本地过滤及全链路验收 (`v1.12.0`)
+
+- **日期**：2026-11-26
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **版本**：`v1.12.0`
+- **关联代码提交**：`a603701`
+- **本次需求**：
+  1. 在搜图选歌栏 `Lazer` 模式按钮后方新增「随机抽卡」功能入口，仅抽取 Stable 与 Lazer 本地均未拥有的非本地谱面；
+  2. 无边框矩形谱面卡：正面含封面、曲名/作者、BPM、星数、大致 PP 与详情弹窗；背面采用原神派蒙身后斗篷星空动效与极简细体 `osu!` 标识；
+  3. 实现约会模式（左右滑卡 + 自动试听）、猜测模式（情景 PP + 封面猜星数与距离评分）和卡包模式（多主题卡包、`1–20` 自定义张数、撕包开启、悬停显示对应星数光晕、翻牌炉石风分阶特效），且所有卡片均提供下载选项。
+- **关键改动**：
+  1. **后端非本地随机抽卡 API (`POST /api/gacha/draw`)**（`server/types.ts`, `server/search.ts`, `server/index.ts`, `src/types.ts`, `src/api.ts`）：
+     - `drawRandomBeatmapsets()` 强制 `installedFilter: 'hide_any'` 并二次校验 `!set.localStatus.inStable && !set.localStatus.inLazer`，支持 `standard` / `pp_farm` / `high_star` / `rice_stream` / `ln_tech` / `loved_chaos` / `current_filter` 共 7 种卡包、`1–20` 数量限制与 `requireRankedPp`（猜测模式专用），通过多探针随机排序/偏移与 Fisher-Yates 洗牌保障随机性与覆盖率。
+  2. **无边框 3D 矩形卡与派蒙星空背面**（`BeatmapGachaCard.tsx`, `PaimonStarfieldBack.tsx`, `src/index.css`）：
+     - `PaimonStarfieldBack.tsx` 使用纯 GPU 合成的 SVG + CSS 动画（星云漂移、四角闪烁星辰与极简细体 `osu!` / `CELESTIAL DECK` 徽标），零单卡 `requestAnimationFrame` 开销；
+     - `BeatmapGachaCard.tsx` 采用 `border-0` 无边框卡片与 `.gacha-perspective` 3D 翻转，并在发现 5 卡并排紧凑态文本挤压/换行后优化为紧凑两行顶标与顶右 `▶` 试听分离、比例列宽统计栏与单行不截断的「下载 / 详情」按钮。
+  3. **抽卡工作室三模式与炉石风开包动效**（`GachaStudio.tsx`, `GachaDatingMode.tsx`, `GachaGuessMode.tsx`, `GachaPackMode.tsx`, `gachaUtils.ts`, `gachaSound.ts`, `src/App.tsx`）：
+     - 在 `src/App.tsx` 工具栏 `Lazer` 按钮右侧 `9px` 处接入 `随机抽卡 / Card Draw` 按钮，打开 `<GachaStudio>` 时隐藏底部 `<AudioPlayerBar>` 并由工作室统一接管试听音轨；
+     - 约会模式支持拖拽/快捷键左右滑卡、撤回、切卡自动试听与右侧心仪列表一键/批量下载；
+     - 猜测模式隐藏星数 (`?.??★`) 并生成随机情景 PP 线索，指数评分 (`0–1000` / `SS–D`) 并持久化最佳成绩；
+     - 卡包模式支持 `1–20` 自定义张数（默认 `5`）、交互撕开顶部金属箔封条、发牌后悬停点亮真实星数光谱光晕、翻牌触发炉石风分阶粒子与射线爆裂（`.gacha-ring-expand` / `.gacha-beam-sweep` / `.gacha-spark-fly` / `.gacha-stage-shake`）及 Web Audio 合成音效。
+- **验证与本地打包记录**：
+  - `npm run typecheck && npm run build` 退出码 `0`；TS AST 扫描 `81` 个 TS/TSX 文件未本地化中文残留 `0`；
+  - 在线抽卡接口实测：`standard` (`5/5`)、`pp_farm` (`12/12`)、`high_star` (`5/5`) 全部返回 `provider=osudirect nonLocalOnly=True`；
+  - 浏览器全流程实机验收（`1440×900` 与 `1280×720`、浅色与 Obsidian 暗色、中文与英文）：卡包三连/五连无挤压截断、约会试听触发 HTTP `206` 音频流、猜测评分揭晓、详情弹窗与设置/双语无泄漏均正常，控制台报错 `0`、失败请求 `0`；采集并保存 `docs/screenshots/10-gacha-pack.png`、`11-gacha-dating.png`、`12-gacha-guess.png`；
+  - `npm run electron:pack` 生成 `release\win-unpacked\osu-manager.exe`（`249,975,808` 字节，`FileVersion=1.12.0`，含 `OM` 图标），在隔离 `PORT=3729` 与临时 `OSU_DL_DATA_DIR` 下实机启动冒烟通过（`Health 200 in 1.06s`, `GET / => 200`, `POST /api/gacha/draw => got=5 nonLocalOnly=True`），清理全部临时测试进程与目录。
+
+---
+
 ## Session 21 — 全量中英文双语切换、动态代理端口测速修复、音乐台增量视窗优化与 README 截图展区 (`v1.11.0`)
 
 - **日期**：2026-11-25

@@ -4,6 +4,23 @@ All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be docum
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.12.0] - 2026-11-26
+
+### Added
+- **随机抽卡工作室（Random Card Draw Studio）与非本地谱面抽取接口**（`POST /api/gacha/draw`, `server/search.ts`, `server/index.ts`, `server/types.ts`, `src/api.ts`, `src/types.ts`, `src/App.tsx`, `src/components/gacha/*`, `src/index.css`）：
+  - 在搜图选歌工具栏 `Lazer` 视图按钮右侧直接新增 **随机抽卡 / Card Draw** 入口，点击打开 `<GachaStudio>`（进入后自动隐藏底部 `<AudioPlayerBar>`，支持 Esc 返回）；后端 `drawRandomBeatmapsets()` 强制 `installedFilter: 'hide_any'` 并双重过滤 `!inStable && !inLazer`，结合多探针随机偏移与 Fisher-Yates 洗牌确保仅抽取未下载的非本地谱面，支持 `7` 种主题卡包（`standard` / `pp_farm` / `high_star` / `rice_stream` / `ln_tech` / `loved_chaos` / `current_filter`）与 `1–20` 张自定义抽卡数。
+  - **无边框矩形谱面卡与派蒙星空斗篷卡背**（`BeatmapGachaCard.tsx`, `PaimonStarfieldBack.tsx`, `src/index.css`）：
+    - 正面无边框满铺封面图，呈现曲名/作曲家与谱师、BPM、官方光谱星数、`~XXXpp` 预估 PP、一键音频试听、**下载**按钮与 **详情（`BeatmapDetailModal`）** 入口，并针对 5 列紧凑布局优化为两行标签/按钮分离与单行防截断操作区；
+    - 背面采用纯 GPU 合成 SVG + CSS 绘制动态派蒙星空斗篷（星云漂移 `paimon-nebula-drift`、闪烁四角星 `paimon-star-twinkle`、旋转轨道与居中极简细体 `osu!` / `CELESTIAL DECK` 标识）。
+  - **三大玩法模式与炉石风视听反馈**（`GachaDatingMode.tsx`, `GachaGuessMode.tsx`, `GachaPackMode.tsx`, `gachaUtils.ts`, `gachaSound.ts`）：
+    - **约会模式**：Tinder 风格左右拖拽/快捷键滑卡选曲、撤回上一步、切卡**自动播放试听**，并在右侧心仪清单提供一键与批量下载；
+    - **猜测模式**：抽取 Ranked 非本地曲目，遮罩真实星数（`?.??★`），展示随机情景 PP 线索与封面/BPM/LN%/OD，支持光谱滑块/输入猜星数与指数得分计算（`0–1000` / `SS–D`）并持久化个人最高分；
+    - **卡包模式**：提供 7 种卡包与 `1–20` 张自定义滑块（默认 `5` 张），支持鼠标拖拽撕开金属箔封条或点击开包；发牌后悬停卡背四周亮起对应真实星数光谱光晕，翻牌触发炉石传说风格分阶粒子与光线爆发特效，内置 Web Audio 合成音效并支持 `Reveal All` 与 `Download All`。
+
+### Changed & Verified
+- 版本号同步更新至 `v1.12.0`（`package.json`, `src/constants.ts`, `AGENT.md`, `README.md`），并在 `README.md` 与 `docs/screenshots/10..12*.png` 新增随机抽卡三模式实机截图展示；
+- 完成 `npm run typecheck && npm run build`、81 份 TS/TSX AST 双语零遗漏扫描、Chrome `1440×900` & `1280×720`（浅色/Obsidian 暗色 × 中英双语）零控制台报错实机验收、`npm run electron:pack` 构建及独立端口 `:3729` `osu-manager.exe` 冒烟测试。
+
 ## [1.11.0] - 2026-11-25
 
 ### Added

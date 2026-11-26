@@ -68,7 +68,7 @@
 - 配置与网络：`GET /api/config`、`PUT /api/config`、`GET/POST /api/config/detect-env`、`POST /api/config/background`、`DELETE /api/config/background`、`GET /api/network/status`、`POST /api/network/benchmark`
 - Filter 存档：`GET /api/filter-archives`、`POST /api/filter-archives`、`PUT /api/filter-archives/:id`、`DELETE /api/filter-archives/:id`
 - 本地 Book 档案库与音乐台接口：`GET /api/books`、`GET /api/books/:bookKey`、`GET /api/books/:bookKey/cover`、`GET /api/books/:bookKey/audio`、`GET /api/books/:bookKey/rhythm`、`GET/POST/PUT/DELETE /api/playlists`
-- 搜索与媒体：`GET /api/search`（含 `minPp`/`maxPp`/`ppAccuracy`/`ppRate`/`ppMisses`/`ppMaRatio`/`ppClassic`/`ppEz`/`ppNf`/`ppIncludeUnranked`）、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`、`GET /api/media/custom-bg`
+- 搜索与媒体：`GET /api/search`（含 `minPp`/`maxPp`/`ppAccuracy`/`ppRate`/`ppMisses`/`ppMaRatio`/`ppClassic`/`ppEz`/`ppNf`/`ppIncludeUnranked`）、`POST /api/gacha/draw`（随机抽取未安装非本地谱面卡池，支持 `1–20` 张与 7 种主题卡包）、`GET /api/beatmapset/:id`、`GET /api/media/cover/:id`、`GET /api/media/preview/:id`、`GET /api/media/custom-bg`
 - 预览与皮肤：`GET /api/preview/beatmapset/:setId`、`GET /api/preview/beatmapset/:setId/chart/:index`、`GET /api/preview/beatmapset/:setId/audio/:index`、`GET /api/preview/beatmapset/:setId/bg/:index`、`GET /api/skins`、`GET /api/skins/:skinId/mania`、`GET /api/skins/:skinId/asset`
 - 本地曲库、Lazer 与游戏加载/启动：`GET /api/library/status`、`POST /api/library/rescan`、`GET /api/library/diff`、`POST /api/library/sync-to-lazer`、`POST /api/library/open-folder`（支持 `subFolder`）、`GET /api/lazer/pending`、`POST /api/lazer/import-pending`、`DELETE /api/lazer/pending`、`POST /api/game/load`、`POST /api/game/launch`
 - 下载、快速批量与实时推送：`GET /api/downloads`、`POST /api/downloads`、`POST /api/downloads/batch`、`POST /api/downloads/:id/cancel`、`POST /api/downloads/:id/retry`、`DELETE /api/downloads/completed`、`GET/POST /api/fast-batch/(status|start|pause|resume|stop|clear)`、SSE `GET /api/events`（事件：`downloads`, `network`, `library`, `fast-batch`）
@@ -79,13 +79,13 @@
 | `src/main.tsx` | 引入离线 `@fontsource` Lazer 风格四字体（`Quicksand`, `Outfit`, `Exo 2`, `Noto Sans SC` 400/500/600/700 + `JetBrains Mono`），按 `?mode=overlay` 路由挂载 `OverlayApp` 或 `App` |
 | `src/index.css` | 8 套主题 CSS Token（默认 `:root[data-theme="light"]` 瓷器白）、Tailwind `@theme inline` 固定 `--spacing: 4px` 与 `--ui-font-scale`（默认 `1.2`）、`.song-list-row` / `.modal-surface` GPU 合成隔离规则、Lazer 字体工具类、`.segmented-compact`/`.segmented-auto`、卡片金框、Lazer 轮盘动效样式 |
 | `src/i18n.tsx` | 前端轻量零外部依赖双语运行时（`I18nProvider`, `useI18n`, `tx(zh, en, lang?)`, `setGlobalLang`），通过 `osu_mgr_lang` localStorage 与 `<html lang>` 实现主窗口与浮窗实时同步切换 |
-| `src/App.tsx` | 主工作区状态中心（配置与 `language` 持久化同步、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠与进入音乐台自动收起主左侧栏、主题/视图模式持久化、动态代理端口测速 Toast、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
+| `src/App.tsx` | 主工作区状态中心（配置与 `language` 持久化同步、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠与进入音乐台自动收起主左侧栏、主题/视图模式持久化、Lazer 按钮旁「随机抽卡」入口与 `<GachaStudio>` 切换、动态代理端口测速 Toast、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
 | `src/constants.ts` | 8 套主题元信息 (`THEME_OPTIONS`)、10 组强调色预设、`DEFAULT_FONT_SCALE = 1.2`、双语工厂函数（`getViewModeOptions`, `getThemeOptions`, `getWorkflowPresets`, `getSortFields`, `getTargetMeta`, `getVariantOptions` 等）、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()`、统一双语 `getLnCategory()` |
 | `src/utils/themeColor.ts` | Canvas 24-bin 色相主色调提取器 (`extractDominantColor`) 与动态强调色 CSS 变量推导/应用 (`deriveAccentVariables`, `applyAccentVariables`, `clearAccentVariables`) |
 | `src/utils/pp.ts` | Ranked PP 准度制计算引擎（含 35 组 `NM / DT / HT / 变速` 情景预设与双语主/副展示文案、`localStorage` 自定义情景持久化、`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `extractPpScenarioFromFilters`, `formatPpScenarioShort`, `isRankedForPp`） |
 | `src/utils/filterArchive.ts` | Filter 存档筛选净化、双语自动命名、语义摘要标签提取与创建时间格式化工具 |
 | `src/utils/maniaEngine.ts` | osu!mania Canvas2D 轨道渲染器（480p 坐标、BPM+SV 时间轴、PerCy `NoteBodyStyle` 0/1/2）与右侧滚动缩略图绘制引擎 |
-| `src/api.ts` | 前端 REST 封装（含 Book 档案库、自定义壁纸、IPv6 网络状态、快速批量下载与游戏客户端启动接口） |
+| `src/api.ts` | 前端 REST 封装（含随机抽卡 `drawGachaBeatmapsets`、Book 档案库、自定义壁纸、IPv6 网络状态、快速批量下载与游戏客户端启动接口） |
 | `src/types.ts` | 与后端对齐的前端 TypeScript 类型 |
 | `src/components/TitleBar.tsx` | 无边框顶部栏（左侧栏与右侧存档栏折叠按钮、单色粗线 `OM` 图标 `LaneEmblem` + `OSU!Manager!`、浮窗开关、8 主题分组弹窗、动态代理端口/直连状态按钮、镜像延迟、窗口控制） |
 | `src/components/SideRail.tsx` | `pbakaus/impeccable` 风格可折叠左侧栏（三段工作区模式切换、并排 `Book 档案库 / 3D Books \| OSU 音乐台 / OSU! Audio` 入口、目标三段胶囊、下划线变体、5px 圆点预设、单线双端曲库摘要、并排「启动 Stable / Lazer」按钮、快速批量/队列/设置入口） |
@@ -125,9 +125,17 @@
 | `src/components/DownloadDrawer.tsx` | 下载任务队列（含完成态预览/再加载按钮）与 Lazer 待导入队列批量导入抽屉 |
 | `src/components/FastBatchModal.tsx` | 极简纯文本「快速批量下载」工作台（目标数量 1–500、IPv6/直连分流、多镜像高并发与实时传输遥测） |
 | `src/components/LibrarySyncModal.tsx` | 双端曲库比对与 Stable→Lazer 零流量同步弹窗 |
-| `src/components/SettingsModal.tsx` | 客户端路径浏览、动态代理/IPv6 网络协议与镜像测速、`简体中文 / English` 界面语言切换（`segmented-auto` 防截断，即时预览/取消回滚/保存持久化）、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.11.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
+| `src/components/SettingsModal.tsx` | 客户端路径浏览、动态代理/IPv6 网络协议与镜像测速、`简体中文 / English` 界面语言切换（`segmented-auto` 防截断，即时预览/取消回滚/保存持久化）、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.12.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
 | `src/components/OnboardingModal.tsx` | 首次安装 6 步交互式环境配置与新手引导向导（右上角含 `中文 / EN` 快速切换、调用 `/api/config/detect-env` 探测多盘符客户端路径与本机代理端口，支持代理模式/端口预设、下载策略、实时主题/字号预览、配置摘要保存及防输入框箭头误触） |
 | `src/components/SelectField.tsx` | 统一下拉封装（支持 `<optgroup>` 嵌套匹配，解决 Chromium 原生箭头重叠问题） |
+| `src/components/gacha/GachaStudio.tsx` | 随机抽卡工作室总控界面（约会 / 猜测 / 卡包 3 模式切换、共享音频试听管理、顶部返回与卡包筛选衔接） |
+| `src/components/gacha/GachaPackMode.tsx` | 卡包开启模式（7 种主题卡包、`1–20` 自定义抽卡数、金属箔可拖拽撕开卡包、`Reveal All` / `Download All` 与炉石风爆裂粒子舞台） |
+| `src/components/gacha/GachaDatingMode.tsx` | 约会滑卡模式（Tinder 风拖拽与快捷键左右滑卡、撤回、切卡自动试听、右侧心仪列表批量下载） |
+| `src/components/gacha/GachaGuessMode.tsx` | 猜星数模式（Ranked 非本地曲目抽取、`?.??★` 隐藏星数、随机 PP 情景线索、光谱滑块、指数评分与最高分持久化） |
+| `src/components/gacha/BeatmapGachaCard.tsx` | 无边框正反 3D 矩形谱面卡（正面封面/BPM/星数/PP/试听/下载/详情按钮；背面衔接派蒙星空与悬停真实星数光晕） |
+| `src/components/gacha/PaimonStarfieldBack.tsx` | 纯 GPU 合成派蒙星空斗篷卡背（漂移星云、闪烁四角星与极简细体 `osu!` / `CELESTIAL DECK` 标识） |
+| `src/components/gacha/gachaUtils.ts` | 卡包配置、星数光谱光晕分级、代表难度/PP 摘要、猜星情景生成与评分公式工具 |
+| `src/components/gacha/gachaSound.ts` | Web Audio API 合成开包撕裂、悬停律动、分阶翻牌爆裂、滑卡与猜星揭晓音效 |
 
 ---
 
