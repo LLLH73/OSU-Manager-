@@ -65,6 +65,29 @@ export function shouldAllowUnrankedForPpFilter(f: SearchFilters): boolean {
   );
 }
 
+function computeManiaCustomAccuracy(
+  rawAcc: number,
+  misses: number,
+  totalHits: number,
+  maRatio: number | null,
+  classic: boolean,
+): number {
+  const m = totalHits > 0 ? Math.min(1, Math.max(0, misses) / totalHits) : 0;
+  if (maRatio === null || !Number.isFinite(maRatio) || maRatio < 0) {
+    return Math.min(rawAcc, Math.max(0, 1 - m));
+  }
+  const base = classic ? 300 : 305;
+  const wTopBase = (base * maRatio + 300) / (maRatio + 1);
+  const wTop320 = (320 * maRatio + 300) / (maRatio + 1);
+  const maxPossibleAcc = (wTopBase / base) * Math.max(0, 1 - m);
+  const effAcc = Math.min(rawAcc, maxPossibleAcc);
+  const pTop = Math.min(
+    Math.max(0, 1 - m),
+    Math.max(0, (base * effAcc - 200) / (wTopBase - 200)),
+  );
+  return Math.min(1, Math.max(0, (base * effAcc + (wTop320 - wTopBase) * pTop) / 320));
+}
+
 export function calculateBeatmapPp(
   beatmap: NormalizedBeatmap,
   input: Partial<PpScenarioInput> = {},
@@ -91,15 +114,23 @@ export function calculateBeatmapPp(
     const effectiveSr = isRateEstimated
       ? beatmap.difficultyRating * Math.pow(rate, 0.72)
       : beatmap.difficultyRating;
-    const lengthBonus = 1 + 0.1 * Math.min(1, totalHits / 1500);
-    const modMultiplier =
-      0.8 * (mods.nf ? 0.75 : 1) * (mods.ez ? 0.5 : 1) * (mods.classic ? 0.96 : 1);
+    // Lazer judges both hold-note head & tail; Classic/Stable judges hold-note once
+    const maniaTotalHits = Math.max(
+      1,
+      mods.classic ? rawTotalHits : beatmap.countCircles + beatmap.countSliders * 2 + beatmap.countSpinners,
+    );
+    const maniaMisses = Math.min(maniaTotalHits, Math.max(0, Math.round(Number(input.misses ?? 0))));
+    const lengthBonus = 1 + 0.1 * Math.min(1, maniaTotalHits / 1500);
+    // Official ppy/osu ManiaPerformanceCalculator uses base 1.0 and only NF (0.75) / EZ (0.5); Classic has no PP penalty
+    const modMultiplier = (mods.nf ? 0.75 : 1) * (mods.ez ? 0.5 : 1);
 
-    const maFactor =
-      maRatio !== null && Number.isFinite(maRatio) && maRatio >= 0
-        ? (320 * maRatio + 300) / (320 * (maRatio + 1))
-        : 1;
-    const customAcc = accAfterMiss * maFactor;
+    const customAcc = computeManiaCustomAccuracy(
+      rawAcc,
+      maniaMisses,
+      maniaTotalHits,
+      maRatio,
+      mods.classic,
+    );
     const accFactor = Math.max(0, 5 * customAcc - 4);
     const difficultyValue =
       8.0 * Math.pow(Math.max(effectiveSr - 0.15, 0.05), 2.2) * accFactor * lengthBonus;
@@ -161,17 +192,16 @@ export function deriveStarBoundsFromPpFilter(f: SearchFilters): DerivedStarBound
   const maniaBounds = (): DerivedStarBounds => {
     const rate = Math.min(2, Math.max(0.5, scenario.rate));
     const rateFactor = Math.abs(rate - 1) > 0.001 ? Math.pow(rate, 0.72) : 1;
-    const modMult =
-      0.8 *
-      (scenario.mods.nf ? 0.75 : 1) *
-      (scenario.mods.ez ? 0.5 : 1) *
-      (scenario.mods.classic ? 0.96 : 1);
-    const maFactor =
-      scenario.maRatio !== null && Number.isFinite(scenario.maRatio) && scenario.maRatio >= 0
-        ? (320 * scenario.maRatio + 300) / (320 * (scenario.maRatio + 1))
-        : 1;
+    const modMult = (scenario.mods.nf ? 0.75 : 1) * (scenario.mods.ez ? 0.5 : 1);
     const rawAcc = Math.min(100, Math.max(0, scenario.accuracy)) / 100;
-    const accFactorMax = Math.max(0, 5 * (rawAcc * maFactor) - 4);
+    const customAccMax = computeManiaCustomAccuracy(
+      rawAcc,
+      0,
+      100000,
+      scenario.maRatio,
+      scenario.mods.classic,
+    );
+    const accFactorMax = Math.max(0, 5 * customAccMax - 4);
     const kMax = 8.0 * accFactorMax * 1.1 * modMult;
 
     if ((minPp ?? 0) > 0 && kMax <= 1e-6) {
@@ -190,12 +220,12 @@ export function deriveStarBoundsFromPpFilter(f: SearchFilters): DerivedStarBound
 
     let maxStars: number | undefined;
     if (maxPp != null) {
-      let accFactorMin = accFactorMax;
-      if (scenario.misses > 0) {
-        // Safe lower bound of post-miss accuracy for beatmaps with >= 50 objects
-        const minAccAfterMiss = Math.max(0, rawAcc - scenario.misses / 50);
-        accFactorMin = Math.max(0, 5 * (minAccAfterMiss * maFactor) - 4);
-      }
+      // Safe lower bound of post-miss custom accuracy for beatmaps with >= 50 objects
+      const customAccMin =
+        scenario.misses > 0
+          ? computeManiaCustomAccuracy(rawAcc, scenario.misses, 50, scenario.maRatio, scenario.mods.classic)
+          : customAccMax;
+      const accFactorMin = Math.max(0, 5 * customAccMin - 4);
       if (accFactorMin > 0.05) {
         const kMin = 8.0 * accFactorMin * 1.0 * modMult;
         if (kMin > 1e-6) {

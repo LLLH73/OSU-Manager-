@@ -787,7 +787,7 @@ function computeManiaScorePp(
   rate: number,
   ez: boolean,
   nf: boolean,
-  classic: boolean,
+  _classic: boolean,
   countMax: number,
   count300: number,
   count200: number,
@@ -809,22 +809,19 @@ function computeManiaScorePp(
   }
 
   let effSr = baseSr;
-  if (starsByMod) {
-    const modKey =
-      (Math.abs(rate - 1.5) < 0.05 ? 64 : Math.abs(rate - 0.75) < 0.05 ? 256 : 0) |
-      (ez ? 2 : 0);
-    if (starsByMod[modKey] && starsByMod[modKey] > 0) {
-      effSr = starsByMod[modKey];
-    } else if (Math.abs(rate - 1) > 0.001) {
-      effSr = baseSr * Math.pow(rate, 0.72);
-    }
+  const modKey =
+    (Math.abs(rate - 1.5) < 0.05 ? 64 : Math.abs(rate - 0.75) < 0.05 ? 256 : 0) |
+    (ez ? 2 : 0);
+  // Only override SR for DT/HT/EZ; NM uses exact full-precision SR (avoids stale osu!.db values)
+  if (modKey !== 0 && starsByMod && starsByMod[modKey] && starsByMod[modKey] > 0) {
+    effSr = starsByMod[modKey];
   } else if (Math.abs(rate - 1) > 0.001) {
     effSr = baseSr * Math.pow(rate, 0.72);
   }
 
   const lengthBonus = 1 + 0.1 * Math.min(1, objCount / 1500);
-  const modMultiplier =
-    0.8 * (nf ? 0.75 : 1) * (ez ? 0.5 : 1) * (classic ? 0.96 : 1);
+  // Official ppy/osu ManiaPerformanceCalculator uses base multiplier 1.0 and only NF (0.75) / EZ (0.5); Classic has no penalty
+  const modMultiplier = (nf ? 0.75 : 1) * (ez ? 0.5 : 1);
   const accFactor = Math.max(0, 5 * customAcc - 4);
   const pp =
     8.0 *
@@ -881,7 +878,7 @@ function buildLocalBooksData(): CachedLibraryData {
     lengthSec: number;
     previewTimeMs: number;
     dateAdded: string | null;
-    diffsByKey: Map<string, BookDifficultyRecord & { starsByMod?: Record<number, number> }>;
+    diffsByKey: Map<string, BookDifficultyRecord & { starsByMod?: Record<number, number>; rawStarRating?: number }>;
     md5ToDiffKey: Map<string, string>;
     idToDiffKey: Map<number, string>;
     scores: BookScoreRecord[];
@@ -1077,11 +1074,15 @@ function buildLocalBooksData(): CachedLibraryData {
         lastPlayedAt: bm.lastPlayedAt,
         estimated98Pp: Math.round(calculateBeatmapPp(normBm, { accuracy: 98 }).pp * 10) / 10,
         starsByMod: bm.starsByMod,
+        rawStarRating: baseSr,
       });
     } else {
       existingDiff.inStable = true;
       if (bm.starsByMod && Object.keys(bm.starsByMod).length > 0) {
         existingDiff.starsByMod = bm.starsByMod;
+      }
+      if (!existingDiff.rawStarRating && baseSr > 0) {
+        existingDiff.rawStarRating = baseSr;
       }
       if (bm.lastPlayedAt && (!existingDiff.lastPlayedAt || bm.lastPlayedAt > existingDiff.lastPlayedAt)) {
         existingDiff.lastPlayedAt = bm.lastPlayedAt;
@@ -1347,32 +1348,31 @@ function buildLocalBooksData(): CachedLibraryData {
         }
 
         const existingDiff = book.diffsByKey.get(diffKey);
+        const normBm: NormalizedBeatmap = {
+          id: bm.onlineId > 0 ? bm.onlineId : 0,
+          beatmapsetId: sid ?? 0,
+          version: bm.difficultyName,
+          modeInt,
+          mode: modeIntToName(modeInt),
+          cs,
+          ar,
+          od,
+          hp,
+          difficultyRating: sr,
+          totalLength: Math.round(bm.lengthMs / 1000),
+          hitLength: Math.round(bm.lengthMs / 1000),
+          bpm: Math.round(bm.bpm * 10) / 10,
+          countCircles: Math.max(0, totalObjects - lnCount),
+          countSliders: lnCount,
+          countSpinners: 0,
+          maxCombo: null,
+          playcount: 0,
+          passcount: 0,
+          convert: false,
+          status: bmStatus,
+          lnRatio,
+        };
         if (!existingDiff) {
-          const normBm: NormalizedBeatmap = {
-            id: bm.onlineId > 0 ? bm.onlineId : 0,
-            beatmapsetId: sid ?? 0,
-            version: bm.difficultyName,
-            modeInt,
-            mode: modeIntToName(modeInt),
-            cs,
-            ar,
-            od,
-            hp,
-            difficultyRating: sr,
-            totalLength: Math.round(bm.lengthMs / 1000),
-            hitLength: Math.round(bm.lengthMs / 1000),
-            bpm: Math.round(bm.bpm * 10) / 10,
-            countCircles: Math.max(0, totalObjects - lnCount),
-            countSliders: lnCount,
-            countSpinners: 0,
-            maxCombo: null,
-            playcount: 0,
-            passcount: 0,
-            convert: false,
-            status: bmStatus,
-            lnRatio,
-          };
-
           book.diffsByKey.set(diffKey, {
             key: diffKey,
             beatmapId: bm.onlineId > 0 ? bm.onlineId : null,
@@ -1401,11 +1401,16 @@ function buildLocalBooksData(): CachedLibraryData {
             bestScore: null,
             lastPlayedAt: bm.lastPlayed,
             estimated98Pp: Math.round(calculateBeatmapPp(normBm, { accuracy: 98 }).pp * 10) / 10,
+            rawStarRating: sr,
           });
         } else {
           existingDiff.inLazer = true;
-          if (existingDiff.starRating <= 0 && sr > 0) {
+          if (sr > 0) {
+            // Prefer fresh Lazer client.realm float64 star rating over osu!.db
+            existingDiff.rawStarRating = sr;
             existingDiff.starRating = Math.round(sr * 100) / 100;
+            existingDiff.estimated98Pp =
+              Math.round(calculateBeatmapPp(normBm, { accuracy: 98 }).pp * 10) / 10;
           }
           if (lnRatio !== null && existingDiff.lnRatio === null) {
             existingDiff.lnCount = lnCount;
@@ -1462,10 +1467,11 @@ function buildLocalBooksData(): CachedLibraryData {
     );
 
     const isRanked = isRankedForPp(diff.status);
+    const exactSr = diff.rawStarRating && diff.rawStarRating > 0 ? diff.rawStarRating : diff.starRating;
     let pp = 0;
     if (modeInt === 3) {
       pp = computeManiaScorePp(
-        diff.starRating,
+        exactSr,
         diff.starsByMod,
         rate,
         ez,
@@ -1491,7 +1497,7 @@ function buildLocalBooksData(): CachedLibraryData {
         ar: diff.ar,
         od: diff.od,
         hp: diff.hp,
-        difficultyRating: diff.starRating,
+        difficultyRating: exactSr,
         totalLength: diff.lengthSec,
         hitLength: diff.lengthSec,
         bpm: diff.bpm,
@@ -1599,9 +1605,10 @@ function buildLocalBooksData(): CachedLibraryData {
 
       if (ppValue === null) {
         ppSource = 'estimated';
+        const exactSr = diff.rawStarRating && diff.rawStarRating > 0 ? diff.rawStarRating : diff.starRating;
         if (modeInt === 3) {
           ppValue = computeManiaScorePp(
-            diff.starRating,
+            exactSr,
             diff.starsByMod,
             rate,
             ez,
@@ -1627,7 +1634,7 @@ function buildLocalBooksData(): CachedLibraryData {
             ar: diff.ar,
             od: diff.od,
             hp: diff.hp,
-            difficultyRating: diff.starRating,
+            difficultyRating: exactSr,
             totalLength: diff.lengthSec,
             hitLength: diff.lengthSec,
             bpm: diff.bpm,
@@ -1748,7 +1755,9 @@ function buildLocalBooksData(): CachedLibraryData {
   let highestPpTitle: string | null = null;
 
   for (const book of booksByKey.values()) {
-    const diffs = Array.from(book.diffsByKey.values()).map(({ starsByMod: _s, ...d }) => d);
+    const diffs = Array.from(book.diffsByKey.values()).map(
+      ({ starsByMod: _s, rawStarRating: _r, ...d }) => d,
+    );
     if (diffs.length === 0) continue;
 
     // Sort diffs by mode (Mania first), keyCount, then starRating

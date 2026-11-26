@@ -994,6 +994,7 @@ export function FilterPanel({
                       <button
                         type="button"
                         onClick={() => update({ ppClassic: !ppScenario.mods.classic })}
+                        title={t('Classic / Stable 300 制准度（与 Lazer 305 制换算黄彩比）', 'Classic / Stable 300-base accuracy (vs Lazer 305-base)')}
                         className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
                           ppScenario.mods.classic
                             ? 'border-stable/60 bg-stable/16 text-stable-soft'

@@ -4,7 +4,6 @@ import {
   Award,
   CheckCircle2,
   Download,
-  HelpCircle,
   Loader2,
   RefreshCw,
   Sparkles,
@@ -12,7 +11,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { drawGachaBeatmapsets } from '../../api';
-import { getStarColor, getStarSpectrum } from '../../constants';
+import { getLnCategory, getStarColor, getStarSpectrum } from '../../constants';
 import { useI18n } from '../../i18n';
 import type {
   DownloadTarget,
@@ -187,26 +186,28 @@ export function GachaGuessMode({
   const actualBadge = getStarColor(actualStars);
 
   const clueBanner = currentCard && featuredDiff && (
-    <div className="rounded-[2px] border-l-2 border-emerald-400 bg-black/75 px-3 py-2 backdrop-blur-md">
-      <div className="flex items-center justify-between gap-2 text-[0.6875rem] font-semibold text-amber-300">
-        <span className="truncate">{scenario.shortTag}</span>
-        <span className="ga-mono shrink-0 text-white/75">
-          {t('目标难度', 'Target')}: {featuredDiff.version}
+    <div className="rounded-[3px] border-l-2 border-emerald-400 bg-black/72 px-3 py-2 backdrop-blur-md">
+      <div className="flex items-center justify-between gap-2 text-[0.6875rem] font-semibold">
+        <span className="ga-mono shrink-0 text-amber-300">
+          {scenario.rateTag} {scenario.input.rate}×
+        </span>
+        <span className="ga-mono truncate text-white/75">
+          {featuredDiff.version}
         </span>
       </div>
       <div className="mt-0.5 flex items-baseline justify-between gap-2">
         <span className="font-stat text-[1.25rem] font-extrabold text-emerald-300 tabular-nums">
           {formatPp(scenarioPp)} PP
         </span>
-        <span className="ga-mono text-[0.65625rem] text-white/75 tabular-nums">
-          {t('黄彩', 'MA')} {scenario.maRatioLabel} · OD {featuredDiff.od.toFixed(1)}
+        <span className="ga-mono text-[0.6875rem] font-semibold text-white/85 tabular-nums">
+          {scenario.input.accuracy}%
         </span>
       </div>
     </div>
   );
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-5 overflow-y-auto p-3 sm:p-5 lg:flex-row lg:overflow-hidden">
+    <div className="mx-auto flex min-h-0 w-full max-w-[1440px] flex-1 flex-col gap-4 overflow-y-auto p-3 sm:p-4 lg:flex-row lg:gap-5 lg:overflow-hidden">
       {/* Left: Crop-Framed Specimen Stage over Open Sanctum Canvas (zero frosted box) */}
       <div className="flex shrink-0 flex-col items-center justify-center lg:w-[376px] xl:w-[404px]">
         <div className="mb-2.5 flex w-full items-center justify-between gap-2">
@@ -300,122 +301,247 @@ export function GachaGuessMode({
         </div>
       </div>
 
-      {/* Right: Open Calibration Console over Three.js Sanctum (no heavy frosted wrapper) */}
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-3.5 overflow-y-auto border-0 bg-transparent p-2 sm:p-3">
-        {/* Top Hairline-Divided Telemetry Matrix (no ugly fire emoji!) */}
-        <div className="grid grid-cols-2 border border-[var(--ga-line)] bg-[var(--ga-panel)] sm:grid-cols-5 sm:divide-x sm:divide-[var(--ga-line)]">
-          <div className="px-3 py-2">
-            <div className="ga-mono text-[0.625rem] font-semibold tracking-wider text-[var(--ga-ink-3)] uppercase">
+      {/* Right: Gallery-Grade Open Calibration Console over 2D PROUN Backdrop */}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-between gap-2.5 overflow-y-auto border-0 bg-transparent p-1.5 sm:p-2.5 [@media(min-height:820px)]:gap-4">
+        {/* Top Open Hairline Telemetry Ledger */}
+        <div className="grid grid-cols-2 border-y border-[var(--ga-line)]/65 sm:grid-cols-5 sm:divide-x sm:divide-[var(--ga-line)]/45">
+          <div className="px-3.5 py-2 [@media(min-height:820px)]:py-2.5">
+            <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
               {t('总分 SCORE', 'SCORE')}
             </div>
-            <div className="ga-serif text-[1.35rem] font-bold text-[var(--ga-cobalt)] tabular-nums">
+            <div className="ga-serif mt-0.5 text-[1.35rem] leading-none font-bold text-[var(--ga-cobalt)] tabular-nums">
               {totalScore}
             </div>
           </div>
-          <div className="px-3 py-2">
-            <div className="ga-mono text-[0.625rem] font-semibold tracking-wider text-[var(--ga-ink-3)] uppercase">
+          <div className="px-3.5 py-2 [@media(min-height:820px)]:py-2.5">
+            <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
               {t('题号 ROUND', 'ROUND')}
             </div>
-            <div className="ga-serif text-[1.35rem] font-bold text-[var(--ga-ink)] tabular-nums">
+            <div className="ga-serif mt-0.5 text-[1.35rem] leading-none font-bold text-[var(--ga-ink)] tabular-nums">
               #{String(roundNum).padStart(2, '0')}
             </div>
           </div>
-          <div className="px-3 py-2">
-            <div className="ga-mono text-[0.625rem] font-semibold tracking-wider text-[var(--ga-ink-3)] uppercase">
+          <div className="px-3.5 py-2 [@media(min-height:820px)]:py-2.5">
+            <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
               {t('平均误差', 'AVG Δ★')}
             </div>
-            <div className="ga-serif text-[1.35rem] font-bold text-[var(--ga-ink)] tabular-nums">
+            <div className="ga-serif mt-0.5 text-[1.35rem] leading-none font-bold text-[var(--ga-ink)] tabular-nums">
               {avgErr === '—' ? '—' : `±${avgErr}★`}
             </div>
           </div>
-          <div className="px-3 py-2">
-            <div className="ga-mono flex items-center gap-1 text-[0.625rem] font-semibold tracking-wider text-[var(--ga-ink-3)] uppercase">
+          <div className="px-3.5 py-2 [@media(min-height:820px)]:py-2.5">
+            <div className="ga-mono flex items-center gap-1 text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
               <Zap className="h-3 w-3 text-emerald-500" />
               <span>{t('精准连击', 'STREAK')}</span>
             </div>
-            <div className="ga-serif text-[1.35rem] font-bold text-emerald-500 tabular-nums">
+            <div className="ga-serif mt-0.5 text-[1.35rem] leading-none font-bold text-emerald-500 tabular-nums">
               {String(streak).padStart(2, '0')}
             </div>
           </div>
-          <div className="col-span-2 bg-[color-mix(in_srgb,var(--ga-cobalt)_10%,var(--ga-panel))] px-3 py-2 sm:col-span-1">
-            <div className="ga-mono flex items-center gap-1 text-[0.625rem] font-bold tracking-wider text-amber-500 uppercase">
+          <div className="col-span-2 bg-amber-500/[0.06] px-3.5 py-2 sm:col-span-1 [@media(min-height:820px)]:py-2.5">
+            <div className="ga-mono flex items-center gap-1 text-[0.625rem] font-bold tracking-[0.14em] text-amber-500 uppercase">
               <Trophy className="h-3 w-3" />
               <span>{t('历史最高', 'BEST')}</span>
             </div>
-            <div className="ga-serif text-[1.35rem] font-bold text-amber-500 tabular-nums">
+            <div className="ga-serif mt-0.5 text-[1.35rem] leading-none font-bold text-amber-500 tabular-nums">
               {bestScore}
             </div>
           </div>
         </div>
 
-        {/* Scenario Dossier (NM / HT / DT + MA Ratio / Huang-Cai Ratio) */}
-        {currentCard && featuredDiff && (
-          <div className="space-y-2.5 border-l-2 border-[var(--ga-cobalt)] bg-[var(--ga-panel)] p-3.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <span className="inline-flex items-center gap-1.5 text-[0.8125rem] font-bold text-[var(--ga-ink)]">
-                <HelpCircle className="h-4 w-4 text-[var(--ga-cobalt)]" />
-                <span>
-                  {t(
-                    '依据下方情景 PP、速率 (NM/HT/DT) 与黄彩比线索，推演真实星数！',
-                    'Estimate true Star Rating from PP, NM/HT/DT rate & MA ratio clues!',
-                  )}
-                </span>
-              </span>
-              <span className="ga-mono rounded-[2px] border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2 py-0.5 text-[0.6875rem] font-bold text-[var(--ga-cobalt)]">
-                {scenario.detailLabel}
-              </span>
-            </div>
+        {/* Spacious Scenario Brief (Hero PP + 8 Independent Elements) */}
+        {currentCard && featuredDiff && (() => {
+          const activeMods = [
+            scenario.input.mods.ez ? 'EZ ×0.5' : null,
+            scenario.input.mods.nf ? 'NF ×0.75' : null,
+            scenario.input.mods.classic ? 'Classic' : null,
+          ].filter(Boolean);
+          const lnLabel =
+            getLnCategory(featuredDiff.lnRatio, lang)?.label ??
+            t('无长条数据', 'No LN data');
+          const rateColorClass =
+            scenario.rateTag === 'DT'
+              ? 'text-rose-500'
+              : scenario.rateTag === 'HT'
+                ? 'text-sky-500'
+                : 'text-[var(--ga-cobalt)]';
+          const rateSubLabel =
+            scenario.rateTag === 'DT'
+              ? t('加速模式', 'Double Time')
+              : scenario.rateTag === 'HT'
+                ? t('半速模式', 'Half Time')
+                : t('常速模式', 'Normal Speed');
+          const modsSubLabel = scenario.input.mods.classic
+            ? t('Stable 300 制计分', '300-base scoring')
+            : scenario.input.mods.ez
+              ? t('PP 倍率减半', '0.5× PP mod')
+              : t('Lazer 305 制计分', 'Lazer 305 scoring');
+          const modsColorClass = scenario.input.mods.ez
+            ? 'text-emerald-500'
+            : scenario.input.mods.classic || scenario.input.mods.nf
+              ? 'text-sky-500'
+              : 'text-[var(--ga-ink-2)]';
+          const effectiveBpm = Math.round(currentCard.bpm * scenario.input.rate);
+          const baseBpm = Math.round(currentCard.bpm);
 
-            <div className="grid grid-cols-2 gap-2 text-[0.75rem] sm:grid-cols-3 lg:grid-cols-5">
-              <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
-                <span className="ga-mono block text-[0.59375rem] text-[var(--ga-ink-3)]">
-                  {t('情景 PP', 'SCENARIO PP')}
-                </span>
-                <strong className="ga-mono text-emerald-500 tabular-nums">
-                  {formatPp(scenarioPp)}pp
-                </strong>
+          return (
+            <div className="rounded-[4px] border border-[var(--ga-line)]/55 bg-[color-mix(in_srgb,var(--ga-bg)_42%,transparent)] backdrop-blur-[10px]">
+              {/* Upper Hero Row */}
+              <div className="flex flex-wrap items-end justify-between gap-4 border-b border-[var(--ga-line)]/50 px-4 py-3 sm:px-5 [@media(min-height:820px)]:py-4">
+                <div>
+                  <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.18em] text-[var(--ga-ink-3)] uppercase">
+                    {t('SCENARIO BRIEF // 推演情景', 'SCENARIO BRIEF')}
+                  </div>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="ga-serif text-[2.25rem] leading-none font-bold text-emerald-500 tabular-nums sm:text-[2.5rem]">
+                      {formatPp(scenarioPp)}
+                    </span>
+                    <span className="ga-mono text-[0.8125rem] font-bold tracking-widest text-emerald-500/80 uppercase">
+                      PP
+                    </span>
+                  </div>
+                </div>
+
+                <div className="min-w-0 text-right">
+                  <div
+                    className="ml-auto max-w-[260px] truncate text-[0.875rem] font-bold text-[var(--ga-ink)]"
+                    title={featuredDiff.version}
+                  >
+                    {featuredDiff.version}
+                  </div>
+                  <p className="mt-0.5 text-[0.75rem] text-[var(--ga-ink-2)]">
+                    {t(
+                      '结合下方各项情景要素，推演目标难度的真实星数',
+                      'Deduce the true Star Rating from each scenario element below',
+                    )}
+                  </p>
+                </div>
               </div>
-              <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
-                <span className="ga-mono block text-[0.59375rem] text-[var(--ga-ink-3)]">
-                  {t('情景速率', 'RATE MOD')}
-                </span>
-                <strong className="ga-mono text-[var(--ga-cobalt)] tabular-nums">
-                  {scenario.rateTag} · {Math.round(currentCard.bpm * scenario.input.rate)} BPM
-                </strong>
-              </div>
-              <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
-                <span className="ga-mono block text-[0.59375rem] text-[var(--ga-ink-3)]">
-                  {t('黄彩比 (MA)', 'MA RATIO')}
-                </span>
-                <strong className="ga-mono text-[var(--ga-ink)] tabular-nums">
-                  {scenario.maRatioLabel}
-                </strong>
-              </div>
-              <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
-                <span className="ga-mono block text-[0.59375rem] text-[var(--ga-ink-3)]">
-                  {t('长条 / Miss', 'LN% / MISS')}
-                </span>
-                <strong className="ga-mono text-[var(--ga-ink)] tabular-nums">
-                  {featuredDiff.lnRatio !== null ? `${featuredDiff.lnRatio}%` : '—'} ·{' '}
-                  {scenario.input.misses}M
-                </strong>
-              </div>
-              <div className="border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] px-2.5 py-1.5">
-                <span className="ga-mono block text-[0.59375rem] text-[var(--ga-ink-3)]">
-                  {t('键数 / 准度', 'KEYS / ACC')}
-                </span>
-                <strong className="ga-mono text-[var(--ga-ink)] tabular-nums">
-                  {featuredDiff.modeInt === 3 ? `${Math.round(featuredDiff.cs)}K` : featuredDiff.mode}{' '}
-                  · {scenario.input.accuracy}%
-                </strong>
+
+              {/* Lower 4x2 Open Parameter Matrix */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 [&>div]:border-b [&>div]:border-[var(--ga-line)]/45 [&>div:nth-child(odd)]:border-r [&>div:nth-last-child(-n+2)]:border-b-0 sm:[&>div]:border-r sm:[&>div:nth-child(4n)]:border-r-0 sm:[&>div:nth-child(n+5)]:border-b-0">
+                {/* 1. RATE */}
+                <div className="px-4 py-2.5 [@media(min-height:820px)]:py-3">
+                  <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
+                    {t('速率倍率', 'RATE')}
+                  </div>
+                  <div className={`mt-1 text-[1rem] leading-snug font-bold tabular-nums ${rateColorClass}`}>
+                    {scenario.rateTag} {scenario.input.rate}×
+                  </div>
+                  <div className="mt-0.5 text-[0.6875rem] text-[var(--ga-ink-3)]">
+                    {rateSubLabel}
+                  </div>
+                </div>
+
+                {/* 2. ACCURACY */}
+                <div className="px-4 py-2.5 [@media(min-height:820px)]:py-3">
+                  <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
+                    {t('目标准度', 'ACCURACY')}
+                  </div>
+                  <div className="mt-1 text-[1rem] leading-snug font-bold text-[var(--ga-ink)] tabular-nums">
+                    {scenario.input.accuracy}%
+                  </div>
+                  <div className="mt-0.5 text-[0.6875rem] text-[var(--ga-ink-3)]">
+                    {t('达成准度', 'Target Acc')}
+                  </div>
+                </div>
+
+                {/* 3. MA RATIO */}
+                <div className="px-4 py-2.5 [@media(min-height:820px)]:py-3">
+                  <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
+                    {t('黄彩比', 'MA RATIO')}
+                  </div>
+                  <div className="mt-1 text-[1rem] leading-snug font-bold text-[var(--ga-ink)] tabular-nums">
+                    {scenario.maRatioLabel}
+                  </div>
+                  <div className="mt-0.5 text-[0.6875rem] text-[var(--ga-ink-3)]">
+                    {t('彩300 : 黄300', 'MAX : 300')}
+                  </div>
+                </div>
+
+                {/* 4. MISS */}
+                <div className="px-4 py-2.5 [@media(min-height:820px)]:py-3">
+                  <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
+                    {t('失误数', 'MISS')}
+                  </div>
+                  <div
+                    className={`mt-1 flex items-baseline gap-1 text-[1rem] leading-snug font-bold tabular-nums ${
+                      scenario.input.misses === 0 ? 'text-emerald-500' : 'text-rose-500'
+                    }`}
+                  >
+                    <span>{scenario.input.misses}</span>
+                    <span className="ga-mono text-[0.71875rem] font-semibold">Miss</span>
+                  </div>
+                  <div className="mt-0.5 text-[0.6875rem] text-[var(--ga-ink-3)]">
+                    {scenario.input.misses === 0
+                      ? t('全连无失误 (FC)', 'Full Combo (FC)')
+                      : t('情景失误数', 'Miss Count')}
+                  </div>
+                </div>
+
+                {/* 5. TEMPO */}
+                <div className="px-4 py-2.5 [@media(min-height:820px)]:py-3">
+                  <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
+                    {t('等效 BPM', 'TEMPO')}
+                  </div>
+                  <div className="mt-1 text-[1rem] leading-snug font-bold text-[var(--ga-ink)] tabular-nums">
+                    {effectiveBpm} BPM
+                  </div>
+                  <div className="mt-0.5 text-[0.6875rem] text-[var(--ga-ink-3)] tabular-nums">
+                    {Math.abs(scenario.input.rate - 1) > 0.01
+                      ? t(`原速 ${baseBpm} BPM`, `Base ${baseBpm} BPM`)
+                      : t('谱面原速', 'Base Tempo')}
+                  </div>
+                </div>
+
+                {/* 6. KEYS & OD */}
+                <div className="px-4 py-2.5 [@media(min-height:820px)]:py-3">
+                  <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
+                    {t('键数与判定', 'KEYS & OD')}
+                  </div>
+                  <div className="mt-1 text-[1rem] leading-snug font-bold text-[var(--ga-ink)] tabular-nums">
+                    {featuredDiff.modeInt === 3
+                      ? `${Math.round(featuredDiff.cs)}K`
+                      : featuredDiff.mode.toUpperCase()}
+                  </div>
+                  <div className="mt-0.5 text-[0.6875rem] text-[var(--ga-ink-3)] tabular-nums">
+                    OD {featuredDiff.od.toFixed(1)}
+                  </div>
+                </div>
+
+                {/* 7. LN RATIO */}
+                <div className="px-4 py-2.5 [@media(min-height:820px)]:py-3">
+                  <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
+                    {t('长条占比', 'LN RATIO')}
+                  </div>
+                  <div className="mt-1 text-[1rem] leading-snug font-bold text-[var(--ga-ink)] tabular-nums">
+                    {featuredDiff.lnRatio !== null ? `${featuredDiff.lnRatio}%` : '—'}
+                  </div>
+                  <div className="mt-0.5 truncate text-[0.6875rem] text-[var(--ga-ink-3)]">
+                    {lnLabel}
+                  </div>
+                </div>
+
+                {/* 8. MODS */}
+                <div className="px-4 py-2.5 [@media(min-height:820px)]:py-3">
+                  <div className="ga-mono text-[0.625rem] font-semibold tracking-[0.14em] text-[var(--ga-ink-3)] uppercase">
+                    {t('计分与 Mod', 'MODS')}
+                  </div>
+                  <div className={`mt-1 text-[1rem] leading-snug font-bold ${modsColorClass}`}>
+                    {activeMods.length > 0 ? activeMods.join(' + ') : t('无附加', 'None')}
+                  </div>
+                  <div className="mt-0.5 text-[0.6875rem] text-[var(--ga-ink-3)]">
+                    {modsSubLabel}
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Guess Optical Calibration Ruler OR Analytical Scorecard (no Details button) */}
         {!revealed ? (
-          <div className="space-y-4 border border-[var(--ga-line)] bg-[var(--ga-panel)] p-4">
+          <div className="space-y-3 rounded-[4px] border border-[var(--ga-line)]/55 bg-[color-mix(in_srgb,var(--ga-bg)_42%,transparent)] p-3.5 backdrop-blur-[10px] sm:p-4 [@media(min-height:820px)]:space-y-4 [@media(min-height:820px)]:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <div className="ga-mono text-[0.625rem] tracking-[0.18em] text-[var(--ga-ink-3)] uppercase">
@@ -528,7 +654,7 @@ export function GachaGuessMode({
             </div>
           </div>
         ) : (
-          <div className="animate-fade-in space-y-3 border border-[var(--ga-cobalt)] bg-[color-mix(in_srgb,var(--ga-cobalt)_8%,var(--ga-panel))] p-4">
+          <div className="animate-fade-in space-y-3 rounded-[4px] border border-[var(--ga-cobalt)]/70 bg-[color-mix(in_srgb,var(--ga-cobalt)_7%,color-mix(in_srgb,var(--ga-bg)_52%,transparent))] p-4 backdrop-blur-[10px] sm:p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">
                 <span className="ga-serif flex h-11 w-11 items-center justify-center rounded-[2px] bg-[var(--ga-cobalt)] text-[1.25rem] font-bold text-white shadow">
@@ -571,7 +697,7 @@ export function GachaGuessMode({
               </div>
             </div>
 
-            <div className="space-y-1.5 border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] p-2.5">
+            <div className="space-y-1.5 rounded-[3px] border border-[var(--ga-line)]/50 bg-transparent p-2.5">
               <div className="ga-mono flex justify-between text-[0.625rem] text-[var(--ga-ink-3)] uppercase">
                 <span>DELTA SPECTRUM COMPARISON</span>
                 <span>
@@ -600,7 +726,7 @@ export function GachaGuessMode({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 divide-x divide-[var(--ga-line)] border border-[var(--ga-line)] bg-[var(--ga-panel-strong)] text-center">
+            <div className="grid grid-cols-3 divide-x divide-[var(--ga-line)]/50 rounded-[3px] border border-[var(--ga-line)]/50 bg-transparent text-center">
               <div className="px-2.5 py-2">
                 <div className="ga-mono text-[0.625rem] text-[var(--ga-ink-3)] uppercase">
                   {t('你的猜测', 'YOUR GUESS')}
@@ -635,7 +761,7 @@ export function GachaGuessMode({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--ga-line)] pt-2 text-[0.71875rem] text-[var(--ga-ink-3)]">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--ga-line)]/45 pt-2.5 text-[0.71875rem] text-[var(--ga-ink-3)]">
           <span className="inline-flex items-center gap-1.5">
             <Award className="h-3.5 w-3.5 text-amber-500" />
             <span>

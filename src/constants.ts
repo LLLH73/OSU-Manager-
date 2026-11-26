@@ -1,7 +1,7 @@
 import { getCurrentLang, tx, type UiLanguage } from './i18n';
 import { DownloadTarget, DownloadVariant, SearchFilters, SongViewMode, ThemeId } from './types';
 
-export const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '1.16.0';
+export const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '1.16.1';
 export const PROJECT_REPO_URL = 'https://github.com/LLLH73/OSU-Manager-';
 
 export interface ViewModeMeta {

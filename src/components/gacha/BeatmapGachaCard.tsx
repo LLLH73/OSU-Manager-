@@ -358,8 +358,14 @@ export const BeatmapGachaCard = memo(function BeatmapGachaCard({
             }`}
           >
             {!faceDown && onInspect && (
-              <div className="pointer-events-none absolute top-11 left-1/2 z-20 -translate-x-1/2 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                <span className="rounded-[2px] bg-black/75 px-2 py-0.5 font-mono text-[0.5625rem] font-bold tracking-[0.16em] text-white/95 uppercase backdrop-blur-md">
+              <div className="pointer-events-none absolute inset-x-0 top-[34%] z-20 flex translate-y-1 justify-center px-2 opacity-0 transition-all duration-200 group-hover:translate-y-0 group-hover:opacity-100">
+                <span
+                  className={`inline-flex shrink-0 items-center rounded-[2px] border border-white/20 bg-black/78 font-mono leading-none font-bold whitespace-nowrap text-white/95 uppercase shadow-[0_6px_18px_rgba(0,0,0,0.45)] backdrop-blur-md ${
+                    compact
+                      ? 'px-2 py-1 text-[0.5625rem] tracking-[0.08em]'
+                      : 'px-2.5 py-1 text-[0.625rem] tracking-[0.12em]'
+                  }`}
+                >
                   {t('点击 360° 检视', '360° INSPECT')}
                 </span>
               </div>

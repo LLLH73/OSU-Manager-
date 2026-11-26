@@ -527,6 +527,29 @@ export function formatPp(pp: number): string {
   return Math.round(pp).toLocaleString();
 }
 
+function computeManiaCustomAccuracy(
+  rawAcc: number,
+  misses: number,
+  totalHits: number,
+  maRatio: number | null,
+  classic: boolean,
+): number {
+  const m = totalHits > 0 ? Math.min(1, Math.max(0, misses) / totalHits) : 0;
+  if (maRatio === null || !Number.isFinite(maRatio) || maRatio < 0) {
+    return Math.min(rawAcc, Math.max(0, 1 - m));
+  }
+  const base = classic ? 300 : 305;
+  const wTopBase = (base * maRatio + 300) / (maRatio + 1);
+  const wTop320 = (320 * maRatio + 300) / (maRatio + 1);
+  const maxPossibleAcc = (wTopBase / base) * Math.max(0, 1 - m);
+  const effAcc = Math.min(rawAcc, maxPossibleAcc);
+  const pTop = Math.min(
+    Math.max(0, 1 - m),
+    Math.max(0, (base * effAcc - 200) / (wTopBase - 200)),
+  );
+  return Math.min(1, Math.max(0, (base * effAcc + (wTop320 - wTopBase) * pTop) / 320));
+}
+
 export function calculateBeatmapPp(
   beatmap: NormalizedBeatmap,
   input: Partial<PpScenarioInput> = {},
@@ -553,15 +576,23 @@ export function calculateBeatmapPp(
     const effectiveSr = isRateEstimated
       ? beatmap.difficultyRating * Math.pow(rate, 0.72)
       : beatmap.difficultyRating;
-    const lengthBonus = 1 + 0.1 * Math.min(1, totalHits / 1500);
-    const modMultiplier =
-      0.8 * (mods.nf ? 0.75 : 1) * (mods.ez ? 0.5 : 1) * (mods.classic ? 0.96 : 1);
+    // Lazer judges both hold-note head & tail; Classic/Stable judges hold-note once
+    const maniaTotalHits = Math.max(
+      1,
+      mods.classic ? rawTotalHits : beatmap.countCircles + beatmap.countSliders * 2 + beatmap.countSpinners,
+    );
+    const maniaMisses = Math.min(maniaTotalHits, Math.max(0, Math.round(Number(input.misses ?? 0))));
+    const lengthBonus = 1 + 0.1 * Math.min(1, maniaTotalHits / 1500);
+    // Official ppy/osu ManiaPerformanceCalculator uses base 1.0 and only NF (0.75) / EZ (0.5); Classic has no PP penalty
+    const modMultiplier = (mods.nf ? 0.75 : 1) * (mods.ez ? 0.5 : 1);
 
-    const maFactor =
-      maRatio !== null && Number.isFinite(maRatio) && maRatio >= 0
-        ? (320 * maRatio + 300) / (320 * (maRatio + 1))
-        : 1;
-    const customAcc = accAfterMiss * maFactor;
+    const customAcc = computeManiaCustomAccuracy(
+      rawAcc,
+      maniaMisses,
+      maniaTotalHits,
+      maRatio,
+      mods.classic,
+    );
     const accFactor = Math.max(0, 5 * customAcc - 4);
     const difficultyValue =
       8.0 * Math.pow(Math.max(effectiveSr - 0.15, 0.05), 2.2) * accFactor * lengthBonus;

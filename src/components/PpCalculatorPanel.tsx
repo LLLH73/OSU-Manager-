@@ -657,14 +657,17 @@ export function PpCalculatorPanel({
                 <button
                   type="button"
                   onClick={() => setMods((m) => ({ ...m, classic: !m.classic }))}
-                  title={t('Classic / Stable 计分规则 (×0.96)', 'Classic / Stable scoring (×0.96)')}
+                  title={t(
+                    'Classic / Stable 300 制准度换算 vs Lazer 305 制（官方 Mania PP 无 0.96 惩罚）',
+                    'Classic / Stable 300-base accuracy vs Lazer 305-base (no 0.96 PP penalty)',
+                  )}
                   className={`btn btn-sm font-stat min-h-[26px] px-2 text-[0.75rem] font-semibold ${
                     mods.classic
                       ? 'border-stable/60 bg-stable/16 text-stable-soft'
                       : 'border-lazer/45 bg-lazer/12 text-lazer-soft'
                   }`}
                 >
-                  {mods.classic ? 'Classic (×0.96)' : 'Lazer (×1.00)'}
+                  {mods.classic ? 'Classic (300)' : 'Lazer (305)'}
                 </button>
                 <button
                   type="button"
@@ -733,14 +736,14 @@ export function PpCalculatorPanel({
                   <button
                     type="button"
                     onClick={() => setMods((m) => ({ ...m, classic: !m.classic }))}
-                    title={t('Classic / Stable 计分规则 (×0.96)', 'Classic / Stable scoring (×0.96)')}
+                    title={t('Classic / Stable 计分模式', 'Classic / Stable scoring mode')}
                     className={`btn btn-sm font-stat min-h-[26px] px-2 text-[0.75rem] font-semibold ${
                       mods.classic
                         ? 'border-stable/60 bg-stable/16 text-stable-soft'
                         : 'border-lazer/45 bg-lazer/12 text-lazer-soft'
                     }`}
                   >
-                    {mods.classic ? 'Classic (×0.96)' : 'Lazer (×1.00)'}
+                    {mods.classic ? 'Classic' : 'Lazer'}
                   </button>
                   <button
                     type="button"
