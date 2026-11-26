@@ -98,25 +98,34 @@
     <td width="50%" align="center" valign="top">
       <a href="docs/screenshots/10-gacha-pack.png"><img src="docs/screenshots/10-gacha-pack.png" alt="Random Card Draw — Pack Opening Mode with Paimon Starfield Back and Star Rating Glow" width="100%" /></a>
       <br />
-      <strong>10 · 随机抽卡（卡包模式：派蒙星空卡背 + 星数光谱悬停光晕 + 炉石风翻牌爆裂特效）</strong>
+      <strong>10 · 随机抽卡 · 01 卡包典藏（自动收起左侧栏 + 派蒙星图卡背 + 星数光谱悬停光晕）</strong>
       <br />
-      <sub>7 themed packs (<code>1–20</code> cards), tear-to-open pack, Paimon cloak back, SR hover aura &amp; tiered flip VFX</sub>
+      <sub>Auto-collapsed sidebar, <code>1–20</code> custom cards, Paimon double-inked astrolabe back, SR aura &amp; blade flip VFX</sub>
     </td>
   </tr>
   <tr>
     <td width="50%" align="center" valign="top">
-      <a href="docs/screenshots/11-gacha-dating.png"><img src="docs/screenshots/11-gacha-dating.png" alt="Random Card Draw — Dating Swipe Mode with Auto Audio Preview and Liked Tray" width="100%" /></a>
+      <a href="docs/screenshots/11-gacha-dating.png"><img src="docs/screenshots/11-gacha-dating.png" alt="Random Card Draw — Dating Swipe Mode with Drafting Compass and Auto Audio Preview" width="100%" /></a>
       <br />
-      <strong>11 · 随机抽卡（约会模式：左右滑动挑选非本地谱面 + 切卡自动试听 + 心仪批量下载）</strong>
+      <strong>11 · 随机抽卡 · 02 约会试听（手绘草图罗盘背景 + 左右划卡 + 切牌自动试听）</strong>
       <br />
-      <sub>Tinder-style drag/swipe stack, Undo, auto-playing audio preview &amp; Liked songs batch download tray</sub>
+      <sub>Live SVG drafting compass backdrop, Tinder-style drag/swipe, Undo, auto-play preview &amp; Liked Archive folio</sub>
     </td>
     <td width="50%" align="center" valign="top">
-      <a href="docs/screenshots/12-gacha-guess.png"><img src="docs/screenshots/12-gacha-guess.png" alt="Random Card Draw — Guess Star Rating Mode from PP Scenario Clues" width="100%" /></a>
+      <a href="docs/screenshots/12-gacha-guess.png"><img src="docs/screenshots/12-gacha-guess.png" alt="Random Card Draw — Obsidian Dark English Guess SR Mode with Optical Calibration Ruler" width="100%" /></a>
       <br />
-      <strong>12 · 随机抽卡（猜测模式：依据情景 PP、BPM 与封面推测隐藏真实星数）</strong>
+      <strong>12 · 随机抽卡 · 03 星数推演（暗色英文模式 · 光学刻度尺与误差对照标尺）</strong>
       <br />
-      <sub>Masked <code>?.??★</code> Star Rating puzzle with randomized PP scenarios, spectrum slider &amp; 0–1000 scoring</sub>
+      <sub>Obsidian Dark + English UI: crop-marked specimen, PP scenario clue, optical SR calibration &amp; delta ruler</sub>
+    </td>
+  </tr>
+  <tr>
+    <td colspan="2" align="center" valign="top">
+      <a href="docs/screenshots/13-gacha-altar.png"><img src="docs/screenshots/13-gacha-altar.png" alt="Random Card Draw — Editorial Graphic Plate Sealed Pack Altar inspired by the-masses-travels" width="76%" /></a>
+      <br />
+      <strong>13 · 随机抽卡 · 封印祭坛与 Three.js 圣堂建筑舞台（参考 Funkierry/the-masses-travels）</strong>
+      <br />
+      <sub>Three.js procedural sanctum, hand-drawn overshooting construction plate, <code>B</code> Blueprint wireframe mode &amp; foil tear pack</sub>
     </td>
   </tr>
 </table>
@@ -173,12 +182,13 @@
    - 覆盖搜图选歌、详情/PP 计算器、Mania 预览器、3D Book 档案库、OSU! 音乐台、游戏内浮窗、Electron 系统托盘菜单与后端错误/镜像描述的全量中英双语体验。
    - 可在「设置 → 分区 3」或新手引导右上角切换 `简体中文` / `English`（切换立即预览，点保存持久化至 `config.json`，取消/Esc 自动回滚）；右上角测速状态与提示文案严格跟随用户实际配置的 `proxyPort`（不再固定写死 `6174`）与直连/代理模式动态显示。
 
-10. **随机抽卡工作室（约会模式 / 猜测模式 / 炉石风卡包开启）**
-   - 在浏览模式 `Lazer` 按钮右侧提供「随机抽卡」入口；仅抽取本地未拥有的谱面（严格排除 Stable 与 Lazer 本地已存曲目）。
-   - 无边框矩形卡面：正面展示铺满封面、曲名/作者、BPM、官方光谱星数、`~XXXpp` 预估 PP、一键下载与详情弹窗；背面采用原神派蒙星空斗篷动态效果与极简细体 `osu!` 标识。
-   - **约会模式**：支持左滑跳过 / 右滑收藏拖拽手势、键盘快捷键、撤回上一步、切卡自动播放试听，以及右侧心仪列表一键/批量下载。
-   - **猜测模式**：隐藏真实星数（`?.??★`），依据随机情景参数计算的 PP 与封面 / BPM / LN% / OD 线索推测星数，按指数误差评分（`0–1000` / `SS–D` 评级）并持久化最高分。
-   - **卡包模式**：提供 7 种卡包（含「当前筛选」自定义包），支持 `1–20` 张自定义抽卡数（默认 `5`）；支持拖拽撕开顶部封条或点击开包，发牌后悬停卡背亮起对应真实星数光谱光晕，翻牌触发炉石传说风格分阶粒子与光线爆发特效及 Web Audio 合成音效。
+10. **随机抽卡工作室（自动收起主侧栏 · 参考 [`Funkierry/the-masses-travels`](https://github.com/Funkierry/the-masses-travels) 美术重构）**
+   - 在浏览模式 `Lazer` 按钮右侧提供「随机抽卡」入口，打开后**自动收起主左侧栏**呈现全宽展台；仅抽取本地未拥有的谱面（严格排除 Stable 与 Lazer 本地已存曲目）。
+   - **Three.js 圣堂建筑舞台与手绘平面图版**：内置可随明暗主题与 3 大模式镜头切换的程序化 Three.js 柱廊/星仪舞台、手绘过头笔触星环与套印错位双线（`gachaSketch`）、四角 Reticle 锁定准星、字形解码动效、定格构造脉冲转场，以及按 `B` 键或顶栏按钮实时切换的 **构造线 (Blueprint)** 线框视图。
+   - 无边框 3px 收藏级矩形卡面：正面展示铺满封面、曲名/作者、BPM、官方光谱星数、`~XXXpp` 预估 PP、一键下载与详情弹窗；背面采用原神派蒙星空斗篷动态效果、双线手绘星盘与极简细体 `osu!` 标识。
+   - **01 卡包典藏**：7 种卡包 + 3 色样条摘要与 `1–20` 自定义抽卡数（默认 `5`）；拖拽撕开封条或点击开包，悬停卡背亮起对应真实星数光谱光晕与裁切角框，翻牌触发炉石风星芒与建筑光刃爆裂特效及 Web Audio 合成音效。
+   - **02 约会试听**：后台搭载随拖拽角度联动的草图罗盘，支持左右划卡、键盘快捷键、撤回、切卡自动播放试听，以及右侧心仪列表一键/批量下载。
+   - **03 星数推演**：裁切框标本展台遮罩真实星数（`?.??★`），依据情景 PP 与光学星数刻度尺猜星数，揭晓后绘制预测/真实差值标尺并按指数误差评分（`0–1000` / `SS–D`）持久化最高分。
 
 ### 快速开始
 
@@ -254,12 +264,13 @@ No osu! login or session cookie is required. It brings together multi-mirror bea
 - **Full ZH / EN Bilingual Switcher & Dynamic Proxy Diagnostics**
   - Complete Simplified Chinese & English localization across Browse, Beatmap Detail & PP Calculator, Mania Previewer, 3D Book Archive, OSU! AUDIO Music Station, Acrylic Overlay, Electron Tray/Hotkeys, and backend mirror/status responses.
   - Switch live via **Settings → Section 3 (`简体中文 | English`)** or the onboarding header pill (persisted in `config.json`, safely rolls back on Cancel/Esc). Top-bar latency checks and toast notifications dynamically reflect your configured `proxyPort` or `Direct` mode.
-- **Random Card Draw Studio (`v1.12.0` — Dating / Guess SR / Booster Pack Modes)**
-  - Accessible directly beside the `Lazer` view button in Browse mode; exclusively draws unowned beatmapsets not present in either Stable or Lazer local libraries.
-  - **Borderless Rectangular Cards**: Front displays full-bleed cover art, title/artist, BPM, official-spectrum Star Rating, estimated `~XXXpp`, audio preview, download, and Detail modal; Back renders an animated Paimon-cloak cosmic starfield with a minimalist thin-stroke `osu!` emblem.
-  - **Dating Mode**: Drag/swipe left or right (plus buttons & hotkeys), Undo, **auto-playing audio preview** per card, and a right-hand Liked tray with one-click & batch download.
-  - **Guess Mode**: Masks Star Rating (`?.??★`), provides a randomized PP scenario clue alongside cover/BPM/LN%/OD, scores guesses (`0–1000`, `SS–D` grade), and persists your personal best score.
-  - **Pack Mode**: 7 themed booster packs (including `Current Filter`) with customizable `1–20` card count (default `5`), interactive tear-to-open metallic foil pack, face-down hover aura glowing in each card's true Star Rating color, and Hearthstone-style tiered flip burst VFX + optional Web Audio chimes.
+- **Random Card Draw Studio (`v1.13.0` — Redesigned after [`Funkierry/the-masses-travels`](https://github.com/Funkierry/the-masses-travels))**
+  - Accessible directly beside the `Lazer` view button in Browse mode; **automatically collapses the left sidebar** on launch and exclusively draws unowned beatmapsets not present in Stable or Lazer local libraries.
+  - **Architectural & Graphic Engine**: Features a procedural **Three.js Sanctum stage** (`GachaSanctumWorld`), dual mineral-paper Light / nocturnal-obsidian Dark palettes, overshooting hand-drawn SVG rings & misregistered double-ink lines (`gachaSketch`), hovering Reticle corner brackets, scramble title decoding, stop-motion burst transitions, and a live **`B` Blueprint wireframe mode**.
+  - **Borderless Collector Cards**: Sharp borderless cover front (`title`, `artist/mapper`, `BPM`, official-spectrum `SR`, `~XXXpp`, audio preview, Download, Detail modal) paired with an animated Paimon-cloak cosmic starfield & hand-drawn astrolabe `osu!` back.
+  - **01 Pack Opening**: 7 themed packs with editorial color swatches, `1–20` custom count (default `5`), multi-layered Graphic Plate altar, tear-to-open foil pack, Star-Rating hover aura + crop brackets, and Hearthstone + light-blade flip burst VFX with optional Web Audio SFX.
+  - **02 Dating Swipe**: Live SVG drafting compass backdrop, drag/swipe or hotkeys (`←/→/Z/Space`), **auto-playing preview audio**, and Liked Archive batch download tray.
+  - **03 Guess SR**: Crop-framed masked specimen (`?.??★`), randomized PP scenario clue, graduated optical SR calibration slider, `0–1000` (`SS–D`) scoring, and visual guess-vs-actual delta ruler.
 
 ### Quick Start
 
@@ -311,7 +322,7 @@ OSU-Manager-/
 ├── README.md                 # 中英文双语说明文档 / Bilingual README
 ├── docs/
 │   ├── DEVLOG.md             # 按会话记录的开发日志 / Session-by-session devlog
-│   └── screenshots/          # README 展示截图 / UI showcase screenshots (01–12)
+│   └── screenshots/          # README 展示截图 / UI showcase screenshots (01–13)
 ├── build/                    # OM 矢量与多分辨率应用图标 (icon.svg / icon.png / icon.ico)
 ├── scripts/                  # 打包后 PE 图标注入 (apply-exe-icon.mjs) 与 GitHub Release 发布脚本 (publish-github-release.mjs)
 ├── electron/                 # Electron 主进程与 preload 桥接

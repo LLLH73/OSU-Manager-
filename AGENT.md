@@ -79,7 +79,7 @@
 | `src/main.tsx` | 引入离线 `@fontsource` Lazer 风格四字体（`Quicksand`, `Outfit`, `Exo 2`, `Noto Sans SC` 400/500/600/700 + `JetBrains Mono`），按 `?mode=overlay` 路由挂载 `OverlayApp` 或 `App` |
 | `src/index.css` | 8 套主题 CSS Token（默认 `:root[data-theme="light"]` 瓷器白）、Tailwind `@theme inline` 固定 `--spacing: 4px` 与 `--ui-font-scale`（默认 `1.2`）、`.song-list-row` / `.modal-surface` GPU 合成隔离规则、Lazer 字体工具类、`.segmented-compact`/`.segmented-auto`、卡片金框、Lazer 轮盘动效样式 |
 | `src/i18n.tsx` | 前端轻量零外部依赖双语运行时（`I18nProvider`, `useI18n`, `tx(zh, en, lang?)`, `setGlobalLang`），通过 `osu_mgr_lang` localStorage 与 `<html lang>` 实现主窗口与浮窗实时同步切换 |
-| `src/App.tsx` | 主工作区状态中心（配置与 `language` 持久化同步、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠与进入音乐台自动收起主左侧栏、主题/视图模式持久化、Lazer 按钮旁「随机抽卡」入口与 `<GachaStudio>` 切换、动态代理端口测速 Toast、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
+| `src/App.tsx` | 主工作区状态中心（配置与 `language` 持久化同步、SSE 订阅、全窗双缓冲封面背景与主色调取色、侧栏/筛选折叠与进入音乐台/随机抽卡时自动收起主左侧栏、主题/视图模式持久化、Lazer 按钮旁「随机抽卡」入口与 `<GachaStudio>` 切换、动态代理端口测速 Toast、滚底自动加载、批量选择与快速批量弹窗调度、`useCallback` 稳定列表回调） |
 | `src/constants.ts` | 8 套主题元信息 (`THEME_OPTIONS`)、10 组强调色预设、`DEFAULT_FONT_SCALE = 1.2`、双语工厂函数（`getViewModeOptions`, `getThemeOptions`, `getWorkflowPresets`, `getSortFields`, `getTargetMeta`, `getVariantOptions` 等）、官网光谱星数色阶 `getStarColor()` / `getStarSpectrum()`、统一双语 `getLnCategory()` |
 | `src/utils/themeColor.ts` | Canvas 24-bin 色相主色调提取器 (`extractDominantColor`) 与动态强调色 CSS 变量推导/应用 (`deriveAccentVariables`, `applyAccentVariables`, `clearAccentVariables`) |
 | `src/utils/pp.ts` | Ranked PP 准度制计算引擎（含 35 组 `NM / DT / HT / 变速` 情景预设与双语主/副展示文案、`localStorage` 自定义情景持久化、`calculateBeatmapPp`, `getQuickPpSummary`, `getBeatmapsetPpBadge`, `extractPpScenarioFromFilters`, `formatPpScenarioShort`, `isRankedForPp`） |
@@ -125,16 +125,20 @@
 | `src/components/DownloadDrawer.tsx` | 下载任务队列（含完成态预览/再加载按钮）与 Lazer 待导入队列批量导入抽屉 |
 | `src/components/FastBatchModal.tsx` | 极简纯文本「快速批量下载」工作台（目标数量 1–500、IPv6/直连分流、多镜像高并发与实时传输遥测） |
 | `src/components/LibrarySyncModal.tsx` | 双端曲库比对与 Stable→Lazer 零流量同步弹窗 |
-| `src/components/SettingsModal.tsx` | 客户端路径浏览、动态代理/IPv6 网络协议与镜像测速、`简体中文 / English` 界面语言切换（`segmented-auto` 防截断，即时预览/取消回滚/保存持久化）、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.12.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
+| `src/components/SettingsModal.tsx` | 客户端路径浏览、动态代理/IPv6 网络协议与镜像测速、`简体中文 / English` 界面语言切换（`segmented-auto` 防截断，即时预览/取消回滚/保存持久化）、8 主题/10 预设+自由取色强调色、界面字体大小缩放 (`85%–125%`，默认 `120%`)、自定义背景图与透明度 (`4%–100%`，默认 `75%`)、动态开关、浮窗热键、可选官方 Cookie 与「关于与帮助」（`v1.13.0` 版本号、GitHub 开源地址、重新观看新手引导）弹窗 |
 | `src/components/OnboardingModal.tsx` | 首次安装 6 步交互式环境配置与新手引导向导（右上角含 `中文 / EN` 快速切换、调用 `/api/config/detect-env` 探测多盘符客户端路径与本机代理端口，支持代理模式/端口预设、下载策略、实时主题/字号预览、配置摘要保存及防输入框箭头误触） |
 | `src/components/SelectField.tsx` | 统一下拉封装（支持 `<optgroup>` 嵌套匹配，解决 Chromium 原生箭头重叠问题） |
-| `src/components/gacha/GachaStudio.tsx` | 随机抽卡工作室总控界面（约会 / 猜测 / 卡包 3 模式切换、共享音频试听管理、顶部返回与卡包筛选衔接） |
-| `src/components/gacha/GachaPackMode.tsx` | 卡包开启模式（7 种主题卡包、`1–20` 自定义抽卡数、金属箔可拖拽撕开卡包、`Reveal All` / `Download All` 与炉石风爆裂粒子舞台） |
-| `src/components/gacha/GachaDatingMode.tsx` | 约会滑卡模式（Tinder 风拖拽与快捷键左右滑卡、撤回、切卡自动试听、右侧心仪列表批量下载） |
-| `src/components/gacha/GachaGuessMode.tsx` | 猜星数模式（Ranked 非本地曲目抽取、`?.??★` 隐藏星数、随机 PP 情景线索、光谱滑块、指数评分与最高分持久化） |
-| `src/components/gacha/BeatmapGachaCard.tsx` | 无边框正反 3D 矩形谱面卡（正面封面/BPM/星数/PP/试听/下载/详情按钮；背面衔接派蒙星空与悬停真实星数光晕） |
-| `src/components/gacha/PaimonStarfieldBack.tsx` | 纯 GPU 合成派蒙星空斗篷卡背（漂移星云、闪烁四角星与极简细体 `osu!` / `CELESTIAL DECK` 标识） |
-| `src/components/gacha/gachaUtils.ts` | 卡包配置、星数光谱光晕分级、代表难度/PP 摘要、猜星情景生成与评分公式工具 |
+| `src/components/gacha/gachaSketch.ts` | 参考 `Funkierry/the-masses-travels` 移植的确定性手绘 SVG 几何原语（过头抖动星环 `ring`、拱曲延展标尺 `rule`、毛笔 `brush`、光刃 `blade`、裁切角 `crops` 与星座连接） |
+| `src/components/gacha/GachaSanctumWorld.ts` | Three.js 程序化圣堂建筑舞台控制器（对称拱柱廊、玫瑰窗、悬浮旋转星仪、光刃碎片与飞羽、3 模式镜头运镜、`Blueprint` 线框模式与开包/高星炸裂脉冲） |
+| `src/components/gacha/GachaAtmosphere.tsx` | `the-masses-travels` 全屏氛围层（Three.js 挂载、矿石纸感/夜色面纱、纸张噪点、构造网格、指针连线点阵、左侧竖排注记与右侧标尺、四角 Reticle 框、3 帧定格构造脉冲与 `<ScrambleText>` 解码） |
+| `src/components/gacha/GachaPackPlate.tsx` | 封印祭坛多层视差手绘图版（半调网点圆盘、倾斜光环、圆环铭文、`Y1–Y6` 标尺、迷你拼贴 UI 框与构造线尺寸标注） |
+| `src/components/gacha/GachaStudio.tsx` | 随机抽卡工作室总控界面（`01 卡包典藏 / 02 约会试听 / 03 星数推演` 章节切换、`B` 构造线热键、共享音频试听控制与 Three.js/定格爆发调度） |
+| `src/components/gacha/GachaPackMode.tsx` | 卡包典藏模式（`SERIES 01–07` 档案摘要+三色样条、`1–20` 抽卡数刻度、`GachaPackPlate` 撕包祭坛、`Reveal All` / `Download All` 与炉石+光刃爆裂网格） |
+| `src/components/gacha/GachaDatingMode.tsx` | 约会试听模式（实时手绘旋转罗盘与矢量角度读数、左右滑卡与快捷键、撤回、切卡自动试听、右侧心仪档案库批量下载） |
+| `src/components/gacha/GachaGuessMode.tsx` | 星数推演模式（裁切框标本、Ranked 情景 PP 线索、光学光谱校准尺、指数评分、`ScrambleText` 得分、预测/真实误差对比标尺与最高分持久化） |
+| `src/components/gacha/BeatmapGachaCard.tsx` | 无边框 `3px` 收藏级 3D 正反谱面卡（悬停卡背亮起真实星数光谱光晕与裁切角；翻牌触发炉石光环+星芒+旋转手绘光刃；正面封面/BPM/星数/PP/下载/详情） |
+| `src/components/gacha/PaimonStarfieldBack.tsx` | 派蒙星空斗篷卡背（纯 GPU 合成星云/闪烁星辰叠加 `gachaSketch` 双重套印手绘星盘与极简细体 `osu!` / `CELESTIAL DECK` 标识） |
+| `src/components/gacha/gachaUtils.ts` | 卡包配置（含三色 `swatches` 与 `editorialSub`）、星数光谱光晕分级、代表难度/PP 摘要、猜星情景生成与评分公式工具 |
 | `src/components/gacha/gachaSound.ts` | Web Audio API 合成开包撕裂、悬停律动、分阶翻牌爆裂、滑卡与猜星揭晓音效 |
 
 ---

@@ -4,6 +4,17 @@ All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be docum
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.13.0] - 2026-11-26
+
+### Added & Changed
+- **打开随机抽卡自动收起主界面左侧栏与存档栏**（`src/App.tsx`）：
+  - `openGachaStudio` 参照音乐台行为自动执行 `setSidebarCollapsed(true)` 与 `setArchiveRailCollapsed(true)` 并持久化，进入 `<GachaStudio>` 后立即释放全宽画廊展示舞台（仍保留顶栏手动展开控制）。
+- **参考 [`Funkierry/the-masses-travels`](https://github.com/Funkierry/the-masses-travels) 重构抽卡工作室美术、UI 与动效引擎**（`src/index.css`, `src/components/gacha/gachaSketch.ts`, `GachaSanctumWorld.ts`, `GachaAtmosphere.tsx`, `GachaPackPlate.tsx`, `GachaStudio.tsx`, `GachaPackMode.tsx`, `GachaDatingMode.tsx`, `GachaGuessMode.tsx`, `BeatmapGachaCard.tsx`, `PaimonStarfieldBack.tsx`, `gachaUtils.ts`）：
+  - **Atelier 视觉系统与 Three.js 圣堂舞台**：引入浅色矿石纸感（`#e8eceb` + 钴蓝 `#3a5bc2`）与深色玄石圣堂（`#090c14` + `#6c8eff` / 专有 `--ga-cta-*` 按钮变量）双一套 `.gacha-atelier` 令牌；`GachaSanctumWorld` 以 Three.js 程序化构建六组拱柱廊、玫瑰窗、悬浮旋转星仪、光刃碎片与飞羽，支持 3 模式镜头平滑切换、指针视差与高星/开包向外扩张脉冲；
+  - **手绘 SVG 原语与构造线 (`Blueprint`) 模式**：`gachaSketch.ts` 移植过头抖动星环 `ring`、拱曲标尺 `rule`、毛笔 `brush`、光刃 `blade` 与四角裁切框 `crops`；`GachaAtmosphere` 提供指针连线点阵、左侧竖排档案注记、右侧刻尺、非侵入式四角 Reticle 锁定框、`ScrambleText` 字符解码、3 帧定格构造爆发转场，以及 `B` 热键 / 顶栏 `构造线` 线框模式切换；
+  - **卡背与三大模式精修**：`PaimonStarfieldBack` 保留派蒙星空斗篷并叠加双重套印错位星盘；`BeatmapGachaCard` 保持 `border-0` 无边框并重塑为 `3px` 收藏卡片轮廓（悬停卡背亮起星数光谱光晕与裁切角框，翻牌叠加旋转手绘光刃与炉石风粒子）；卡包封印坛搭载多层视差 `GachaPackPlate` 图版与 `SERIES 01–07` 三色样条档案单，约会模式搭载随拖拽旋转的实时草图罗盘，猜测模式配备光学星数刻度尺与误差对照标尺。
+- 版本号更新至 `v1.13.0`（`package.json`, `src/constants.ts`, `AGENT.md`, `README.md`），并将 `docs/screenshots/10..13*.png` 更新为重构后 `1440×900` 实机截图（含新增 [13-gacha-altar.png](docs/screenshots/13-gacha-altar.png)）；复核修复深色模式 `.ga-solid-btn` 反白文本对比度、`1280×720` 左侧竖排注记换行与封印祭坛底部说明间距，并通过 `npm run typecheck && npm run build`、Browser 双主题双语/双分辨率零报错验收及 `npm run electron:pack`（`:3729` `osu-manager.exe` 冒烟 `Health 200` / `POST /api/gacha/draw => 200`）。
+
 ## [1.12.0] - 2026-11-26
 
 ### Added

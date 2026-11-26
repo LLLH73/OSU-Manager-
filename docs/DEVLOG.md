@@ -4,6 +4,33 @@
 
 ---
 
+## Session 23 — 打开随机抽卡自动收起左侧栏、参考 `Funkierry/the-masses-travels` 重构抽卡美术/UI/动效与视觉精修 (`v1.13.0`)
+
+- **日期**：2026-11-26
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **版本**：`v1.13.0`
+- **关联代码提交**：`f3de3c2`
+- **本次需求**：
+  1. 点开随机抽卡后主界面左侧栏自动收回，提供完整展示视野；
+  2. 参考 [`Funkierry/the-masses-travels`](https://github.com/Funkierry/the-masses-travels) 全面重构随机抽卡工作室的美术风格、UI 版式与交互动效，同时完整保留既有一切非本地抽取、三玩法与试听/下载能力。
+- **关键改动与视觉复核修复**：
+  1. **左侧栏与存档栏自动收起**（`src/App.tsx`）：
+     - `openGachaStudio` 内同步调用 `setSidebarCollapsed(true)` 与 `setArchiveRailCollapsed(true)` 并保存右侧栏折叠态，进入 `<GachaStudio>` 后立即全宽展开抽卡画布。
+  2. **Three.js 程序化圣堂舞台与手绘平面图版系统**（`src/components/gacha/gachaSketch.ts`, `GachaSanctumWorld.ts`, `GachaAtmosphere.tsx`, `GachaPackPlate.tsx`, `src/index.css`）：
+     - 基于 `three` 搭建支持明/暗主题切换、3 模式运镜与 `Blueprint (B)` 线框切换的程序化拱柱廊与悬浮星仪舞台，并与开包/高星炸裂脉冲联动；
+     - 移植确定性手绘 SVG 原语（过头抖动圆 `ring`、拱曲标尺 `rule`、毛笔笔触 `brush`、光刃 `blade`、裁切角 `crops`），串联 `GachaPackPlate` 多层视差图版、`PaimonStarfieldBack` 双重套印星盘、`BeatmapGachaCard` `3px` 无边框收藏卡片+悬停裁切角与旋转光刃爆裂特效，以及四角 Reticle 锁定框、`ScrambleText` 解码与 3 帧定格构造脉冲。
+  3. **三模式界面重塑与实机截图排查修复**（`GachaStudio.tsx`, `GachaPackMode.tsx`, `GachaDatingMode.tsx`, `GachaGuessMode.tsx`, `gachaUtils.ts`）：
+     - 实机截图目视核验中定位并根治了 3 项细节问题：
+       1. 暗色 (`Obsidian`) 模式下 `Next Card` 主按钮原继承 `--ga-ink`（浅白）导致与残留选中高亮叠加反白低对比——新增 `--ga-cta-*` 专属变量使深色模式固定渲染钴蓝 `#3a5bc2` 配纯白文字并为按钮统一设置 `user-select: none`；
+       2. `1280×720` 下左侧竖排注记发生折行——追加 `whitespace-nowrap` 锁定单行竖排；
+       3. 封印祭坛底部提示条轻微压住 `GachaPackPlate` 底沿——收敛图版最大高度与上移封包/定格提示条距，确保无任何遮挡。
+- **验证与本地打包记录**：
+  - `npm run typecheck && npm run build` 退出码 `0`（`vite built in 8.53s`）；TS AST 扫描 `src/components/gacha/` 12 个文件未本地化 UI 中文残留 `0`；
+  - 浏览器（`1440×900` & `1280×720`、瓷器白中文 & 曜石黑英文）实机复核：进入随机抽卡前后 `<aside>` 宽度从 `248px`/`280px` 自动收起至 `0px`；Three.js `<canvas>`、构造线 `B` 切换、约会音频 `HTTP 206` 自动试听、撤回、猜测校准对比标尺与深色 Cobalt 按钮对比度全部通过，控制台与网络失败请求均 `0`，保存 [10-gacha-pack.png](docs/screenshots/10-gacha-pack.png)、[11-gacha-dating.png](docs/screenshots/11-gacha-dating.png)、[12-gacha-guess.png](docs/screenshots/12-gacha-guess.png)、[13-gacha-altar.png](docs/screenshots/13-gacha-altar.png)；
+  - `npm run electron:pack` 生成 `release\win-unpacked\osu-manager.exe`（`249,975,808` 字节，`FileVersion=1.13.0`），并在隔离 `PORT=3729` + 临时目录通过启动与 `/api/gacha/draw` 冒烟（`Health 200 in 1.15s`, `POST /api/gacha/draw => 200 got=5 provider=osudirect nonLocalOnly=True`），清理全部临时文件与监听端口，确认 `data/config.json` 保持 `898` 字节完整。
+
+---
+
 ## Session 22 — 随机抽卡工作室（约会模式 / 猜测星数 / 派蒙星空与炉石风卡包）、双端非本地过滤及全链路验收 (`v1.12.0`)
 
 - **日期**：2026-11-26
