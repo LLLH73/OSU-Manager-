@@ -60,7 +60,7 @@
 | `server/library.ts` | Stable `Songs` 扫描、Lazer `client.realm`/`online.db`/`files` 哈希扫描缓存、进程检测（含 `stableExeExists` / `lazerExeExists`）、双端差异比对 |
 | `server/realmReader.ts` | 零原生依赖只读 Realm v24 (`T-DB`) 二进制解析器（带文件锁临时拷贝回退），读取 Lazer `client.realm` 谱面、难度、元数据、文件映射与游玩成绩 |
 | `server/localLibrary.ts` | 双端本地曲库与成绩聚合器（融合 `osu!.db` / `Songs/` / `scores.db` 与 `client.realm` / `files/`），提供成绩去重、Mania PP 估算、延迟 `.osu` 背景提取与 SVG 回退、`.osu` 红线/Kiai/密度节奏解析及音频流输出 |
-| `server/media.ts` | 封面图与 MP3 音频试听代理 + 本地磁盘 LRU 裁剪缓存 |
+| `server/media.ts` | 封面图（支持 `?hd=1` 原画级 `fullsize.jpg` 优先拉取与独立 `cache/covers-hd/` 磁盘 LRU 缓存）与 MP3 音频试听代理 |
 | `server/preview.ts` | Mania `.osu` 解析（红线 BPM + 绿线 SV + Barline + NPS 密度）、本地/ZIP/`cache/osz` 音源查找、`206 Range` 音频流与背景图输出 |
 | `server/skins.ts` | 扫描 `D:\OSU\Skins` 与 `osu!.<user>.cfg` 激活皮肤、解析 `[Mania]` `skin.ini`、内置 3 套皮肤、PerCy 超长 LN PNG 无损前 2048 行扫描线裁切 (`cropPngTopRows`) |
 
@@ -130,17 +130,16 @@
 | `src/components/OnboardingModal.tsx` | 首次安装 6 步交互式环境配置与新手引导向导（右上角含 `中文 / EN` 快速切换、调用 `/api/config/detect-env` 探测多盘符客户端路径与本机代理端口，支持代理模式/端口预设、下载策略、实时主题/字号预览、配置摘要保存及防输入框箭头误触） |
 | `src/components/SelectField.tsx` | 统一下拉封装（支持 `<optgroup>` 嵌套匹配，解决 Chromium 原生箭头重叠问题） |
 | `src/components/gacha/gachaSketch.ts` | 参考 `Funkierry/the-masses-travels` 移植的确定性手绘 SVG 几何原语（过头抖动星环 `ring`、拱曲延展标尺 `rule`、毛笔 `brush`、光刃 `blade`、裁切角 `crops` 与星座连接） |
-| `src/components/gacha/GachaSanctumWorld.ts` | Three.js PROUN × `osu!mania` 圣堂建筑舞台控制器（响应全局 `--t-canvas` / `--t-osu` 动态换色、普劳恩斜向钢梁与悬浮圆盘、对称左右侧 4K 下落短键/长条音符列、中央呼吸 Hit Circle 与 Approach Ring、`Blueprint` 线框与炸裂脉冲） |
-| `src/components/gacha/GachaAtmosphere.tsx` | 全屏氛围层（Three.js 挂载、全局主题色同步、斜向构图法则线与右上角 `4K` 圆环水印、指针连线点阵、左侧竖排注记与右侧标尺、脱离目标即时复位且避开底栏的 Reticle 准星、`z-[4]` 底层定格构造脉冲与 `<ScrambleText>` 解码） |
-| `src/components/gacha/GachaPackPlate.tsx` | 包豪斯斜切构成主义卡包封套视差手绘图版（深红斜梁、4K 双侧虚线轨、全球统一 `--ga-cobalt` / `--ga-ink` 主题变色圆盘与 `POOL 01–07` 编号印记） |
+| `src/components/gacha/GachaAtmosphere.tsx` | 全屏纯 2D 平面构成氛围层（零 WebGL：SVG 构成主义海报几何、分模式构图与 far-margin `osu!mania` 4K 下落轨道、`B` 键平面辅助构造线、2D Canvas 连线点阵、左侧竖排注记与右侧标尺、Reticle 准星、`z-[4]` 底层定格脉冲与 `<ScrambleText>`） |
+| `src/components/gacha/GachaPackPlate.tsx` | 炉石开包祭坛 Drop Well 多层平面手绘图版（居中注册环与虚线卡包落点框，随卡包拖近动态提升光晕半径/缩放与高亮瞄准框） |
 | `src/components/gacha/GachaStudio.tsx` | 随机抽卡工作室总控界面（纤细底部导航栏 `01 约会试听 / 02 卡包典藏 / 03 星数推演`、默认 `dating`、后台预温 Pool `01` 缓存池、`data/gacha-collections.json` 多分组收藏状态调度、Pool `07` 自选规则状态、`B` 构造线热键与猜星详情隔离） |
-| `src/components/gacha/GachaPackMode.tsx` | 卡包典藏模式（去除冗余辅助文案、按容器宽高自适配放大的包豪斯斜切卡包与 `1–20` 张 3D 椭圆圆环舞台、卡池 `01–07` 选择与独立 Pool `07` 规则编辑入口、复用工作室预取与并发态接入实现秒开及 360° 检视） |
-| `src/components/gacha/GachaCardInspectorModal.tsx` | Portal 挂载至 `document.body` (`z-[48]`) 的 360° 3D 立体卡片检视弹窗（`data-dark="true"` 独立暗色画廊背板、放大卡身、鼠标惯性 360° yaw/pitch 拖拽、滚轮缩放、`14px` PROUN 工业拉丝金属脊与纵向 `OSU! // ★SR // BPM // #serial` 刻印及星级中缝霓虹、收藏红心、`F` 翻转、`R` 复位、`←/→` 切卡） |
+| `src/components/gacha/GachaPackMode.tsx` | 卡包典藏模式（炉石风左侧储备卡包叠放 + 物理速度倾角拖拽投入右侧「Opening Altar」磁吸开包与拖出平滑回弹、支持虚线封条或点击开启、`01–07` 卡池选择与独立 Pool `07` 弹窗、Studio 预取秒开及 `<=1.0` 缩放高清 3D 圆环） |
+| `src/components/gacha/GachaCardInspectorModal.tsx` | Portal 挂载至 `document.body` (`z-[48]`) 的 360° 3D 立体卡片检视弹窗（真 3D `translateZ` 推进变焦无糊边、鼠标惯性 360° 旋转、`20px` 高精度矢量 `<svg>` 钛金属雕刻侧脊与 `OSU! // ★SR // BPM // #serial` 铭文、收藏红心、`F` 翻转至动态构成主义卡背、`R` 复位、`←/→` 切卡） |
 | `src/components/gacha/GachaDatingMode.tsx` | 约会试听模式（默认模式：通透无遮罩舞台、放大卡牌尺寸、右侧下方扇形叠放预告下两张卡片、顶部滑动目标分组选择器与切卡自动试听） |
-| `src/components/gacha/GachaCustomFilterModal.tsx` | **新增**：Portal 弹窗形式 `POOL 07`「条件自选池」独立筛选配置面板（支持关键词/Keys/状态/SR/BPM/LN%/时长编辑，以及一键同步主搜图条件或导入 Filter 存档） |
-| `src/components/gacha/GachaLikedDrawer.tsx` | **新增**：默认收起的右侧多分组持久化「心动曲库」抽屉（支持新建、内联重命名、清空、安全删除分组、单曲多分组勾选分配、切换滑动目标组与按组一键批量下载） |
-| `src/components/gacha/BeatmapGachaCard.tsx` | 无边框 `3px` 收藏级 3D 正反谱面卡（悬停卡背星光光晕与裁切角、翻牌粒子+光刃特效、右下角全局收藏红心按钮、`--ga-cobalt`/`--t-osu` 统一主按钮色与可选 `onInspect` 360° 检视） |
-| `src/components/gacha/PaimonStarfieldBack.tsx` | 派蒙星空斗篷卡背（纯中性暗炭底高比例 `color-mix` 融合全局 `--t-osu` 与纯 CSS 中央星辉光晕，叠加 `gachaSketch` 双重套印手绘星盘与极简细体 `osu! / 4K // ARCHIVE` 标识） |
+| `src/components/gacha/GachaCustomFilterModal.tsx` | Portal 弹窗形式 `POOL 07`「条件自选池」独立筛选配置面板（支持关键词/Keys/状态/SR/BPM/LN%/时长编辑，以及一键同步主搜图条件或导入 Filter 存档） |
+| `src/components/gacha/GachaLikedDrawer.tsx` | 默认收起的右侧多分组持久化「心动曲库」抽屉（支持新建、内联重命名、清空、安全删除分组、单曲多分组勾选分配、切换滑动目标组与按组一键批量下载） |
+| `src/components/gacha/BeatmapGachaCard.tsx` | 无边框 `3px` 收藏级 3D 正反谱面卡（默认请求 `?hd=1` 原画高清封面含失败自动回退、正反面 `translateZ(1px)` 防 Chromium 剔除错乱、翻牌粒子+光刃、全局收藏红心与可选 `onInspect` 360° 检视） |
+| `src/components/gacha/GachaCardBack.tsx` | **新增**：动态 Swiss / 构成主义 × `osu!` 动效卡背（全局 `--t-osu` 同色系暗炭 Foil 底、包豪斯斜切色块、斜向高光扫掠、双侧实时滚动 4K 窄轨音符条与中央双旋游标环 + 节奏缩圈 `osu!` Approach Ring） |
 | `src/components/gacha/gachaUtils.ts` | 去中二构图番号卡池配置（`01 综合图池`–`07 条件自选池`，含 `GachaPackSigil` 徽记与主题统一映射）、简明等级名（标准/进阶/专家/大师/巅峰）、24 种严格 `NM/HT/DT` + 黄彩比猜星情景与评分公式 |
 | `src/components/gacha/gachaSound.ts` | Web Audio API 合成开包撕裂、悬停律动、分阶翻牌爆裂、滑卡与猜星揭晓音效 |
 

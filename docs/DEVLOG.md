@@ -4,6 +4,30 @@
 
 ---
 
+## Session 26 — 纯 2D PROUN 平面舞台、炉石风拖拽开包、?hd=1 原画高清封面、20px 矢量金属脊与全新动效卡背 (`v1.16.0`)
+
+- **日期**：2026-11-26
+- **对话 ID**：`09e49c4e-3701-4043-82c7-d9fba139a0f4`
+- **功能代码提交**：`964a5ba`
+
+### 需求与关键改造 (4 项体验与画质全面升级)
+1. **去除 3D 建模改用纯 2D 平面构成背景 (#1)**：删除 `src/components/gacha/GachaSanctumWorld.ts`，重写 `GachaAtmosphere.tsx` 为零 WebGL 的纯 2D SVG 构成主义 × `osu!mania` 4K 海报舞台 + 轻量 2D 点阵画布与定格脉冲，兼顾锐利平面视觉与极低 GPU 开销。
+2. **炉石传说风拖拽开包桌台 (#2)**：重构 `GachaPackMode.tsx` 与 `GachaPackPlate.tsx`，将密封舞台拆分为左侧物理储备卡包叠放与右侧「Opening Altar」唤醒祭坛；卡包拖拽按指针速度产生 `rotateX/rotateY` 立体倾角并触发 `data-drop-active="true"` 磁吸锁框，拖入松手即刻吸附开启、拖出松手平滑回弹，并保留虚线撕拉与单击兼容。
+3. **高清封面、真 3D 推进变焦与 20px 矢量金属脊 (#3)**：新增 `/api/media/cover/:id?hd=1` 优先拉取 `fullsize.jpg` 原画并独立缓存于 `cache/covers-hd/`；`GachaCardInspectorModal.tsx` 将缩放改为 `translateZ` 真 3D 推近及固定纵横比 `20px` 矢量 `<svg>` 钛金属雕刻侧脊；浏览器视觉复测同时捕捉并修复了 Chromium 3D 卡片翻转时的 Z 轴共面剔除 Bug（为 `.gacha-card-face-front/back` 增加 `translateZ(1px)` 分层与 `z-index` 切换，移除干扰 `will-change` 与 `decoding="async"`）。
+4. **全新动态构成主义 × osu! 卡背 (#4)**：移除 `PaimonStarfieldBack.tsx`，新建 `GachaCardBack.tsx` 与配套纯 GPU 关键帧（包豪斯斜切 Foil、双侧实时 4K 下落轨道、双旋游标尺与缩圈 `osu!` Approach Ring）。
+
+### 关键变更文件
+- **版本与后端媒体代理**：`package.json` (`1.16.0`)、`src/constants.ts`、`server/media.ts`、`server/index.ts`
+- **前端 Gacha 视觉与交互组件**：`src/components/gacha/{GachaAtmosphere.tsx,GachaCardBack.tsx(新增),GachaPackPlate.tsx,GachaPackMode.tsx,BeatmapGachaCard.tsx,GachaCardInspectorModal.tsx}`、`src/index.css`；删除 `GachaSanctumWorld.ts`、`PaimonStarfieldBack.tsx`
+- **文档与截图**：`README.md`、`AGENT.md`、`CHANGELOG.md`、`docs/DEVLOG.md`、`docs/screenshots/10–14*.png`
+
+### 验证结果
+- **静态构建**：`npm run typecheck` 与 `npm run build` 均以 exit code `0` 通过；`src` 下零残留 `GachaSanctumWorld` / `PaimonStarfieldBack` 引用。
+- **浏览器全链路与复测 (`:3728`, `1440×900` / `1280×720`)**：确认 `.gacha-atelier canvas` 仅 `1` 个（零 WebGL）；实测 `1011011?hd=1` 返回 `200 / 48,132B`（对比普通缩略图 `21,017B`），实拍卡背在多主题下动态翻转正常、炉石拖拽未入坛回弹 & 入坛磁吸 (`data-drop-active="true"`) 开包、5 卡圆环正反面同屏与 `YAW 067° / 174°` 360° 检视无模糊无裁切；`1280×720` 下无横向溢出，控制台 / WebGL / HTTP `>=400` 报错均为 `0`。
+- **本地打包与冒烟**：`npm run electron:pack` 生成 `release\win-unpacked\osu-manager.exe`（`FileVersion=1.16.0`），隔离 `:3729` 冒烟验证 `/api/health`、`GET /`、`/api/gacha/collections`、`GET /api/media/cover/1011011?hd=1` (`48132B`) 与 `POST /api/gacha/draw` (`5` 张) 均通过，清理后监听端口为 `0` 且 `data/config.json` 保持 `898` 字节未改动。
+
+---
+
 ## Session 25 — PROUN 圣堂、主题星图卡背、14px 金属脊、秒开预取、自选池弹窗与多分组持久心动曲库 (`v1.15.0`)
 
 - **日期**：2026-11-26

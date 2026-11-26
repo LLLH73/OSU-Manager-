@@ -4,6 +4,19 @@ All notable changes to **OSU!Manager! (`osu-4k-dual-downloader`)** will be docum
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [1.16.0] - 2026-11-26
+
+### Added & Changed
+- **纯 2D 平面构成 PROUN × osu! 舞台（#1 · 告别简陋 3D 模型）**：
+  - 移除 `GachaSanctumWorld.ts` Three.js 3D 网格渲染，重构 `GachaAtmosphere.tsx` 为零 WebGL 的轻量高精度 2D 矢量海报背景 + 远边距 `osu!mania` 4K 音符轨道，按 `dating` / `pack` / `guess` 模式切换构成主义几何构图并支持 `B` 键显示平面辅助构造线。
+- **炉石传说风物理拖拽开包与唤醒祭坛（#2）**：
+  - `GachaPackMode.tsx` 与 `GachaPackPlate.tsx` 引入「左侧储备卡包叠放 + 右侧 Opening Altar」双区桌台，支持按住卡包带着速度三维倾角拖向祭坛、祭坛磁吸点亮与锁定框反馈、松手炸开 3D 圆环（未落入祭坛松手则平滑回弹），并继续兼容虚线封条横拉与直接点击开启。
+- **原画级高清封面与 20px 矢量金属脊（#3）**：
+  - `server/media.ts` 与 `server/index.ts` 新增 `/api/media/cover/:id?hd=1` 通道与独立 `cache/covers-hd/` 缓存，优先代理拉取 `assets.ppy.sh/.../covers/fullsize.jpg` (`1366×768`) 供所有抽卡卡片使用；
+  - `GachaCardInspectorModal.tsx` 改用真 3D `translateZ` 推进变焦消除位图模糊，并将侧边升级为 `20px` 高精度矢量 `<svg>` 钛金属雕刻侧脊；`GachaPackMode` 圆环最大缩放限制为 `<= 1.0`，同时在 `index.css` 为 `.gacha-card-face-*` 补充 `translateZ(1px)` 与 `z-index` 隔离，消除 Chromium 翻转剔除错乱。
+- **全新动态构成主义 × osu! 动效卡背（#4）**：
+  - 以全新 `GachaCardBack.tsx` 替换并移除 `PaimonStarfieldBack.tsx`，采用深炭金属 Foil 质感融合全局 `--t-osu`、包豪斯斜切色块、斜向流光扫掠、双侧实时滚动 `osu!mania` 4K 音符条及中央双旋游标尺 + 节奏缩圈 `osu!` Approach Ring。
+
 ## [1.15.0] - 2026-11-26
 
 ### Added & Changed
