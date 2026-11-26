@@ -339,13 +339,13 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
         </header>
 
         {/* Two-Page Open Book Body */}
-        <div className="relative grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2">
+        <div className="relative grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-2 lg:grid-rows-[minmax(0,1fr)]">
           {/* Center Spine Gutter Shadow on Desktop */}
           <div className="rhine-spine-crease pointer-events-none hidden lg:block" aria-hidden="true" />
 
           {/* LEFT PAGE: Cover, Song Identity, Play Count / PP Summary & Local Playback */}
-          <section className="flex min-h-0 flex-col overflow-y-auto border-b border-[var(--rb-line)] px-5 py-4 sm:px-7 sm:py-5 lg:border-r lg:border-b-0">
-            <div className="flex flex-wrap items-center justify-between gap-2 text-[0.6875rem] font-semibold tracking-[0.12em] text-[var(--rb-muted)] uppercase">
+          <section className="flex min-h-0 flex-col overflow-y-auto overscroll-contain border-b border-[var(--rb-line)] px-5 py-4 sm:px-7 sm:py-5 lg:border-r lg:border-b-0">
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 text-[0.6875rem] font-semibold tracking-[0.12em] text-[var(--rb-muted)] uppercase">
               <span className="flex items-center gap-2 font-mono">
                 <span className="inline-block h-1.5 w-1.5 bg-[var(--rb-accent)]" />
                 <span>{formatBookNo(bookIndex)}</span>
@@ -369,7 +369,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
             </div>
 
             {/* Cover Plate with Rhine Lab Corner Registration */}
-            <div className="relative mt-3 overflow-hidden border border-[var(--rb-line)] bg-black/10">
+            <div className="relative mt-3 shrink-0 overflow-hidden border border-[var(--rb-line)] bg-black/10">
               <div className="aspect-[16/8.2] w-full overflow-hidden">
                 <img
                   key={book.bookKey}
@@ -411,8 +411,8 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
             </div>
 
             {/* Title, Artist, Mapper & 2px Rule */}
-            <div className="mt-4">
-              <h2 className="font-display text-[1.45rem] leading-tight font-bold tracking-tight text-[var(--rb-ink)] sm:text-[1.65rem]">
+            <div className="mt-4 shrink-0">
+              <h2 className="font-display break-words [overflow-wrap:anywhere] text-[1.45rem] leading-tight font-bold tracking-tight text-[var(--rb-ink)] sm:text-[1.65rem]">
                 {book.titleUnicode || book.title}
               </h2>
               {book.title && book.title !== book.titleUnicode && (
@@ -435,7 +435,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
             </div>
 
             {/* 2x2 Rhine Lab Key Record Grid: Play Count / PP / Best Score / Last Played */}
-            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-4">
+            <dl className="mt-4 grid shrink-0 grid-cols-2 gap-x-6 gap-y-4">
               <div className="border-l-2 border-[var(--rb-accent)] pl-3">
                 <dt className="font-mono text-[0.65625rem] tracking-[0.1em] text-[var(--rb-muted)] uppercase">
                   {t('PLAY COUNT / 游玩次数', 'PLAY COUNT')}
@@ -517,7 +517,7 @@ export const BookSpreadOverlay = memo(function BookSpreadOverlay({
             </dl>
 
             {/* Inline Local Audio Preview + Quick Actions */}
-            <div className="mt-auto space-y-2.5 pt-5">
+            <div className="mt-auto shrink-0 space-y-2.5 pt-5">
               <div className="flex items-center gap-3 border border-[var(--rb-line)] bg-[var(--rb-panel)] px-3 py-2">
                 <button
                   type="button"

@@ -13,6 +13,7 @@ export interface PpScenarioInput {
   rate: number;
   mods: PpMods;
   maRatio: number | null;
+  overrideEffectiveSr?: number | null;
 }
 
 export interface PpResult {
@@ -535,12 +536,10 @@ function computeManiaCustomAccuracy(
   classic: boolean,
 ): number {
   const m = totalHits > 0 ? Math.min(1, Math.max(0, misses) / totalHits) : 0;
-  if (maRatio === null || !Number.isFinite(maRatio) || maRatio < 0) {
-    return Math.min(rawAcc, Math.max(0, 1 - m));
-  }
   const base = classic ? 300 : 305;
-  const wTopBase = (base * maRatio + 300) / (maRatio + 1);
-  const wTop320 = (320 * maRatio + 300) / (maRatio + 1);
+  const hasMaRatio = maRatio !== null && Number.isFinite(maRatio) && maRatio >= 0;
+  const wTopBase = hasMaRatio ? (base * maRatio + 300) / (maRatio + 1) : base;
+  const wTop320 = hasMaRatio ? (320 * maRatio + 300) / (maRatio + 1) : 320;
   const maxPossibleAcc = (wTopBase / base) * Math.max(0, 1 - m);
   const effAcc = Math.min(rawAcc, maxPossibleAcc);
   const pTop = Math.min(
@@ -567,15 +566,22 @@ export function calculateBeatmapPp(
   };
   const maRatio = input.maRatio ?? null;
 
-  const isRateEstimated = Math.abs(rate - 1) > 0.001;
+  const hasOverrideSr =
+    typeof input.overrideEffectiveSr === 'number' &&
+    Number.isFinite(input.overrideEffectiveSr) &&
+    input.overrideEffectiveSr > 0;
+  const rateChanged = Math.abs(rate - 1) > 0.001;
   const effectiveBpm = beatmap.bpm * rate;
   const rawAcc = accuracy / 100;
   const accAfterMiss = misses > 0 ? Math.max(0, rawAcc - misses / totalHits) : rawAcc;
 
   if (beatmap.modeInt === 3) {
-    const effectiveSr = isRateEstimated
-      ? beatmap.difficultyRating * Math.pow(rate, 0.72)
-      : beatmap.difficultyRating;
+    const effectiveSr = hasOverrideSr
+      ? input.overrideEffectiveSr!
+      : rateChanged
+        ? beatmap.difficultyRating * Math.pow(rate, 0.72)
+        : beatmap.difficultyRating;
+    const isRateEstimated = rateChanged && !hasOverrideSr;
     // Lazer judges both hold-note head & tail; Classic/Stable judges hold-note once
     const maniaTotalHits = Math.max(
       1,
@@ -611,9 +617,10 @@ export function calculateBeatmapPp(
   }
 
   // Fallback approximation for non-Mania modes ("全部模式")
-  const effectiveSr = isRateEstimated
+  const effectiveSr = rateChanged
     ? beatmap.difficultyRating * Math.pow(rate, 0.68)
     : beatmap.difficultyRating;
+  const isRateEstimated = rateChanged;
   const lengthBonus = 1 + 0.12 * Math.min(1, totalHits / 1200);
   const modMultiplier = (mods.nf ? 0.9 : 1) * (mods.ez ? 0.5 : 1);
   const accFactor = Math.pow(Math.max(0, rawAcc - 0.5) / 0.5, 2.2);

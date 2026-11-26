@@ -51,6 +51,7 @@ import {
   getBookRhythm,
   getBooksLibrary,
   invalidateBooksCache,
+  resolveLocalDifficultyRateSr,
   serveBookAudio,
   serveBookCover,
 } from './localLibrary.js';
@@ -454,6 +455,33 @@ app.get('/api/beatmapset/:id', async (req: Request, res: Response) => {
     return;
   }
   res.json(detail);
+});
+
+app.get('/api/pp/exact-sr', (req: Request, res: Response) => {
+  const beatmapsetId = Number(req.query.beatmapsetId);
+  const beatmapId = Number(req.query.beatmapId);
+  const version = typeof req.query.version === 'string' ? req.query.version : '';
+  const rawRate = Number(req.query.rate ?? 1);
+  const rate = Math.min(2, Math.max(0.5, Number.isFinite(rawRate) ? rawRate : 1));
+
+  const resolved = resolveLocalDifficultyRateSr({
+    beatmapsetId: Number.isFinite(beatmapsetId) && beatmapsetId > 0 ? beatmapsetId : undefined,
+    beatmapId: Number.isFinite(beatmapId) && beatmapId > 0 ? beatmapId : undefined,
+    version: version || undefined,
+    rate,
+  });
+
+  if (!resolved) {
+    res.json({ available: false, rate });
+    return;
+  }
+  res.json({
+    available: true,
+    rate,
+    exactSr: resolved.exactSr,
+    baseSr: resolved.baseSr,
+    source: resolved.source,
+  });
 });
 
 // Media proxy + cache

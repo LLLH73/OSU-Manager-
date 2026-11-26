@@ -994,14 +994,14 @@ export function FilterPanel({
                       <button
                         type="button"
                         onClick={() => update({ ppClassic: !ppScenario.mods.classic })}
-                        title={t('Classic / Stable 300 制准度（与 Lazer 305 制换算黄彩比）', 'Classic / Stable 300-base accuracy (vs Lazer 305-base)')}
+                        title={t('Classic / Stable 300 制准度与单次 LN 判定 vs Lazer 305 制与 LN 头尾双判', 'Classic / Stable (300-base + 1x LN) vs Lazer (305-base + LN head/tail)')}
                         className={`btn btn-sm min-h-[24px] px-2 text-[0.71875rem] ${
                           ppScenario.mods.classic
                             ? 'border-stable/60 bg-stable/16 text-stable-soft'
-                            : ''
+                            : 'border-lazer/45 bg-lazer/12 text-lazer-soft'
                         }`}
                       >
-                        Classic
+                        {ppScenario.mods.classic ? 'Classic (300)' : 'Lazer (305)'}
                       </button>
                       <button
                         type="button"

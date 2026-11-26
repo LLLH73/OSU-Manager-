@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Award, Calculator, RotateCcw, Sparkles, Zap } from 'lucide-react';
+import { fetchExactLocalRateSr } from '../api';
 import { useI18n } from '../i18n';
 import { NormalizedBeatmap } from '../types';
 import {
@@ -21,12 +22,15 @@ import {
 import { PpScenarioLibrary } from './PpScenarioLibrary';
 import { SelectField } from './SelectField';
 
+const exactLocalRateSrCache = new Map<string, number | null>();
+
 interface PpCalculatorPanelProps {
   beatmaps: NormalizedBeatmap[];
   selectedDiffId: number | null;
   onSelectDiff: (id: number) => void;
   status: string;
   bpm: number;
+  beatmapsetId?: number;
   initialScenario?: Partial<PpScenarioInput>;
 }
 
@@ -56,6 +60,7 @@ export function PpCalculatorPanel({
   onSelectDiff,
   status,
   bpm,
+  beatmapsetId,
   initialScenario,
 }: PpCalculatorPanelProps) {
   const { lang, t } = useI18n();
@@ -105,6 +110,7 @@ export function PpCalculatorPanel({
     inferScenarioCategory(initialScenario),
   );
   const [customScenarioName, setCustomScenarioName] = useState('');
+  const [exactRateSrState, setExactRateSrState] = useState<{ key: string; sr: number } | null>(null);
 
   const ranked = isRankedForPp(status);
 
@@ -153,6 +159,50 @@ export function PpCalculatorPanel({
     return sortedDiffs[sortedDiffs.length - 1];
   }, [sortedDiffs, selectedDiffId]);
 
+  const resolvedSetId = beatmapsetId ?? activeDiff?.beatmapsetId ?? 0;
+  const exactRateKey =
+    activeDiff && activeDiff.modeInt === 3 && Math.abs(rate - 1) > 0.001
+      ? `${resolvedSetId}|${activeDiff.id}|${activeDiff.version}|${rate.toFixed(3)}`
+      : '';
+
+  useEffect(() => {
+    if (!exactRateKey || !activeDiff) {
+      setExactRateSrState(null);
+      return;
+    }
+    if (exactLocalRateSrCache.has(exactRateKey)) {
+      const cached = exactLocalRateSrCache.get(exactRateKey);
+      setExactRateSrState(cached != null ? { key: exactRateKey, sr: cached } : null);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void fetchExactLocalRateSr({
+        beatmapsetId: resolvedSetId,
+        beatmapId: activeDiff.id,
+        version: activeDiff.version,
+        rate,
+      })
+        .then((res) => {
+          const val = res.available && typeof res.exactSr === 'number' && res.exactSr > 0 ? res.exactSr : null;
+          exactLocalRateSrCache.set(exactRateKey, val);
+          if (!cancelled) {
+            setExactRateSrState(val != null ? { key: exactRateKey, sr: val } : null);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setExactRateSrState(null);
+        });
+    }, 100);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [exactRateKey, resolvedSetId, activeDiff, rate]);
+
+  const overrideEffectiveSr =
+    exactRateSrState && exactRateSrState.key === exactRateKey ? exactRateSrState.sr : null;
+
   const result = useMemo(() => {
     if (!activeDiff) return null;
     return calculateBeatmapPp(activeDiff, {
@@ -161,8 +211,21 @@ export function PpCalculatorPanel({
       rate,
       mods,
       maRatio: activeDiff.modeInt === 3 ? maRatio : null,
+      overrideEffectiveSr,
     });
-  }, [activeDiff, accuracy, misses, rate, mods, maRatio]);
+  }, [activeDiff, accuracy, misses, rate, mods, maRatio, overrideEffectiveSr]);
+
+  const altClientResult = useMemo(() => {
+    if (!activeDiff || activeDiff.modeInt !== 3) return null;
+    return calculateBeatmapPp(activeDiff, {
+      accuracy,
+      misses,
+      rate,
+      mods: { ...mods, classic: !mods.classic },
+      maRatio,
+      overrideEffectiveSr,
+    });
+  }, [activeDiff, accuracy, misses, rate, mods, maRatio, overrideEffectiveSr]);
 
   const matrix = useMemo(() => {
     if (!activeDiff) return [];
@@ -176,15 +239,20 @@ export function PpCalculatorPanel({
         rate,
         mods,
         maRatio: activeMa,
+        overrideEffectiveSr,
       }).pp,
     }));
-  }, [activeDiff, misses, rate, mods, maRatio]);
+  }, [activeDiff, misses, rate, mods, maRatio, overrideEffectiveSr]);
 
   if (!activeDiff || !result) return null;
 
   const totalHits = Math.max(
     1,
     activeDiff.countCircles + activeDiff.countSliders + activeDiff.countSpinners,
+  );
+  const lazerTotalHits = Math.max(
+    1,
+    activeDiff.countCircles + activeDiff.countSliders * 2 + activeDiff.countSpinners,
   );
   const baseBpm = activeDiff.bpm > 0 ? activeDiff.bpm : bpm;
   const effectiveBpm = Math.round(baseBpm * rate);
@@ -196,8 +264,8 @@ export function PpCalculatorPanel({
   const maDescription = (() => {
     if (maRatio === null) {
       return t(
-        '当前：直算模式（直接按上方准度计算，不区分黄/彩 300）',
-        'Mode: Direct (uses accuracy above without 320:300 split)',
+        `直算模式（按 ${mods.classic ? 'Classic 300' : 'Lazer 305'} 制折算至 320 准度：${result.effectiveAcc.toFixed(2)}%）`,
+        `Direct (${mods.classic ? 'Classic 300' : 'Lazer 305'} -> 320 Eff. Acc: ${result.effectiveAcc.toFixed(2)}%)`,
       );
     }
     const clean = Number(maRatio.toFixed(2));
@@ -319,13 +387,46 @@ export function PpCalculatorPanel({
         }`}
       >
         <div className="flex flex-col justify-between gap-2">
-          <div className="flex items-baseline gap-2">
-            <span className="font-stat text-[1.875rem] leading-none font-bold tracking-tight text-lazer-soft tabular-nums">
-              {!ranked && !simulateRanked ? '—' : `${formatPp(result.pp)}`}
-            </span>
-            <span className="font-stat text-[0.875rem] font-bold text-ink-2">
-              {!ranked && !simulateRanked ? t('不计官方 PP', 'Unranked') : 'pp'}
-            </span>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-2">
+              <span className="font-stat text-[1.875rem] leading-none font-bold tracking-tight text-lazer-soft tabular-nums">
+                {!ranked && !simulateRanked ? '—' : `${formatPp(result.pp)}`}
+              </span>
+              <span className="font-stat text-[0.875rem] font-bold text-ink-2">
+                {!ranked && !simulateRanked ? t('不计官方 PP', 'Unranked') : 'pp'}
+              </span>
+            </div>
+
+            {activeDiff.modeInt === 3 && altClientResult && (ranked || simulateRanked) && (() => {
+              const deltaRaw = altClientResult.pp - result.pp;
+              const deltaRounded = Math.round(deltaRaw);
+              const deltaLabel =
+                Math.abs(deltaRaw) < 0.05
+                  ? '±0'
+                  : deltaRounded === 0
+                    ? `${deltaRaw > 0 ? '+' : ''}${deltaRaw.toFixed(1)}`
+                    : `${deltaRounded > 0 ? '+' : ''}${deltaRounded}`;
+              return (
+                <button
+                  type="button"
+                  onClick={() => setMods((m) => ({ ...m, classic: !m.classic }))}
+                  title={t(
+                    '点击切换 Lazer (305) / Stable Classic (300) 计分规则对比',
+                    'Click to switch between Lazer (305) and Stable Classic (300) scoring rules',
+                  )}
+                  className={`inline-flex items-center gap-1 rounded-[7px] border px-2 py-0.5 font-mono text-[0.71875rem] font-semibold transition-colors tabular-nums ${
+                    mods.classic
+                      ? 'border-lazer/40 bg-lazer/10 text-lazer-soft hover:bg-lazer/18'
+                      : 'border-stable/45 bg-stable/12 text-stable-soft hover:bg-stable/20'
+                  }`}
+                >
+                  <span>
+                    {mods.classic ? 'Lazer (305):' : 'Stable (300):'} ~{formatPp(altClientResult.pp)} pp
+                  </span>
+                  <span className="opacity-85">({deltaLabel})</span>
+                </button>
+              );
+            })()}
           </div>
 
           <div className="font-mono flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.75rem] font-medium text-ink-2 tabular-nums">
@@ -335,6 +436,11 @@ export function PpCalculatorPanel({
                 {result.isRateEstimated ? '≈' : ''}
                 {result.effectiveSr.toFixed(2)}★
               </strong>
+              {activeDiff.modeInt === 3 && Math.abs(rate - 1) > 0.001 && !result.isRateEstimated && (
+                <span className="ml-1 rounded border border-emerald-500/35 bg-emerald-500/12 px-1 py-px text-[0.625rem] font-semibold text-ok">
+                  {t('本地实算', 'Exact')}
+                </span>
+              )}
             </span>
             <span>
               BPM: <strong className="text-ink">{effectiveBpm}</strong>
@@ -345,9 +451,16 @@ export function PpCalculatorPanel({
             <span>
               Mod: <strong className="text-ink">×{result.modMultiplier.toFixed(2)}</strong>
             </span>
-            {activeDiff.modeInt === 3 && maRatio !== null && (
+            {activeDiff.modeInt === 3 && (
               <span>
-                {t('折算准度', 'Eff. Acc')}: <strong className="text-ink">{result.effectiveAcc.toFixed(2)}%</strong>
+                {t('320 折算', 'Eff. Acc')}: <strong className="text-ink">{result.effectiveAcc.toFixed(2)}%</strong>
+              </span>
+            )}
+            {activeDiff.modeInt === 3 && (
+              <span className="text-[0.6875rem] text-ink-3">
+                {mods.classic
+                  ? t(`${totalHits} 判定 (LN 单判)`, `${totalHits} hits (1× LN)`)
+                  : t(`${lazerTotalHits} 判定 (LN 头尾双判)`, `${lazerTotalHits} hits (LN head+tail)`)}
               </span>
             )}
           </div>
@@ -776,11 +889,11 @@ export function PpCalculatorPanel({
       <p className="text-[0.75rem] font-medium leading-relaxed text-ink-3">
         {lang === 'en' ? (
           <>
-            Note: NM (1.00x) uses the official <code className="font-mono">ppy/osu</code> Mania accuracy formula (80% threshold &amp; object length bonus). HT / DT / custom-rate SR and PP are approximations based on base SR; final values follow official server calculations.
+            Note: Uses official <code className="font-mono">ppy/osu</code> (<code className="font-mono">20241007</code>) Mania PP formulas (Lazer 305 + LN head/tail vs Classic/Stable 300 + single LN). Locally installed maps also compute exact HT/DT/custom-rate Star Rating directly from the <code className="font-mono">.osu</code> file.
           </>
         ) : (
           <>
-            说明：NM (1.00x) 依据 <code className="font-mono">ppy/osu</code> 官方 Mania 准度制公式计算（含 80% 门槛与物件数长度加成）；HT / DT / 自定义倍速的等效星数与 PP 为基于原星数的近似估算，最终结算以官服在线算分为准。
+            说明：依据 <code className="font-mono">ppy/osu</code> (<code className="font-mono">20241007</code>) 官方 Mania PP 公式计算，完整区分 Lazer (305 制 + 长条头尾双判) 与 Classic/Stable (300 制 + 长条单判)；本地已安装谱面支持直接读取 <code className="font-mono">.osu</code> 原谱精确计算 HT / DT / 任意倍速星数。
           </>
         )}
       </p>

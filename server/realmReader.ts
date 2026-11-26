@@ -24,6 +24,7 @@ export interface RealmBeatmapRow {
   bpm: number;
   starRating: number;
   md5Hash: string;
+  hash: string;
   endTimeObjectCount: number;
   totalObjectCount: number;
   lastPlayed: string | null;
@@ -590,6 +591,7 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
         'BPM',
         'StarRating',
         'MD5Hash',
+        'Hash',
         'EndTimeObjectCount',
         'TotalObjectCount',
         'LastPlayed',
@@ -611,6 +613,7 @@ export function readLazerRealmData(lazerDataPath: string): LazerRealmSnapshot {
         bpm: typeof b.BPM === 'number' ? b.BPM : 120,
         starRating: typeof b.StarRating === 'number' ? b.StarRating : 0,
         md5Hash: String(b.MD5Hash || '').toLowerCase(),
+        hash: String(b.Hash || '').toLowerCase(),
         endTimeObjectCount: typeof b.EndTimeObjectCount === 'number' ? b.EndTimeObjectCount : 0,
         totalObjectCount: typeof b.TotalObjectCount === 'number' ? b.TotalObjectCount : 0,
         lastPlayed: typeof b.LastPlayed === 'string' ? b.LastPlayed : null,

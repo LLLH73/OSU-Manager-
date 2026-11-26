@@ -4,6 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import type { Request, Response } from 'express';
 import { getConfig } from './config.js';
+import {
+  calculateManiaStarRatingFromFile,
+  clearManiaStarRatingCache,
+} from './maniaDifficulty.js';
 import { serveCover, servePreview } from './media.js';
 import { calculateBeatmapPp, isRankedForPp } from './pp.js';
 import { readLazerRealmData } from './realmReader.js';
@@ -84,11 +88,22 @@ interface InternalMediaRefs {
   lazerOsuPaths: string[];
 }
 
+interface OsuDiffRef {
+  osuFilePath?: string;
+  lazerOsuCandidates?: string[];
+  version: string;
+  md5: string;
+  modeInt: number;
+  baseSr: number;
+}
+
 interface CachedLibraryData {
   signature: string;
   response: BooksLibraryResponse;
   detailsByKey: Map<string, BookDetail>;
   mediaByKey: Map<string, InternalMediaRefs>;
+  osuRefsByBeatmapId: Map<number, OsuDiffRef>;
+  osuRefsBySetVersion: Map<string, OsuDiffRef>;
   builtAt: number;
 }
 
@@ -138,6 +153,7 @@ const rhythmCacheByKey = new Map<string, BookRhythmData>();
 export function invalidateBooksCache(): void {
   cachedLibrary = null;
   rhythmCacheByKey.clear();
+  clearManiaStarRatingCache();
 }
 
 function windowsTicksToIso(ticks: bigint): string | null {
@@ -781,6 +797,56 @@ function makeBookKey(beatmapsetId: number | null, artist: string, title: string,
   return `loc-${hash}`;
 }
 
+function resolveDiffOsuPath(target: {
+  osuFilePath?: string;
+  lazerOsuCandidates?: string[];
+  version: string;
+  md5: string;
+}): string | null {
+  if (target.osuFilePath && fs.existsSync(target.osuFilePath)) {
+    return target.osuFilePath;
+  }
+  const candidates = target.lazerOsuCandidates;
+  if (!candidates || candidates.length === 0) return null;
+
+  if (candidates.length === 1 && fs.existsSync(candidates[0])) {
+    target.osuFilePath = candidates[0];
+    return candidates[0];
+  }
+
+  const wantedVersion = target.version.trim().toLowerCase();
+  const wantedMd5 = target.md5.trim().toLowerCase();
+
+  for (const fp of candidates) {
+    try {
+      if (!fs.existsSync(fp)) continue;
+      if (wantedMd5) {
+        const md5 = crypto.createHash('md5').update(fs.readFileSync(fp)).digest('hex').toLowerCase();
+        if (md5 === wantedMd5) {
+          target.osuFilePath = fp;
+          return fp;
+        }
+      }
+      const fd = fs.openSync(fp, 'r');
+      try {
+        const buf = Buffer.allocUnsafe(4096);
+        const n = fs.readSync(fd, buf, 0, buf.length, 0);
+        const head = buf.subarray(0, n).toString('utf8');
+        const m = head.match(/^Version\s*:\s*(.*)$/m);
+        if (m && m[1].trim().toLowerCase() === wantedVersion) {
+          target.osuFilePath = fp;
+          return fp;
+        }
+      } finally {
+        fs.closeSync(fd);
+      }
+    } catch {
+      // Ignore unreadable candidate
+    }
+  }
+  return null;
+}
+
 function computeManiaScorePp(
   baseSr: number,
   starsByMod: Record<number, number> | undefined,
@@ -796,6 +862,7 @@ function computeManiaScorePp(
   countMiss: number,
   fallbackAccuracyPct: number,
   totalObjectsHint: number,
+  exactRateSr?: number | null,
 ): number {
   const totalHits = countMax + count300 + count200 + count100 + count50 + countMiss;
   let customAcc = fallbackAccuracyPct / 100;
@@ -812,11 +879,17 @@ function computeManiaScorePp(
   const modKey =
     (Math.abs(rate - 1.5) < 0.05 ? 64 : Math.abs(rate - 0.75) < 0.05 ? 256 : 0) |
     (ez ? 2 : 0);
-  // Only override SR for DT/HT/EZ; NM uses exact full-precision SR (avoids stale osu!.db values)
-  if (modKey !== 0 && starsByMod && starsByMod[modKey] && starsByMod[modKey] > 0) {
-    effSr = starsByMod[modKey];
-  } else if (Math.abs(rate - 1) > 0.001) {
-    effSr = baseSr * Math.pow(rate, 0.72);
+  if (Math.abs(rate - 1) > 0.001) {
+    // Prefer exact ppy/osu (20241007) Mania SR calculated directly from the .osu file at clockRate
+    if (typeof exactRateSr === 'number' && exactRateSr > 0) {
+      effSr = exactRateSr;
+    } else if (modKey !== 0 && starsByMod && starsByMod[modKey] && starsByMod[modKey] > 0) {
+      effSr = starsByMod[modKey];
+    } else {
+      effSr = baseSr * Math.pow(rate, 0.72);
+    }
+  } else if (effSr <= 0 && typeof exactRateSr === 'number' && exactRateSr > 0) {
+    effSr = exactRateSr;
   }
 
   const lengthBonus = 1 + 0.1 * Math.min(1, objCount / 1500);
@@ -878,7 +951,15 @@ function buildLocalBooksData(): CachedLibraryData {
     lengthSec: number;
     previewTimeMs: number;
     dateAdded: string | null;
-    diffsByKey: Map<string, BookDifficultyRecord & { starsByMod?: Record<number, number>; rawStarRating?: number }>;
+    diffsByKey: Map<
+      string,
+      BookDifficultyRecord & {
+        starsByMod?: Record<number, number>;
+        rawStarRating?: number;
+        osuFilePath?: string;
+        lazerOsuCandidates?: string[];
+      }
+    >;
     md5ToDiffKey: Map<string, string>;
     idToDiffKey: Map<number, string>;
     scores: BookScoreRecord[];
@@ -1043,6 +1124,9 @@ function buildLocalBooksData(): CachedLibraryData {
       lnRatio,
     };
 
+    const stableOsuFilePath =
+      songsDir && bm.folderName && bm.osuFile ? path.join(songsDir, bm.folderName, bm.osuFile) : undefined;
+
     const existingDiff = book.diffsByKey.get(diffKey);
     if (!existingDiff) {
       book.diffsByKey.set(diffKey, {
@@ -1075,9 +1159,13 @@ function buildLocalBooksData(): CachedLibraryData {
         estimated98Pp: Math.round(calculateBeatmapPp(normBm, { accuracy: 98 }).pp * 10) / 10,
         starsByMod: bm.starsByMod,
         rawStarRating: baseSr,
+        osuFilePath: stableOsuFilePath,
       });
     } else {
       existingDiff.inStable = true;
+      if (!existingDiff.osuFilePath && stableOsuFilePath) {
+        existingDiff.osuFilePath = stableOsuFilePath;
+      }
       if (bm.starsByMod && Object.keys(bm.starsByMod).length > 0) {
         existingDiff.starsByMod = bm.starsByMod;
       }
@@ -1187,6 +1275,7 @@ function buildLocalBooksData(): CachedLibraryData {
               bestScore: null,
               lastPlayedAt: null,
               estimated98Pp: 0,
+              osuFilePath: path.join(folderPath, ofn),
             });
           }
         }
@@ -1242,6 +1331,7 @@ function buildLocalBooksData(): CachedLibraryData {
         book.dateAdded = set.dateAdded;
       }
 
+      const setLazerOsuCandidates: string[] = [];
       if (lazerFilesDir) {
         for (const bm of bms) {
           const meta = bm.metadataKey !== null ? realm.metadata.get(bm.metadataKey) : undefined;
@@ -1262,9 +1352,12 @@ function buildLocalBooksData(): CachedLibraryData {
           }
         }
         for (const [fname, h] of fileMap) {
-          if (fname.endsWith('.osu') && book.media.lazerOsuPaths.length < 6) {
+          if (fname.endsWith('.osu')) {
             const p = path.join(lazerFilesDir, h[0], h.slice(0, 2), h);
-            if (!book.media.lazerOsuPaths.includes(p)) book.media.lazerOsuPaths.push(p);
+            if (!setLazerOsuCandidates.includes(p)) setLazerOsuCandidates.push(p);
+            if (book.media.lazerOsuPaths.length < 6 && !book.media.lazerOsuPaths.includes(p)) {
+              book.media.lazerOsuPaths.push(p);
+            }
           }
         }
         if (book.media.lazerAudioPaths.length === 0 && book.media.lazerOsuPaths.length > 0) {
@@ -1372,6 +1465,12 @@ function buildLocalBooksData(): CachedLibraryData {
           status: bmStatus,
           lnRatio,
         };
+        const directHashPath =
+          lazerFilesDir && bm.hash && bm.hash.length >= 64
+            ? path.join(lazerFilesDir, bm.hash[0], bm.hash.slice(0, 2), bm.hash)
+            : undefined;
+        const lazerOsuPath = directHashPath && fs.existsSync(directHashPath) ? directHashPath : undefined;
+
         if (!existingDiff) {
           book.diffsByKey.set(diffKey, {
             key: diffKey,
@@ -1402,9 +1501,16 @@ function buildLocalBooksData(): CachedLibraryData {
             lastPlayedAt: bm.lastPlayed,
             estimated98Pp: Math.round(calculateBeatmapPp(normBm, { accuracy: 98 }).pp * 10) / 10,
             rawStarRating: sr,
+            osuFilePath: lazerOsuPath,
+            lazerOsuCandidates: lazerOsuPath ? undefined : setLazerOsuCandidates,
           });
         } else {
           existingDiff.inLazer = true;
+          if (lazerOsuPath) {
+            existingDiff.osuFilePath = lazerOsuPath;
+          } else if (!existingDiff.lazerOsuCandidates && setLazerOsuCandidates.length > 0) {
+            existingDiff.lazerOsuCandidates = setLazerOsuCandidates;
+          }
           if (sr > 0) {
             // Prefer fresh Lazer client.realm float64 star rating over osu!.db
             existingDiff.rawStarRating = sr;
@@ -1470,6 +1576,13 @@ function buildLocalBooksData(): CachedLibraryData {
     const exactSr = diff.rawStarRating && diff.rawStarRating > 0 ? diff.rawStarRating : diff.starRating;
     let pp = 0;
     if (modeInt === 3) {
+      let exactRateSr: number | null = null;
+      if (Math.abs(rate - 1) > 0.001 || exactSr <= 0) {
+        const osuPath = resolveDiffOsuPath(diff);
+        if (osuPath) {
+          exactRateSr = calculateManiaStarRatingFromFile(osuPath, rate, diff.md5 || osuPath);
+        }
+      }
       pp = computeManiaScorePp(
         exactSr,
         diff.starsByMod,
@@ -1485,6 +1598,7 @@ function buildLocalBooksData(): CachedLibraryData {
         sc.cMiss,
         acc,
         diff.totalObjects,
+        exactRateSr,
       );
     } else {
       const normBm: NormalizedBeatmap = {
@@ -1607,6 +1721,13 @@ function buildLocalBooksData(): CachedLibraryData {
         ppSource = 'estimated';
         const exactSr = diff.rawStarRating && diff.rawStarRating > 0 ? diff.rawStarRating : diff.starRating;
         if (modeInt === 3) {
+          let exactRateSr: number | null = null;
+          if (Math.abs(rate - 1) > 0.001 || exactSr <= 0) {
+            const osuPath = resolveDiffOsuPath(diff);
+            if (osuPath) {
+              exactRateSr = calculateManiaStarRatingFromFile(osuPath, rate, diff.md5 || osuPath);
+            }
+          }
           ppValue = computeManiaScorePp(
             exactSr,
             diff.starsByMod,
@@ -1622,6 +1743,7 @@ function buildLocalBooksData(): CachedLibraryData {
             countMiss,
             accPct,
             diff.totalObjects,
+            exactRateSr,
           );
         } else {
           const normBm: NormalizedBeatmap = {
@@ -1754,10 +1876,41 @@ function buildLocalBooksData(): CachedLibraryData {
   let highestPp: number | null = null;
   let highestPpTitle: string | null = null;
 
+  const osuRefsByBeatmapId = new Map<number, OsuDiffRef>();
+  const osuRefsBySetVersion = new Map<string, OsuDiffRef>();
+
   for (const book of booksByKey.values()) {
-    const diffs = Array.from(book.diffsByKey.values()).map(
-      ({ starsByMod: _s, rawStarRating: _r, ...d }) => d,
-    );
+    const diffs = Array.from(book.diffsByKey.values()).map((rawDiff) => {
+      const {
+        starsByMod: _s,
+        rawStarRating,
+        osuFilePath,
+        lazerOsuCandidates,
+        ...d
+      } = rawDiff;
+      const ref: OsuDiffRef = {
+        osuFilePath,
+        lazerOsuCandidates,
+        version: d.version,
+        md5: d.md5,
+        modeInt: d.modeInt,
+        baseSr: rawStarRating && rawStarRating > 0 ? rawStarRating : d.starRating,
+      };
+      if (d.beatmapId && d.beatmapId > 0) {
+        const existing = osuRefsByBeatmapId.get(d.beatmapId);
+        if (!existing || (!existing.osuFilePath && ref.osuFilePath)) {
+          osuRefsByBeatmapId.set(d.beatmapId, ref);
+        }
+      }
+      if (book.beatmapsetId && book.beatmapsetId > 0 && d.version) {
+        const key = `${book.beatmapsetId}|${d.version.trim().toLowerCase()}`;
+        const existing = osuRefsBySetVersion.get(key);
+        if (!existing || (!existing.osuFilePath && ref.osuFilePath)) {
+          osuRefsBySetVersion.set(key, ref);
+        }
+      }
+      return d;
+    });
     if (diffs.length === 0) continue;
 
     // Sort diffs by mode (Mania first), keyCount, then starRating
@@ -1977,6 +2130,8 @@ function buildLocalBooksData(): CachedLibraryData {
     },
     detailsByKey,
     mediaByKey,
+    osuRefsByBeatmapId,
+    osuRefsBySetVersion,
     builtAt: Date.now(),
   };
 }
@@ -1988,6 +2143,7 @@ function ensureBooksCache(forceRefresh = false): CachedLibraryData {
     return cachedLibrary;
   }
   rhythmCacheByKey.clear();
+  clearManiaStarRatingCache();
   cachedLibrary = buildLocalBooksData();
   return cachedLibrary;
 }
@@ -1999,6 +2155,33 @@ export function getBooksLibrary(forceRefresh = false): BooksLibraryResponse {
 export function getBookDetail(bookKey: string): BookDetail | null {
   const cache = ensureBooksCache(false);
   return cache.detailsByKey.get(bookKey) ?? null;
+}
+
+export function resolveLocalDifficultyRateSr(params: {
+  beatmapsetId?: number;
+  beatmapId?: number;
+  version?: string;
+  rate: number;
+}): { exactSr: number; baseSr: number | null; source: 'local-osu' } | null {
+  const cache = ensureBooksCache(false);
+  const { beatmapsetId, beatmapId, version, rate } = params;
+  const ref =
+    (beatmapId && beatmapId > 0 ? cache.osuRefsByBeatmapId.get(beatmapId) : undefined) ||
+    (beatmapsetId && beatmapsetId > 0 && version
+      ? cache.osuRefsBySetVersion.get(`${beatmapsetId}|${version.trim().toLowerCase()}`)
+      : undefined);
+
+  if (!ref || ref.modeInt !== 3) return null;
+  const osuPath = resolveDiffOsuPath(ref);
+  if (!osuPath) return null;
+
+  const exactSr = calculateManiaStarRatingFromFile(osuPath, rate, ref.md5 || osuPath);
+  if (exactSr === null || exactSr <= 0) return null;
+  return {
+    exactSr,
+    baseSr: ref.baseSr > 0 ? ref.baseSr : null,
+    source: 'local-osu',
+  };
 }
 
 function normRelName(s: string): string {

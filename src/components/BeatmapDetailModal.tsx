@@ -440,6 +440,7 @@ export function BeatmapDetailModal({
               onSelectDiff={(id) => setSelectedDiffId(id)}
               status={beatmapset.status}
               bpm={beatmapset.bpm}
+              beatmapsetId={beatmapset.id}
               initialScenario={ppScenario}
             />
           </div>

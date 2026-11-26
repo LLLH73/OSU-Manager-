@@ -449,3 +449,25 @@ export function removeGachaFavorite(
     },
   );
 }
+
+export interface ExactRateSrResponse {
+  available: boolean;
+  rate: number;
+  exactSr?: number;
+  baseSr?: number | null;
+  source?: 'local-osu';
+}
+
+export function fetchExactLocalRateSr(params: {
+  beatmapsetId?: number;
+  beatmapId?: number;
+  version?: string;
+  rate: number;
+}): Promise<ExactRateSrResponse> {
+  const qs = new URLSearchParams();
+  if (params.beatmapsetId && params.beatmapsetId > 0) qs.set('beatmapsetId', String(params.beatmapsetId));
+  if (params.beatmapId && params.beatmapId > 0) qs.set('beatmapId', String(params.beatmapId));
+  if (params.version) qs.set('version', params.version);
+  qs.set('rate', String(params.rate));
+  return apiJson<ExactRateSrResponse>(`/api/pp/exact-sr?${qs.toString()}`);
+}
